@@ -1,0 +1,317 @@
+I"�<h2 id="场景">场景</h2>
+
+<p>一个应用如果不是web应用，如何使用http接口上传文件下载文件？</p>
+
+<!-- more -->
+
+<h2 id="寻找解决方案">寻找解决方案</h2>
+
+<p>我在某应用想开发一个http接口时，发现我的应用不是web应用，想用成熟的组件如spring-web、spring-boot、Tomcat等却望梅止渴，这时候netty就出场了，高性能网络传输框架。</p>
+
+<p>我记得sentinel有类似的接口比如说下发规则到客户端，监听的是8720端口，我去翻了sentinel的源码，确实是用netty做为接口交互的。shardingsphere开源软件也用netty做http和前端交互，我也参考了源码。</p>
+
+<p><img src="/images/netty-http-server/image-20210903153810468.png" alt="image-20210903153810468" /></p>
+
+<h2 id="建立服务">建立服务</h2>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code> 
+<span class="kn">import</span> <span class="nn">com.alibaba.csp.sentinel.concurrent.NamedThreadFactory</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.bootstrap.ServerBootstrap</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.channel.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.channel.nio.NioEventLoopGroup</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.channel.socket.SocketChannel</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.channel.socket.nio.NioServerSocketChannel</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.handler.codec.http.HttpObjectAggregator</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.handler.codec.http.HttpServerCodec</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.handler.logging.LogLevel</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.handler.logging.LoggingHandler</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.handler.stream.ChunkedWriteHandler</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">lombok.extern.slf4j.Slf4j</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.beans.factory.annotation.Value</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.context.annotation.Lazy</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.stereotype.Component</span><span class="o">;</span>
+ 
+<span class="kn">import</span> <span class="nn">javax.annotation.PostConstruct</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">javax.annotation.PreDestroy</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.concurrent.ExecutorService</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.concurrent.Executors</span><span class="o">;</span>
+ 
+<span class="cm">/**
+ * @author caodegao
+ * @date 2021-04-22
+ */</span>
+<span class="nd">@Slf4j</span>
+<span class="nd">@Component</span>
+<span class="nd">@Lazy</span><span class="o">(</span><span class="kc">false</span><span class="o">)</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">HttpServer</span> <span class="o">{</span>
+ 
+    <span class="nd">@SuppressWarnings</span><span class="o">(</span><span class="s">"PMD.ThreadPoolCreationRule"</span><span class="o">)</span>
+    <span class="kd">private</span> <span class="kd">final</span> <span class="nc">ExecutorService</span> <span class="n">pool</span> <span class="o">=</span> <span class="nc">Executors</span><span class="o">.</span><span class="na">newSingleThreadExecutor</span><span class="o">(</span>
+            <span class="k">new</span> <span class="nf">NamedThreadFactory</span><span class="o">(</span><span class="s">"netty-command-center-executor"</span><span class="o">));</span>
+ 
+    <span class="c1">//端口自由选择</span>
+    <span class="nd">@Value</span><span class="o">(</span><span class="s">"${netty.http.port:8099}"</span><span class="o">)</span>
+    <span class="kd">private</span> <span class="kt">int</span> <span class="n">port</span><span class="o">;</span>
+    <span class="c1">//上传文件的大小自由选择：超过700M可能应用也承受不了，异常。。。</span>
+    <span class="nd">@Value</span><span class="o">(</span><span class="s">"${netty.http.max.content.length:536870912}"</span><span class="o">)</span>
+    <span class="kd">private</span> <span class="kt">int</span> <span class="n">maxContentLength</span><span class="o">;</span>
+ 
+    <span class="cm">/**
+    * @PostConstruct用一个单例默认应用启动的使用就把服务和端口暴露出去。
+    */</span>
+    <span class="nd">@PostConstruct</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">pool</span><span class="o">.</span><span class="na">submit</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="o">{</span>
+            <span class="k">try</span> <span class="o">{</span>
+                <span class="c1">// 1：bossGroup是门户地址，专门站门口迎宾的</span>
+                <span class="nc">EventLoopGroup</span> <span class="n">bossGroup</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">NioEventLoopGroup</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+                <span class="c1">// 2：workerGroup用于内部编解码、处理业务逻辑的线程组。</span>
+                <span class="nc">EventLoopGroup</span> <span class="n">workerGroup</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">NioEventLoopGroup</span><span class="o">();</span>
+                <span class="k">try</span> <span class="o">{</span>
+                    <span class="nc">ServerBootstrap</span> <span class="n">bootstrap</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ServerBootstrap</span><span class="o">();</span>
+                    <span class="n">bootstrap</span><span class="o">.</span><span class="na">option</span><span class="o">(</span><span class="nc">ChannelOption</span><span class="o">.</span><span class="na">SO_BACKLOG</span><span class="o">,</span> <span class="mi">1024</span><span class="o">);</span>
+                    <span class="n">bootstrap</span><span class="o">.</span><span class="na">group</span><span class="o">(</span><span class="n">bossGroup</span><span class="o">,</span> <span class="n">workerGroup</span><span class="o">)</span>
+                            <span class="o">.</span><span class="na">channel</span><span class="o">(</span><span class="nc">NioServerSocketChannel</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+                            <span class="o">.</span><span class="na">handler</span><span class="o">(</span><span class="k">new</span> <span class="nc">LoggingHandler</span><span class="o">(</span><span class="nc">LogLevel</span><span class="o">.</span><span class="na">INFO</span><span class="o">))</span>
+                            <span class="o">.</span><span class="na">childHandler</span><span class="o">(</span><span class="k">new</span> <span class="nc">ChannelInitializer</span><span class="o">&lt;</span><span class="nc">SocketChannel</span><span class="o">&gt;()</span> <span class="o">{</span>
+                                              <span class="nd">@Override</span>
+                                              <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">initChannel</span><span class="o">(</span><span class="nc">SocketChannel</span> <span class="n">socketChannel</span><span class="o">)</span> <span class="o">{</span>
+                                                  <span class="c1">// 链表模式处理Handler</span>
+                                                  <span class="nc">ChannelPipeline</span> <span class="n">channelPipeline</span> <span class="o">=</span> <span class="n">socketChannel</span><span class="o">.</span><span class="na">pipeline</span><span class="o">();</span>
+                                                	<span class="c1">// http编解码处理</span>
+                                                  <span class="n">channelPipeline</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="k">new</span> <span class="nc">HttpServerCodec</span><span class="o">());</span>
+                                                  <span class="c1">//body的内容最大值单位bytes，默认512M</span>
+                                                  <span class="n">channelPipeline</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="k">new</span> <span class="nc">HttpObjectAggregator</span><span class="o">(</span><span class="n">maxContentLength</span><span class="o">));</span>
+                                                  <span class="c1">//防止大文件传输java内存溢出，即切割分块传输，默认8K**重要**</span>
+                                                  <span class="n">channelPipeline</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="k">new</span> <span class="nc">ChunkedWriteHandler</span><span class="o">());</span>
+                                                  <span class="c1">//业务类逻辑</span>
+                                                  <span class="n">channelPipeline</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="k">new</span> <span class="nc">HttpServerHandler</span><span class="o">());</span>
+                                              <span class="o">}</span>
+                                          <span class="o">}</span>
+                            <span class="o">);</span>
+                    <span class="nc">Channel</span> <span class="n">channel</span> <span class="o">=</span> <span class="n">bootstrap</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="n">port</span><span class="o">).</span><span class="na">sync</span><span class="o">().</span><span class="na">channel</span><span class="o">();</span>
+                    <span class="n">log</span><span class="o">.</span><span class="na">info</span><span class="o">(</span><span class="s">"App is server on http://127.0.0.1:"</span> <span class="o">+</span> <span class="n">port</span> <span class="o">+</span> <span class="sc">'/'</span><span class="o">);</span>
+                    <span class="n">channel</span><span class="o">.</span><span class="na">closeFuture</span><span class="o">().</span><span class="na">sync</span><span class="o">();</span>
+                <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+                    <span class="n">bossGroup</span><span class="o">.</span><span class="na">shutdownGracefully</span><span class="o">();</span>
+                    <span class="n">workerGroup</span><span class="o">.</span><span class="na">shutdownGracefully</span><span class="o">();</span>
+                <span class="o">}</span>
+                <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"================================================start"</span><span class="o">);</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">log</span><span class="o">.</span><span class="na">error</span><span class="o">(</span><span class="s">"HttpServer error:"</span><span class="o">,</span> <span class="n">ex</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">});</span>
+    <span class="o">}</span>
+ 
+    <span class="nd">@PreDestroy</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">stop</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+        <span class="c1">//server.close();</span>
+        <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"================================================stop"</span><span class="o">);</span>
+        <span class="n">pool</span><span class="o">.</span><span class="na">shutdownNow</span><span class="o">();</span>
+    <span class="o">}</span>
+ 
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<h2 id="文件上传下载处理">文件上传、下载处理</h2>
+
+<p>这个类是处理地址对应的接口方法的，如http://127.0.0.1/httpUpload，给了几种获取参数的方法方式。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">io.netty.channel.ChannelHandlerContext</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.channel.SimpleChannelInboundHandler</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.handler.codec.http.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.handler.codec.http.multipart.Attribute</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.handler.codec.http.multipart.HttpPostRequestDecoder</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.handler.codec.http.multipart.InterfaceHttpData</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.util.CharsetUtil</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">lombok.extern.slf4j.Slf4j</span><span class="o">;</span>
+ 
+<span class="kn">import</span> <span class="nn">java.io.IOException</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.HashMap</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.List</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.Map</span><span class="o">;</span>
+ 
+<span class="cm">/**
+ * Http server handler.
+ */</span>
+<span class="nd">@Slf4j</span>
+<span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">HttpServerHandler</span> <span class="kd">extends</span> <span class="nc">SimpleChannelInboundHandler</span><span class="o">&lt;</span><span class="nc">FullHttpRequest</span><span class="o">&gt;</span> <span class="o">{</span>
+ 
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">String</span> <span class="no">HTTP_DOWNLOAD</span> <span class="o">=</span> <span class="s">"/httpDownload"</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">String</span> <span class="no">HTTP_UPLOAD</span> <span class="o">=</span> <span class="s">"/httpUpload"</span><span class="o">;</span>
+ 
+    <span class="cm">/**
+     * http入口处理方法
+     *
+     * @param channelHandlerContext
+     * @param request
+     */</span>
+    <span class="nd">@Override</span>
+    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">channelRead0</span><span class="o">(</span><span class="kd">final</span> <span class="nc">ChannelHandlerContext</span> <span class="n">channelHandlerContext</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">FullHttpRequest</span> <span class="n">request</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">String</span> <span class="n">requestPath</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="na">getUri</span><span class="o">();</span>
+        <span class="nc">String</span> <span class="n">requestBody</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="na">content</span><span class="o">().</span><span class="na">toString</span><span class="o">(</span><span class="nc">CharsetUtil</span><span class="o">.</span><span class="na">UTF_8</span><span class="o">);</span>
+        <span class="nc">HttpMethod</span> <span class="n">method</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="na">getMethod</span><span class="o">();</span>
+        <span class="n">log</span><span class="o">.</span><span class="na">info</span><span class="o">(</span><span class="s">"Http request info [uri]:{},[requestBody]:{},[method]{}"</span><span class="o">,</span> <span class="n">requestPath</span><span class="o">,</span> <span class="n">requestBody</span><span class="o">,</span> <span class="n">method</span><span class="o">.</span><span class="na">name</span><span class="o">());</span>
+        <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">String</span><span class="o">&gt;</span> <span class="n">paramMap</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">&lt;&gt;();</span>
+ 
+        <span class="c1">// 下载POST进行获取参数。</span>
+        <span class="k">if</span> <span class="o">(</span><span class="no">HTTP_DOWNLOAD</span><span class="o">.</span><span class="na">equalsIgnoreCase</span><span class="o">(</span><span class="n">requestPath</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="n">method</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="nc">HttpMethod</span><span class="o">.</span><span class="na">POST</span><span class="o">))</span> <span class="o">{</span>
+            <span class="n">postParameters</span><span class="o">(</span><span class="n">request</span><span class="o">,</span> <span class="n">paramMap</span><span class="o">);</span>
+            <span class="n">response</span><span class="o">(</span><span class="n">channelHandlerContext</span><span class="o">,</span> <span class="n">paramMap</span><span class="o">);</span>
+            <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span>
+     	 	<span class="c1">// 下载GET进行获取参数。</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">requestPath</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="no">HTTP_DOWNLOAD</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="n">method</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="nc">HttpMethod</span><span class="o">.</span><span class="na">GET</span><span class="o">))</span> <span class="o">{</span>
+            <span class="n">getParameters</span><span class="o">(</span><span class="n">requestPath</span><span class="o">,</span> <span class="n">paramMap</span><span class="o">);</span>
+            <span class="n">response</span><span class="o">(</span><span class="n">channelHandlerContext</span><span class="o">,</span> <span class="n">paramMap</span><span class="o">);</span>
+            <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="c1">//上传接口只能用POST</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">requestPath</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="no">HTTP_UPLOAD</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="n">method</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="nc">HttpMethod</span><span class="o">.</span><span class="na">POST</span><span class="o">))</span> <span class="o">{</span>
+            <span class="c1">// 上传逻辑另外给</span>
+            <span class="n">upload</span><span class="o">(</span><span class="n">channelHandlerContext</span><span class="o">,</span> <span class="n">request</span><span class="o">);</span>
+            <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="n">response</span><span class="o">(</span><span class="s">"Not support request!"</span><span class="o">.</span><span class="na">getBytes</span><span class="o">(),</span>
+                <span class="n">channelHandlerContext</span><span class="o">,</span> <span class="nc">HttpResponseStatus</span><span class="o">.</span><span class="na">BAD_REQUEST</span><span class="o">);</span>
+    <span class="o">}</span>
+ 
+    <span class="cm">/**
+     * post获取参数
+     *
+     * @param request
+     * @param paramMap
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">postParameters</span><span class="o">(</span><span class="nc">FullHttpRequest</span> <span class="n">request</span><span class="o">,</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">String</span><span class="o">&gt;</span> <span class="n">paramMap</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">HttpPostRequestDecoder</span> <span class="n">decoder</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HttpPostRequestDecoder</span><span class="o">(</span><span class="n">request</span><span class="o">);</span>
+        <span class="n">decoder</span><span class="o">.</span><span class="na">offer</span><span class="o">(</span><span class="n">request</span><span class="o">);</span>
+        <span class="nc">List</span><span class="o">&lt;</span><span class="nc">InterfaceHttpData</span><span class="o">&gt;</span> <span class="n">paramList</span> <span class="o">=</span> <span class="n">decoder</span><span class="o">.</span><span class="na">getBodyHttpDatas</span><span class="o">();</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="k">for</span> <span class="o">(</span><span class="nc">InterfaceHttpData</span> <span class="n">param</span> <span class="o">:</span> <span class="n">paramList</span><span class="o">)</span> <span class="o">{</span>
+                <span class="nc">Attribute</span> <span class="n">data</span> <span class="o">=</span> <span class="o">(</span><span class="nc">Attribute</span><span class="o">)</span> <span class="n">param</span><span class="o">;</span>
+                <span class="n">paramMap</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">data</span><span class="o">.</span><span class="na">getName</span><span class="o">(),</span> <span class="n">data</span><span class="o">.</span><span class="na">getValue</span><span class="o">());</span>
+            <span class="o">}</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">log</span><span class="o">.</span><span class="na">error</span><span class="o">(</span><span class="s">"postParameters Error:"</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+ 
+    <span class="cm">/**
+     * get获取参数
+     *
+     * @param requestPath
+     * @param paramMap
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">getParameters</span><span class="o">(</span><span class="nc">String</span> <span class="n">requestPath</span><span class="o">,</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">String</span><span class="o">&gt;</span> <span class="n">paramMap</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// 是GET请求</span>
+        <span class="nc">QueryStringDecoder</span> <span class="n">decoder</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">QueryStringDecoder</span><span class="o">(</span><span class="n">requestPath</span><span class="o">);</span>
+        <span class="n">decoder</span><span class="o">.</span><span class="na">parameters</span><span class="o">().</span><span class="na">entrySet</span><span class="o">().</span><span class="na">forEach</span><span class="o">(</span><span class="n">entry</span> <span class="o">-&gt;</span> <span class="o">{</span>
+            <span class="c1">// entry.getValue()是一个List, 只取第一个元素</span>
+            <span class="n">paramMap</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">entry</span><span class="o">.</span><span class="na">getKey</span><span class="o">(),</span> <span class="n">entry</span><span class="o">.</span><span class="na">getValue</span><span class="o">().</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span>
+        <span class="o">});</span>
+    <span class="o">}</span>
+ 
+    
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">response</span><span class="o">(</span><span class="kt">byte</span><span class="o">[]</span> <span class="n">bytes</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">ChannelHandlerContext</span> <span class="n">ctx</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">HttpResponseStatus</span> <span class="n">status</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kt">byte</span><span class="o">[]</span> <span class="n">content</span> <span class="o">=</span> <span class="n">bytes</span><span class="o">;</span>
+        <span class="nc">FullHttpResponse</span> <span class="n">response</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">DefaultFullHttpResponse</span><span class="o">(</span><span class="nc">HttpVersion</span><span class="o">.</span><span class="na">HTTP_1_1</span><span class="o">,</span> <span class="n">status</span><span class="o">,</span> <span class="nc">Unpooled</span><span class="o">.</span><span class="na">copiedBuffer</span><span class="o">(</span><span class="n">content</span><span class="o">));</span>
+        <span class="n">response</span><span class="o">.</span><span class="na">headers</span><span class="o">().</span><span class="na">set</span><span class="o">(</span><span class="s">"content-type"</span><span class="o">,</span> <span class="s">"text/plain;charset=UTF-8"</span><span class="o">);</span>
+        <span class="n">setContentLength</span><span class="o">(</span><span class="n">response</span><span class="o">,</span> <span class="n">response</span><span class="o">.</span><span class="na">content</span><span class="o">().</span><span class="na">readableBytes</span><span class="o">());</span>
+        <span class="n">response</span><span class="o">.</span><span class="na">headers</span><span class="o">().</span><span class="na">set</span><span class="o">(</span><span class="s">"connection"</span><span class="o">,</span> <span class="s">"keep-alive"</span><span class="o">);</span>
+        <span class="c1">//写完刷新流</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="na">writeAndFlush</span><span class="o">(</span><span class="n">response</span><span class="o">);</span>
+    <span class="o">}</span>
+ 
+ 
+    <span class="cm">/**
+     * 重新http异常处理
+     *
+     * @param ctx
+     * @param cause
+     */</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">exceptionCaught</span><span class="o">(</span><span class="kd">final</span> <span class="nc">ChannelHandlerContext</span> <span class="n">ctx</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">Throwable</span> <span class="n">cause</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">cause</span><span class="o">.</span><span class="na">getMessage</span><span class="o">().</span><span class="na">equalsIgnoreCase</span><span class="o">(</span><span class="s">"Connection reset by peer"</span><span class="o">))</span> <span class="o">{</span>
+            <span class="n">log</span><span class="o">.</span><span class="na">warn</span><span class="o">(</span><span class="s">"Http request handle occur error localAddress={} remoteAddress={}: Connection reset by peer"</span><span class="o">,</span> <span class="n">ctx</span><span class="o">.</span><span class="na">channel</span><span class="o">().</span><span class="na">localAddress</span><span class="o">(),</span> <span class="n">ctx</span><span class="o">.</span><span class="na">channel</span><span class="o">().</span><span class="na">remoteAddress</span><span class="o">());</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="n">log</span><span class="o">.</span><span class="na">warn</span><span class="o">(</span><span class="s">"Http request handle occur error localAddress={} remoteAddress={}:"</span><span class="o">,</span> <span class="n">ctx</span><span class="o">.</span><span class="na">channel</span><span class="o">().</span><span class="na">localAddress</span><span class="o">(),</span> <span class="n">ctx</span><span class="o">.</span><span class="na">channel</span><span class="o">().</span><span class="na">remoteAddress</span><span class="o">(),</span> <span class="n">cause</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="nc">ResponseUtil</span><span class="o">.</span><span class="na">response</span><span class="o">(</span><span class="n">cause</span><span class="o">.</span><span class="na">toString</span><span class="o">(),</span> <span class="n">ctx</span><span class="o">,</span> <span class="nc">HttpResponseStatus</span><span class="o">.</span><span class="na">INTERNAL_SERVER_ERROR</span><span class="o">);</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h2 id="文件上传解析工具">文件上传解析工具</h2>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">//FileBody是用于存储上传文件是多个文件的情况下，所以文件是List，参数解析后用map存储下来，给业务逻辑用。</span>
+<span class="nd">@Getter</span>
+<span class="nd">@Setter</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">FileBody</span> <span class="o">{</span>
+    <span class="nc">List</span><span class="o">&lt;</span><span class="nc">FileUpload</span><span class="o">&gt;</span> <span class="n">fileUploadList</span><span class="o">;</span>
+    <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">String</span><span class="o">&gt;</span> <span class="n">paramMap</span><span class="o">;</span>
+<span class="o">}</span>
+ 
+ 
+<span class="kn">import</span> <span class="nn">io.netty.channel.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.handler.codec.http.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">io.netty.handler.codec.http.multipart.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">lombok.extern.slf4j.Slf4j</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.apache.commons.codec.digest.DigestUtils</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.apache.commons.io.FileUtils</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.apache.commons.io.FilenameUtils</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.apache.commons.lang3.StringUtils</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.beans.factory.annotation.Value</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.stereotype.Component</span><span class="o">;</span>
+ 
+<span class="kn">import</span> <span class="nn">javax.annotation.Resource</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.io.*</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.Map</span><span class="o">;</span>
+<span class="nd">@Slf4j</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">UploadUtil</span><span class="o">{</span>
+    <span class="kd">public</span> <span class="nc">FileBody</span> <span class="nf">getFileUpload</span><span class="o">(</span><span class="nc">FullHttpRequest</span> <span class="n">request</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">IOException</span> <span class="o">{</span>
+        <span class="c1">//创建HTTP对象工厂</span>
+        <span class="nc">HttpDataFactory</span> <span class="n">factory</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">DefaultHttpDataFactory</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+        <span class="c1">//使用HTTP POST解码器</span>
+        <span class="nc">HttpPostRequestDecoder</span> <span class="n">httpDecoder</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HttpPostRequestDecoder</span><span class="o">(</span><span class="n">factory</span><span class="o">,</span> <span class="n">request</span><span class="o">);</span>
+        <span class="n">httpDecoder</span><span class="o">.</span><span class="na">setDiscardThreshold</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+        <span class="c1">//获取HTTP请求对象</span>
+        <span class="c1">//加载对象到加吗器。</span>
+        <span class="n">httpDecoder</span><span class="o">.</span><span class="na">offer</span><span class="o">(</span><span class="n">request</span><span class="o">);</span>
+        <span class="c1">//存放文件对象</span>
+        <span class="nc">FileBody</span> <span class="n">fileBody</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">FileBody</span><span class="o">();</span>
+        
+        <span class="c1">//通过迭代器获取HTTP的内容</span>
+        <span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">List</span><span class="o">&lt;</span><span class="nc">InterfaceHttpData</span><span class="o">&gt;</span> <span class="nc">InterfaceHttpDataList</span> <span class="o">=</span> <span class="n">httpDecoder</span><span class="o">.</span><span class="na">getBodyHttpDatas</span><span class="o">();</span>
+        <span class="k">for</span> <span class="o">(</span><span class="nc">InterfaceHttpData</span> <span class="n">data</span> <span class="o">:</span> <span class="nc">InterfaceHttpDataList</span><span class="o">)</span> <span class="o">{</span>
+          <span class="c1">//如果数据类型为文件类型，则保存到fileUploads对象中</span>
+          <span class="k">if</span> <span class="o">(</span><span class="n">data</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="nc">InterfaceHttpData</span><span class="o">.</span><span class="na">HttpDataType</span><span class="o">.</span><span class="na">FileUpload</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">data</span><span class="o">.</span><span class="na">getHttpDataType</span><span class="o">()))</span> <span class="o">{</span>
+            <span class="nc">FileUpload</span> <span class="n">fileUpload</span> <span class="o">=</span> <span class="o">(</span><span class="nc">FileUpload</span><span class="o">)</span> <span class="n">data</span><span class="o">;</span>
+            <span class="n">fileBody</span><span class="o">.</span><span class="na">getFileUploadList</span><span class="o">().</span><span class="na">add</span><span class="o">(</span><span class="n">fileUpload</span><span class="o">);</span>
+          <span class="o">}</span>
+          <span class="c1">//如果数据类型为参数类型，则保存到body对象中</span>
+          <span class="k">if</span> <span class="o">(</span><span class="n">data</span><span class="o">.</span><span class="na">getHttpDataType</span><span class="o">()</span> <span class="o">==</span> <span class="nc">InterfaceHttpData</span><span class="o">.</span><span class="na">HttpDataType</span><span class="o">.</span><span class="na">Attribute</span><span class="o">)</span> <span class="o">{</span>
+            <span class="nc">Attribute</span> <span class="n">attribute</span> <span class="o">=</span> <span class="o">(</span><span class="nc">Attribute</span><span class="o">)</span> <span class="n">data</span><span class="o">;</span>
+            <span class="n">fileBody</span><span class="o">.</span><span class="na">getParamMap</span><span class="o">().</span><span class="na">put</span><span class="o">(</span><span class="n">attribute</span><span class="o">.</span><span class="na">getName</span><span class="o">(),</span> <span class="n">attribute</span><span class="o">.</span><span class="na">getValue</span><span class="o">());</span>
+          <span class="o">}</span>
+        <span class="o">}</span>
+        <span class="k">return</span> <span class="n">fileBody</span><span class="o">;</span>
+    <span class="o">}</span>
+ 
+ 
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">upload</span><span class="o">(</span><span class="nc">ChannelHandlerContext</span> <span class="n">ctx</span><span class="o">,</span> <span class="nc">FullHttpRequest</span> <span class="n">request</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="nc">FileBody</span> <span class="n">fileBody</span> <span class="o">=</span> <span class="n">getFileUpload</span><span class="o">(</span><span class="n">request</span><span class="o">);</span>
+            <span class="k">for</span> <span class="o">(</span><span class="nc">FileUpload</span> <span class="n">file</span> <span class="o">:</span> <span class="n">fileBody</span><span class="o">.</span><span class="na">getFileUploadList</span><span class="o">())</span> <span class="o">{</span>
+                <span class="c1">//file这里就是真实文件了，自由处理业务逻辑</span>
+            <span class="o">}</span>
+            <span class="n">response</span><span class="o">(</span><span class="s">"返回上传的情况"</span><span class="o">.</span><span class="na">getBytes</span><span class="o">(),</span> <span class="n">ctx</span><span class="o">,</span> <span class="nc">HttpResponseStatus</span><span class="o">.</span><span class="na">OK</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">){</span>
+            
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+:ET

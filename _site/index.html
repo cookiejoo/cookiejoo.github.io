@@ -20,7 +20,7 @@
 <meta name="twitter:card" content="summary">
 <meta property="twitter:title" content="Home">
 <script type="application/ld+json">
-{"author":{"@type":"Person","name":"GitHub User"},"@type":"WebSite","description":"Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.","headline":"Home","url":"/","name":"Cookie.Joo Blog","@context":"https://schema.org"}</script>
+{"headline":"Home","@type":"WebSite","author":{"@type":"Person","name":"GitHub User"},"description":"Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.","name":"Cookie.Joo Blog","url":"/","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="shortcut icon" href="">
   <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
@@ -589,10 +589,10 @@ function googleTranslateElementInit() {
     <div class="wrapper">
       <div class="page-banner-inner"><div class="page-banner-default">
             <h1 class="page-banner-heading">
-              Your awesome heading
+              Welcome To My Nest
             </h1>
             <h2 class="page-banner-subheading">
-              Your awesome subheading
+              it's warm here
             </h2>
           </div></div>
     </div>
@@ -761,6 +761,1187 @@ function googleTranslateElementInit() {
   <div class="pagination">
   <!-- Post list links -->
   <ul class="post-list">
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/netty/2021/09/07/netty-reactor.html">
+          netty-reactor
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Sep 07, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
+      </div>
+      <a class="post-excerpt" href="/netty/2021/09/07/netty-reactor.html">
+        <p>
+        什么是经典的三种I/O模式
+
+我们在学Netty的时候讲的最多的就是Reactor的三种模式，因为他的这个模式用的最广泛，涉及的I/O知识点很基础也很常用。
+
+
+
+  我们去吃饭的时候：
+
+
+1：家乐园排队打饭，排队在窗口，打好才走。
+
+2：点单，拿一个号码牌等待被叫，好了自己去端走。
+
+3：辣可可包厢模式，点单后菜直接端上桌。
+
+
+  类比：
+
+
+饭店-&gt;服务器
+
+饭菜-&gt;数据
+
+饭菜好了-&gt;数据就绪
+
+端菜、送菜-&gt;读取数据
+
+
+  
+    
+      模式
+      特点
+      JDK版本
+    
+  
+  
+    
+      排队打饭模式
+      BIO（阻塞）
+      JDK1.4之前
+    
+    
+      点单被叫... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#netty">#netty</a></div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/netty/2021/09/02/netty-http-server.html">
+          netty-http-server
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Sep 02, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 11 mins</span>
+      </div>
+      <a class="post-excerpt" href="/netty/2021/09/02/netty-http-server.html">
+        <p>
+        场景
+
+一个应用如果不是web应用，如何使用http接口上传文件下载文件？
+
+
+
+寻找解决方案
+
+我在某应用想开发一个http接口时，发现我的应用不是web应用，想用成熟的组件如spring-web、spring-boot、Tomcat等却望梅止渴，这时候netty就出场了，高性能网络传输框架。
+
+我记得sentinel有类似的接口比如说下发规则到客户端，监听的是8720端口，我去翻了sentinel的源码，确实是用netty做为接口交互的。shardingsphere开源软件也用netty做http和前端交互，我也参考了源码。
+
+
+
+建立服务
+
+ 
+import com.alibaba.csp.sentinel.concurrent.NamedThreadFactory;
+impor... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#netty">#netty</a></div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/unit/test/2021/07/24/mockito-assert-verify.html">
+          Mockito 断言和校验器《第九章》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jul 24, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 9 mins</span>
+      </div>
+      <a class="post-excerpt" href="/unit/test/2021/07/24/mockito-assert-verify.html">
+        <p>
+        前言
+
+我们有很多篇幅介绍了如果使用mock挡板等工具做无外部依赖单元测试，本章聊一下单元测试中的断言和校验器。
+
+断言Assertj
+
+推荐用Assertj 断言，反观Assert不是那么的直观好用。Assertj支持字符串、数字、日期、List、Map、Class等类型，此外还提供了好用的 fail 方法。除此之外，对Java中的Exception、Iterable、JodaTime、Guava等都提供支持。
+
+    import static org.assertj.core.api.Assertions.*;
+
+		@Test
+    public void testList() {
+        List&lt;String&gt; names = Lists.newAr... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags">
+<a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
+</div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/unit/test/2021/07/23/mockito-test-web.html">
+          Mockito WEB接口测试《第八章》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jul 23, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 4 mins</span>
+      </div>
+      <a class="post-excerpt" href="/unit/test/2021/07/23/mockito-test-web.html">
+        <p>
+        前言
+
+前面基本都是接口后端类的测试，这章聊一下web端的http服务如何测试。
+
+我们使用junit测试web的时候不得不起一个完整的服务后调用才能够进入controller代码里面，就如下代码：
+
+@Controller
+@RequestMapping
+public class WarehouseController {
+	@RequestMapping(value = "/web/warehouse/httpDownload")
+    public ResponseEntity&lt;String&gt; httpDownload(
+    	HttpServletRequest request,
+       	HttpServletResponse response,
+  ... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags">
+<a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
+</div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/unit/test/2021/07/18/mockito-normal-skill.html">
+          Mockito 正常场景测试技巧《第六章》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jul 18, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 8 mins</span>
+      </div>
+      <a class="post-excerpt" href="/unit/test/2021/07/18/mockito-normal-skill.html">
+        <p>
+        正常场景测试技巧
+
+在这半个月我写的单元测试用例代码中，遇到了很多问题，比如私有变量、方法内部new对象、静态方法mock等，有些代码我们确实难以模拟的，我把我的解决方式跟大家分享一下。
+
+各种service接口模拟
+
+// Spring里面的接口、Dubbo接口等注入
+public class TestServiceImpl{
+	@Resource
+	private MyService myService;
+  
+}
+
+// 单元测试这么做
+public class Test{
+  @Mock
+  MyService myService;
+  @InjectMocks
+  TestServiceImpl testService;
+
+  @Before
+  public void se... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags">
+<a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
+</div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/unit/test/2021/07/18/mockito-exception-skill.html">
+          Mockito 异常场景测试技巧《第七章》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jul 18, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 2 mins</span>
+      </div>
+      <a class="post-excerpt" href="/unit/test/2021/07/18/mockito-exception-skill.html">
+        <p>
+        异常场景测试技巧
+
+我们的方法有时候没有异常返回，但是内部的某些方法我们try catch了需要测试覆盖到，这类的场景我们也是非常常见的且着重要注意到的。
+
+模拟执行某方法异常测试
+
+public class TestServiceImpl{
+  @Resource
+	private MyService myService;
+  
+	public boolean doSomeThing(){
+    boolean isError = false;
+    try{
+      myService.getName();
+    } catch(Exception e) {
+      isError = true;
+    }
+    return isError;
+  }
+  
+  ... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags">
+<a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
+</div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/unit/test/2021/07/03/mockito-test-rocketmq-producer.html">
+          Mockito EventBus RocketMQ 生产者测试《第五章》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jul 03, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 4 mins</span>
+      </div>
+      <a class="post-excerpt" href="/unit/test/2021/07/03/mockito-test-rocketmq-producer.html">
+        <p>
+        前言
+
+上一章说到了RocketMQ在EvnetBus包装下的测试工具。本章主要讲MSF EventBus生产者操作。
+
+EventBus 生产者模拟测试
+
+请看下面实例：
+
+import com.alibaba.fastjson.JSONObject;
+import com.qihoo.finance.msf.event.bus.base.DelayTimeEnum;
+import com.qihoo.finance.msf.event.bus.base.EventBus;
+import com.qihoo.finance.msf.event.bus.base.MsfEventBusException;
+import org.apache.rocketmq.client.except... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags">
+<a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
+</div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/unit/test/2021/07/02/mockito-test-rocketmq-consumer.html">
+          Mockito EventBus RocketMQ 消费者测试《第四章》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jul 02, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 3 mins</span>
+      </div>
+      <a class="post-excerpt" href="/unit/test/2021/07/02/mockito-test-rocketmq-consumer.html">
+        <p>
+        前言
+
+在消息中间件中我们要模拟的是收发信息的动作，MQ这类的是依赖第三方消息中间件的，除去启动消息中间件去消费消息这一动作外，其实我们最关心的是我们接受到消息后怎么处理的问题，那么收消息是MQ中多线程去拉取数据的，也是官方jar提供工具类帮我们做的，所以我们需要入手的就是模拟有人给我们发消息，这个接收类是我们重点Mock的对象。本章主要讲如何在单元测试中模拟收RocketMQ服务器消息操作。
+
+还是一如既往的不使用真正的服务器，直接用mock挡板。
+
+EventBus 消费者模拟测试
+
+MSF框架中提供了抽象类，用户只要继承该类去实现handle方法即可，请看下面实例：
+
+首先需要建一个子类的实现类，并且实现父类的handle方法
+
+import com.qihoo.finance.... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags">
+<a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
+</div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/unit/test/2021/07/01/mockito-test-mongo.html">
+          Mockito MongoDB测试《第三章》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jul 01, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 3 mins</span>
+      </div>
+      <a class="post-excerpt" href="/unit/test/2021/07/01/mockito-test-mongo.html">
+        <p>
+        1：前言
+
+上一章说到了Redis测试工具，我们需要模拟的是Redis连接挡板。本章主要讲如何在单元测试中模拟Mongo服务器操作。
+
+还是一如既往的不使用真正的服务器，直接用mock挡板。
+
+2：Mongo模拟测试
+
+请看下面实例：
+
+import com.google.common.collect.Lists;
+import com.mongodb.MongoClient;
+import com.mongodb.client.ListDatabasesIterable;
+import org.bson.Document;
+import org.bson.types.ObjectId;
+import org.junit.Before;
+import org.junit.Test;
+i... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags">
+<a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
+</div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/unit/test/2021/06/30/mockito-test-redis.html">
+          Mockito Redis测试《第二章》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jun 30, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 3 mins</span>
+      </div>
+      <a class="post-excerpt" href="/unit/test/2021/06/30/mockito-test-redis.html">
+        <p>
+        前言
+
+上一章说到了Mockito测试工具，大概入门的使用了该工具模拟调用Dubbo接口。本章主要讲如何在单元测试中模拟Redis服务器操作。
+
+还是一如既往的不使用真正的服务器，直接用mock挡板。
+
+Redis模拟测试
+
+请看下面实例：
+
+
+import com.qihoo.finance.msf.cache.redis.RedisCache;
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisCon... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags">
+<a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
+</div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/unit/test/2021/06/20/mockito-test-service.html">
+          Mockito 接口测试《第一章》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jun 20, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 7 mins</span>
+      </div>
+      <a class="post-excerpt" href="/unit/test/2021/06/20/mockito-test-service.html">
+        <p>
+        什么是Mock测试
+
+Mock测试就是在测试过程中，对于某些不容易构造或者不容易获取的对象，用一个虚拟的对象来创建以便测试的测试方法。什么是不容易构造的对象呢？例如HttpServletRequest，需要在有servlet容器环境中创建获取。那不容易获取的对象呢？如一个JedisCluster，需要准备redis相关环境，然后设置进去等等。
+
+Mock 可以分解在单元测试中耦合的其他类或者接口，它能够帮你模拟这些依赖，并帮你验证所调用的依赖的行为。
+
+关于Mockito的简介之前有同事已经介绍过这里就不在赘述了，大家有兴趣可以自行去官方文档查阅，这里主要带大家了解一些常用的Mock方法。
+
+&lt;dependency&gt;
+    &lt;groupId&gt;org.mocki... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags">
+<a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
+</div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/unit/test/2021/06/19/mockito-test-standard.html">
+          单元测试准则《开篇》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jun 19, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
+      </div>
+      <a class="post-excerpt" href="/unit/test/2021/06/19/mockito-test-standard.html">
+        <p>
+        单元测试应该遵循的原则
+
+
+  F-FAST(快速原则)
+单元测试应该是可以快速运行的，在各种测试方法中，单元测试的运行速度是最快的，通常应该在几分钟内运行完毕
+  I-Independent(独立原则)
+单元测试应该是可以独立运行的，单元测试用例互相无强依赖，无对外部资源的强依赖
+  
+    R-Repeatable(可重复原则)
+单元测试应该可以稳定重复的运行，并且每次运行的结果都是相同的
+  
+  
+    S-Self Validating(自我验证原则)
+单元测试应该是用例自动进行验证的，不能依赖人工验证
+  
+  T-Timely(及时原则）
+单元测试必须及时的进行编写，更新和维护，以保证用例可以随着业务代码的变化动态的保障质量
+
+
+MSF单元测规约
+
+
+  测试是多而小... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags">
+<a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
+</div>
+    </li>
 <li>
       
 
@@ -2035,10 +3216,28 @@ Here’s a useless table:
   <ul>
     <li>
       <a href="/index.html">
-        All<span>14</span>
+        All<span>26</span>
       </a>
     </li>
 
+    
+      <li>
+        <a href="/categories.html#h-Netty">
+          Netty <span>2</span>
+        </a>
+      </li>
+    
+      <li>
+        <a href="/categories.html#h-Test">
+          Test <span>10</span>
+        </a>
+      </li>
+    
+      <li>
+        <a href="/categories.html#h-Unit">
+          Unit <span>10</span>
+        </a>
+      </li>
     
       <li>
         <a href="/categories.html#h-example">

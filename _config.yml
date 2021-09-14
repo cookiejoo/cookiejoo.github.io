@@ -139,8 +139,8 @@ yat:
 # Page default value
 # defaults:
 #   home:
-#     heading: "Your awesome heading"
-#     subheading: "Your awesome subheading"
+#     heading: "Welcome To My Nest"
+#     subheading: "it's warm here"
 #     banner: "Your image url"
 
 # Banner default settings

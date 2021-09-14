@@ -1,0 +1,88 @@
+I"�#<h3 id="异常场景测试技巧">异常场景测试技巧</h3>
+
+<p>我们的方法有时候没有异常返回，但是内部的某些方法我们try catch了需要测试覆盖到，这类的场景我们也是非常常见的且着重要注意到的。</p>
+
+<h4 id="模拟执行某方法异常测试">模拟执行某方法异常测试</h4>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestServiceImpl</span><span class="o">{</span>
+  <span class="nd">@Resource</span>
+	<span class="kd">private</span> <span class="nc">MyService</span> <span class="n">myService</span><span class="o">;</span>
+  
+	<span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">doSomeThing</span><span class="o">(){</span>
+    <span class="kt">boolean</span> <span class="n">isError</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+    <span class="k">try</span><span class="o">{</span>
+      <span class="n">myService</span><span class="o">.</span><span class="na">getName</span><span class="o">();</span>
+    <span class="o">}</span> <span class="k">catch</span><span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">isError</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="k">return</span> <span class="n">isError</span><span class="o">;</span>
+  <span class="o">}</span>
+  
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">throwRuntimeException</span><span class="o">(){</span>
+    <span class="k">try</span><span class="o">{</span>
+      <span class="n">myService</span><span class="o">.</span><span class="na">getName</span><span class="o">();</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">"我的异常"</span><span class="o">);</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+  
+  <span class="kd">public</span> <span class="nc">String</span> <span class="nf">getName</span><span class="o">(){</span>
+    <span class="n">myService</span><span class="o">.</span><span class="na">getName</span><span class="o">();</span>
+  <span class="o">}</span>
+  
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">openInputStream</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">IOException</span><span class="o">{</span>
+    <span class="nc">FileUtils</span><span class="o">.</span><span class="na">openInputStream</span><span class="o">(</span><span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="s">"文件不存在抛异常"</span><span class="o">));</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// 单元测试这么做</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span><span class="o">{</span>
+  <span class="nd">@Mock</span>
+  <span class="nc">MyService</span> <span class="n">myService</span><span class="o">;</span>
+  <span class="nd">@InjectMocks</span>
+  <span class="nc">TestServiceImpl</span> <span class="n">testService</span><span class="o">;</span>
+
+  <span class="nd">@Before</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setUp</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+    <span class="nc">MockitoAnnotations</span><span class="o">.</span><span class="na">initMocks</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+  <span class="o">}</span>
+  
+  <span class="c1">// 令某方法执行异常，但异常被内部补货处理了。</span>
+  <span class="nd">@Test</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">doSomeThingMethodReturnTrueTest</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">doThrow</span><span class="o">(</span><span class="k">new</span> <span class="nc">RuntimeException</span><span class="o">()).</span><span class="na">when</span><span class="o">(</span><span class="n">myService</span><span class="o">).</span><span class="na">getName</span><span class="o">();</span>
+    <span class="kt">boolean</span> <span class="n">result</span> <span class="o">=</span> <span class="n">testService</span><span class="o">.</span><span class="na">doSomeThing</span><span class="o">();</span>
+    <span class="n">assertThat</span><span class="o">(</span><span class="n">result</span><span class="o">).</span><span class="na">as</span><span class="o">(</span><span class="s">"check result is false!"</span><span class="o">).</span><span class="na">isEqualTo</span><span class="o">(</span><span class="kc">false</span><span class="o">);</span>
+  <span class="o">}</span>
+  
+  <span class="c1">// 令某方法执行异常，但是没有被捕获，断言指定的异常类是否包含某关键字</span>
+  <span class="nd">@Test</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">throwExceptionTest</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">doThrow</span><span class="o">(</span><span class="k">new</span> <span class="nc">RuntimeException</span><span class="o">()).</span><span class="na">when</span><span class="o">(</span><span class="n">myService</span><span class="o">).</span><span class="na">throwException</span><span class="o">();</span>
+    <span class="c1">// 使用assertJ的异常断言来测试该方法是否抛了指定异常，还可以判断里面的异常信息是否包含某关键字</span>
+    <span class="n">assertThatThrownBy</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="n">testService</span><span class="o">.</span><span class="na">doSomeThing</span><span class="o">()).</span><span class="na">isInstanceOf</span><span class="o">(</span><span class="nc">RuntimeException</span><span class="o">.</span><span class="na">class</span><span class="o">).</span><span class="na">hasMessageContaining</span><span class="o">(</span><span class="s">"我的异常"</span><span class="o">);</span>
+  <span class="o">}</span>
+  
+  <span class="c1">// 如上，就判断异常类型</span>
+  <span class="nd">@Test</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">getNameThrowExceptionTest</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">doThrow</span><span class="o">(</span><span class="k">new</span> <span class="nc">RuntimeException</span><span class="o">()).</span><span class="na">when</span><span class="o">(</span><span class="n">myService</span><span class="o">).</span><span class="na">getName</span><span class="o">();</span>
+    <span class="n">assertThatThrownBy</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="n">testService</span><span class="o">.</span><span class="na">getName</span><span class="o">()).</span><span class="na">isInstanceOf</span><span class="o">(</span><span class="nc">RuntimeException</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+  <span class="o">}</span>
+  
+  <span class="c1">// 也可以用catch里面的异常来断言是否是指定的异常</span>
+  <span class="nd">@Test</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">throwIOExceptionTest</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">try</span><span class="o">{</span>
+      <span class="n">testService</span><span class="o">.</span><span class="na">openInputStream</span><span class="o">();</span>
+    <span class="o">}</span> <span class="k">catch</span><span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+       <span class="n">assertThat</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">fillInStackTrace</span><span class="o">()).</span><span class="na">isInstanceOfAny</span><span class="o">(</span><span class="nc">FileNotFoundException</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>建议在很多个方法场景内去编写不同的执行返回或执行异常，setUp只写公共的不会被修改的无状态动作，如果都写在setUp里面会显得臃肿如果要定制某个方法放回不同的数据导致冲突。</p>
+
+<p>异常的处理基本上这几种非常常见常用的，对大家非常有帮助。</p>
+:ET

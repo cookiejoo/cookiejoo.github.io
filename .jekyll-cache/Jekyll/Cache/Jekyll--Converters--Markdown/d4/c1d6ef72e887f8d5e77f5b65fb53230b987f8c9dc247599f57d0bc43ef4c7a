@@ -1,0 +1,113 @@
+I"d8<h3 id="前言">前言</h3>
+
+<p>上一章说到了RocketMQ在EvnetBus包装下的测试工具。本章主要讲MSF EventBus生产者操作。</p>
+
+<h3 id="eventbus-生产者模拟测试">EventBus 生产者模拟测试</h3>
+
+<p>请看下面实例：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">com.alibaba.fastjson.JSONObject</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.event.bus.base.DelayTimeEnum</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.event.bus.base.EventBus</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.event.bus.base.MsfEventBusException</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.apache.rocketmq.client.exception.MQClientException</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.apache.rocketmq.client.producer.DefaultMQProducer</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.apache.rocketmq.client.producer.SendResult</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.Before</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.Test</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.mockito.internal.util.reflection.FieldSetter</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.powermock.api.mockito.PowerMockito</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.io.UnsupportedEncodingException</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.lang.reflect.Method</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">static</span> <span class="n">org</span><span class="o">.</span><span class="na">assertj</span><span class="o">.</span><span class="na">core</span><span class="o">.</span><span class="na">api</span><span class="o">.</span><span class="na">Assertions</span><span class="o">.</span><span class="na">assertThat</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">static</span> <span class="n">org</span><span class="o">.</span><span class="na">mockito</span><span class="o">.</span><span class="na">ArgumentMatchers</span><span class="o">.</span><span class="na">any</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">static</span> <span class="n">org</span><span class="o">.</span><span class="na">mockito</span><span class="o">.</span><span class="na">Mockito</span><span class="o">.*;</span>
+
+<span class="cm">/**
+ * RocketMQ 生产者单元测试
+ *
+ * @author: Cookie.Joo
+ * @create: 2020/12/01
+ */</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">MsfEventBusProducerTest</span> <span class="o">{</span>
+
+    <span class="nc">MsfEventBusProducer</span> <span class="n">msfEventBusProducer</span><span class="o">;</span>
+
+    <span class="nd">@Before</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setUp</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">msfEventBusProducer</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">MsfEventBusProducer</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="nc">DefaultMQProducer</span> <span class="n">producer</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">DefaultMQProducer</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="c1">// 修改类中某个属性的方式：FieldSetter</span>
+            <span class="nc">FieldSetter</span><span class="o">.</span><span class="na">setField</span><span class="o">(</span><span class="n">msfEventBusProducer</span><span class="o">,</span> <span class="nc">MsfEventBusProducer</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">"applicationName"</span><span class="o">),</span> <span class="s">"probe-app"</span><span class="o">);</span>
+            <span class="nc">FieldSetter</span><span class="o">.</span><span class="na">setField</span><span class="o">(</span><span class="n">msfEventBusProducer</span><span class="o">,</span> <span class="nc">MsfEventBusProducer</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">"producer"</span><span class="o">),</span> <span class="n">producer</span><span class="o">);</span>
+
+            <span class="nc">SendResult</span> <span class="n">sendResult</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SendResult</span><span class="o">();</span>
+            <span class="c1">//调用一个参数的方法正常返回</span>
+            <span class="n">when</span><span class="o">(</span><span class="n">msfEventBusProducer</span><span class="o">.</span><span class="na">syncSend</span><span class="o">(</span><span class="n">any</span><span class="o">())).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">sendResult</span><span class="o">);</span>
+            <span class="c1">//调用两个参数的方法抛异常</span>
+            <span class="n">doThrow</span><span class="o">(</span><span class="k">new</span> <span class="nc">MsfEventBusException</span><span class="o">()).</span><span class="na">when</span><span class="o">(</span><span class="n">msfEventBusProducer</span><span class="o">).</span><span class="na">syncSend</span><span class="o">(</span><span class="n">any</span><span class="o">(),</span> <span class="n">any</span><span class="o">(</span><span class="nc">String</span><span class="o">.</span><span class="na">class</span><span class="o">));</span>
+            
+            <span class="n">when</span><span class="o">(</span><span class="n">msfEventBusProducer</span><span class="o">.</span><span class="na">syncSend</span><span class="o">(</span><span class="n">any</span><span class="o">(),</span> <span class="n">any</span><span class="o">(</span><span class="nc">String</span><span class="o">.</span><span class="na">class</span><span class="o">),</span> <span class="n">any</span><span class="o">(</span><span class="nc">Integer</span><span class="o">.</span><span class="na">class</span><span class="o">))).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">sendResult</span><span class="o">);</span>
+            <span class="n">when</span><span class="o">(</span><span class="n">msfEventBusProducer</span><span class="o">.</span><span class="na">syncSend</span><span class="o">(</span><span class="n">any</span><span class="o">(),</span> <span class="n">any</span><span class="o">(</span><span class="nc">String</span><span class="o">.</span><span class="na">class</span><span class="o">),</span> <span class="n">any</span><span class="o">(</span><span class="nc">Integer</span><span class="o">.</span><span class="na">class</span><span class="o">),</span> <span class="n">any</span><span class="o">(</span><span class="nc">DelayTimeEnum</span><span class="o">.</span><span class="na">class</span><span class="o">))).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">sendResult</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+        <span class="o">}</span>
+
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">mqStartTest</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="c1">// 测试mq启动</span>
+            <span class="nc">Method</span> <span class="n">postConstruct</span> <span class="o">=</span> <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">method</span><span class="o">(</span><span class="nc">MsfEventBusProducer</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="s">"init"</span><span class="o">);</span>
+            <span class="n">postConstruct</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">msfEventBusProducer</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">assertThat</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">fillInStackTrace</span><span class="o">()).</span>
+                    <span class="n">isInstanceOfAny</span><span class="o">(</span><span class="nc">MQClientException</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">normalToSentMsgTest</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="nc">SendResult</span> <span class="n">sendResult</span> <span class="o">=</span> <span class="n">msfEventBusProducer</span><span class="o">.</span><span class="na">syncSend</span><span class="o">(</span><span class="n">getEventBus</span><span class="o">());</span>
+            <span class="n">assertThat</span><span class="o">(</span><span class="n">sendResult</span><span class="o">).</span><span class="na">as</span><span class="o">(</span><span class="s">"SendResult is not null"</span><span class="o">).</span><span class="na">isNotNull</span><span class="o">();</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">assertThat</span><span class="o">(</span><span class="n">e</span><span class="o">).</span><span class="na">as</span><span class="o">(</span><span class="s">"SendRes No Exception"</span><span class="o">).</span><span class="na">isNull</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">producerSentMsgExceptionTest</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="nc">SendResult</span> <span class="n">sendResult</span> <span class="o">=</span> <span class="n">msfEventBusProducer</span><span class="o">.</span><span class="na">syncSend</span><span class="o">(</span><span class="n">getEventBus</span><span class="o">(),</span> <span class="s">"My Topic"</span><span class="o">);</span>
+            <span class="n">assertThat</span><span class="o">(</span><span class="n">sendResult</span><span class="o">).</span><span class="na">as</span><span class="o">(</span><span class="s">"SendResult is null"</span><span class="o">).</span><span class="na">isNull</span><span class="o">();</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">assertThat</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">fillInStackTrace</span><span class="o">()).</span>
+                    <span class="n">isInstanceOfAny</span><span class="o">(</span><span class="nc">MsfEventBusException</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="nc">UnsupportedEncodingException</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="kd">private</span> <span class="nc">EventBus</span> <span class="nf">getEventBus</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">EventBus</span> <span class="n">eventBus</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">EventBus</span><span class="o">();</span>
+        <span class="n">eventBus</span><span class="o">.</span><span class="na">setBizNo</span><span class="o">(</span><span class="s">"123"</span><span class="o">);</span>
+        <span class="n">eventBus</span><span class="o">.</span><span class="na">setPayload</span><span class="o">(</span><span class="k">new</span> <span class="nc">JSONObject</span><span class="o">());</span>
+        <span class="n">eventBus</span><span class="o">.</span><span class="na">setModuleNo</span><span class="o">(</span><span class="s">"2323"</span><span class="o">);</span>
+        <span class="n">eventBus</span><span class="o">.</span><span class="na">setRequestNo</span><span class="o">(</span><span class="s">"123123123"</span><span class="o">);</span>
+        <span class="n">eventBus</span><span class="o">.</span><span class="na">setEventTag</span><span class="o">(</span><span class="s">"*"</span><span class="o">);</span>
+        <span class="k">return</span> <span class="n">eventBus</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="总结">总结</h3>
+
+<ol>
+  <li>修改某个类的属性请用FieldSetter，要注意的是Mockito对static、final修饰属性是不支持的。</li>
+</ol>
+
+<p>本章分享结束。</p>
+:ET

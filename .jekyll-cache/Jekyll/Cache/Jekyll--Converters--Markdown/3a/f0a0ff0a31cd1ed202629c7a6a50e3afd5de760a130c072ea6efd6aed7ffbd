@@ -1,0 +1,92 @@
+I"-<h3 id="前言">前言</h3>
+
+<p>上一章说到了Mockito测试工具，大概入门的使用了该工具模拟调用Dubbo接口。本章主要讲如何在单元测试中模拟Redis服务器操作。</p>
+
+<p>还是一如既往的不使用真正的服务器，直接用mock挡板。</p>
+
+<h3 id="redis模拟测试">Redis模拟测试</h3>
+
+<p>请看下面实例：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.cache.redis.RedisCache</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.Before</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.Test</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.data.redis.connection.RedisConnection</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.data.redis.connection.RedisConnectionFactory</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.data.redis.core.*</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">static</span> <span class="n">org</span><span class="o">.</span><span class="na">mockito</span><span class="o">.</span><span class="na">Mockito</span><span class="o">.*;</span>
+<span class="kn">import</span> <span class="nn">static</span> <span class="n">org</span><span class="o">.</span><span class="na">assertj</span><span class="o">.</span><span class="na">core</span><span class="o">.</span><span class="na">api</span><span class="o">.</span><span class="na">Assertions</span><span class="o">.*;</span>
+
+<span class="cm">/**
+ * redis模板测试类
+ *
+ * @author: Cookie.Joo
+ * @create: 2020/11/30
+ */</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">RedisCacheTest</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="nc">RedisTemplate</span> <span class="n">redisTemplate</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="nc">RedisCache</span> <span class="n">redisCache</span><span class="o">;</span>
+
+    <span class="cm">/**
+     * mock掉整个RedisTemplate
+     * 有需要其他的工具方法自行在附加即可
+     */</span>
+    <span class="nd">@Before</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setUp</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">redisTemplate</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">RedisTemplate</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="nc">ValueOperations</span> <span class="n">valueOperations</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">ValueOperations</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="nc">SetOperations</span> <span class="n">setOperations</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">SetOperations</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="nc">HashOperations</span> <span class="n">hashOperations</span> <span class="o">=</span> <span class="n">redisTemplate</span><span class="o">.</span><span class="na">opsForHash</span><span class="o">();</span>
+        <span class="nc">ListOperations</span> <span class="n">listOperations</span> <span class="o">=</span> <span class="n">redisTemplate</span><span class="o">.</span><span class="na">opsForList</span><span class="o">();</span>
+        <span class="nc">ZSetOperations</span> <span class="n">zSetOperations</span> <span class="o">=</span> <span class="n">redisTemplate</span><span class="o">.</span><span class="na">opsForZSet</span><span class="o">();</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">redisTemplate</span><span class="o">.</span><span class="na">opsForSet</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">setOperations</span><span class="o">);</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">redisTemplate</span><span class="o">.</span><span class="na">opsForValue</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">valueOperations</span><span class="o">);</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">redisTemplate</span><span class="o">.</span><span class="na">opsForHash</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">hashOperations</span><span class="o">);</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">redisTemplate</span><span class="o">.</span><span class="na">opsForList</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">listOperations</span><span class="o">);</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">redisTemplate</span><span class="o">.</span><span class="na">opsForZSet</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">zSetOperations</span><span class="o">);</span>
+        <span class="nc">RedisOperations</span> <span class="n">redisOperations</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">RedisOperations</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="nc">RedisConnection</span> <span class="n">redisConnection</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">RedisConnection</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="nc">RedisConnectionFactory</span> <span class="n">redisConnectionFactory</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">RedisConnectionFactory</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">redisTemplate</span><span class="o">.</span><span class="na">getConnectionFactory</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">redisConnectionFactory</span><span class="o">);</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">valueOperations</span><span class="o">.</span><span class="na">getOperations</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">redisOperations</span><span class="o">);</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">redisTemplate</span><span class="o">.</span><span class="na">getConnectionFactory</span><span class="o">().</span><span class="na">getConnection</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">redisConnection</span><span class="o">);</span>
+
+        <span class="c1">// redis工具类初始化</span>
+        <span class="n">redisCache</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">RedisCache</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="c1">// 调用get方法返回固定值</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">redisTemplate</span><span class="o">.</span><span class="na">opsForValue</span><span class="o">().</span><span class="na">get</span><span class="o">(</span><span class="s">"caodegao"</span><span class="o">)).</span><span class="na">thenReturn</span><span class="o">(</span><span class="s">"good"</span><span class="o">);</span>
+
+        <span class="n">doThrow</span><span class="o">(</span><span class="k">new</span> <span class="nc">RuntimeException</span><span class="o">()).</span><span class="na">when</span><span class="o">(</span><span class="n">redisCache</span><span class="o">).</span><span class="na">set</span><span class="o">(</span><span class="s">"caodegao"</span><span class="o">,</span> <span class="s">"caodegao"</span><span class="o">);</span>
+    <span class="o">}</span>
+
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setTest</span><span class="o">()</span> <span class="o">{</span>
+        <span class="n">assertThatThrownBy</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="n">redisCache</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="s">"caodegao"</span><span class="o">,</span> <span class="s">"caodegao"</span><span class="o">))</span>
+                <span class="o">.</span><span class="na">isInstanceOf</span><span class="o">(</span><span class="nc">RuntimeException</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">redisTemplateGetTest</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">String</span> <span class="n">value</span> <span class="o">=</span> <span class="n">redisTemplate</span><span class="o">.</span><span class="na">opsForValue</span><span class="o">().</span><span class="na">get</span><span class="o">(</span><span class="s">"caodegao"</span><span class="o">).</span><span class="na">toString</span><span class="o">();</span>
+        <span class="n">assertThat</span><span class="o">(</span><span class="n">value</span><span class="o">).</span><span class="na">as</span><span class="o">(</span><span class="s">"校验get(caodegao)"</span><span class="o">).</span><span class="na">isEqualTo</span><span class="o">(</span><span class="s">"good"</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">redisTemplateGet1Test</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">Object</span> <span class="n">value</span> <span class="o">=</span> <span class="n">redisTemplate</span><span class="o">.</span><span class="na">opsForValue</span><span class="o">().</span><span class="na">get</span><span class="o">(</span><span class="s">"cookie.joo"</span><span class="o">);</span>
+        <span class="n">assertThat</span><span class="o">(</span><span class="n">value</span><span class="o">).</span><span class="na">as</span><span class="o">(</span><span class="s">"校验get(cookie.joo)"</span><span class="o">).</span><span class="na">isNull</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p><img src="/images/mockito-test-redis/image-20201201145426816.png" alt="image-20201201145426816" /></p>
+
+<p>提示：我已经把打印预计换成assertThat断言，为了做个图，所以打印为了截图，真实环境请勿写打印语句。</p>
+
+<p>本章分享结束。</p>
+:ET

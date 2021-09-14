@@ -1,0 +1,243 @@
+I"v<h3 id="什么是mock测试">什么是Mock测试</h3>
+
+<p>Mock测试就是在测试过程中，对于某些不容易构造或者不容易获取的对象，用一个虚拟的对象来创建以便测试的测试方法。什么是不容易构造的对象呢？例如HttpServletRequest，需要在有servlet容器环境中创建获取。那不容易获取的对象呢？如一个JedisCluster，需要准备redis相关环境，然后设置进去等等。</p>
+
+<p>Mock 可以分解在单元测试中耦合的其他类或者接口，它能够帮你模拟这些依赖，并帮你验证所调用的依赖的行为。</p>
+
+<p>关于Mockito的简介之前有同事已经介绍过这里就不在赘述了，大家有兴趣可以自行去官方文档查阅，这里主要带大家了解一些常用的Mock方法。</p>
+
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;dependency&gt;</span>
+    <span class="nt">&lt;groupId&gt;</span>org.mockito<span class="nt">&lt;/groupId&gt;</span>
+    <span class="nt">&lt;artifactId&gt;</span>mockito-core<span class="nt">&lt;/artifactId&gt;</span>
+    <span class="nt">&lt;version&gt;</span>2.23.4<span class="nt">&lt;/version&gt;</span>
+    <span class="nt">&lt;scope&gt;</span>test<span class="nt">&lt;/scope&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+为了方便使用Mockito请导入静态类：import static org.mockito.Mockito.*;
+并且引入了AssertJ的静态A：import static org.assertj.core.api.Assertions.*;
+</code></pre></div></div>
+
+<h3 id="service层模拟测试">Service层模拟测试</h3>
+
+<p>比如MSF中有一个启动时到com-app获取秘钥信息过来加载类SensitiveDataManager，如果这一步不成功就直接抛异常，直接不让应用启动成功，该类有有个启动时立即调用方法init()用@PostConstruct注解声明，该类还有一个Facade接口是通过Dubbo调用的。如果要完整测试该功能得准备Dubbo环境要ZK，还有第三方接口要先启动且注册到Dubbo ZK中，com-app可能还不属于自己的开发负责范围，怎么启动也不知道，这时候可能自测成本会异常的高，Mock测试就是帮我们解决这一层依赖关系，我们只关系我们要测试的单元模块，我们不需要去准备层层环境才能够测试。</p>
+
+<p>请看下面实例：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">com.google.common.collect.Lists</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.qihoo.finance.com.modules.crypto.domain.SensitiveDataSecretKeyDomain</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.qihoo.finance.com.modules.crypto.facade.SensitiveDataSecretKeyFacade</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.api.domain.Response</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.core.crypto.SensitiveDataManager</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">static</span> <span class="n">org</span><span class="o">.</span><span class="na">assertj</span><span class="o">.</span><span class="na">core</span><span class="o">.</span><span class="na">api</span><span class="o">.</span><span class="na">Assertions</span><span class="o">.*;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.Before</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.Test</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">static</span> <span class="n">org</span><span class="o">.</span><span class="na">mockito</span><span class="o">.</span><span class="na">Mockito</span><span class="o">.*;</span>
+
+<span class="kn">import</span> <span class="nn">org.mockito.InjectMocks</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.mockito.Mock</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.mockito.MockitoAnnotations</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.powermock.api.mockito.PowerMockito</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.lang.reflect.Method</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.time.LocalDate</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.time.ZoneId</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.Date</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.List</span><span class="o">;</span>
+
+<span class="cm">/**
+ * SensitiveDataManager功能测试类
+ *
+ * @author caodegao-jk
+ * @date 2020-11-27
+ */</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">SensitiveDataManagerTest</span> <span class="o">{</span>
+
+    <span class="cm">/**
+     * com-app的dubbo接口依赖，我们用挡板代替
+     */</span>
+    <span class="nd">@Mock</span>
+    <span class="kd">private</span> <span class="nc">SensitiveDataSecretKeyFacade</span> <span class="n">sensitiveDataSecretKeyFacade</span><span class="o">;</span>
+
+    <span class="cm">/**
+     * 待测试的类
+     *
+     * @Mock和@InjectMocks的区别，简单的说SensitiveDataSecretKeyFacade是SensitiveDataManager类的属性依赖&lt;br/&gt; SensitiveDataManager需要先注入SensitiveDataSecretKeyFacade才能测试, 所以@Mock标记的类会被注入到@InjectMocks待测试对象中&lt;br/&gt;
+     */</span>
+    <span class="nd">@InjectMocks</span>
+    <span class="kd">private</span> <span class="nc">SensitiveDataManager</span> <span class="n">sensitiveDataManager</span><span class="o">;</span>
+
+    <span class="cm">/**
+     * 在测试之前准备一些挡板返回值和参数初始化工作
+     */</span>
+    <span class="nd">@Before</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setUp</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">// mock注解声明及初始化(使用注解必须调用该方法，否则注解只会返回null)</span>
+        <span class="nc">MockitoAnnotations</span><span class="o">.</span><span class="na">initMocks</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+
+        <span class="c1">// 针对 @Mock 类中的方法进行定制：当调用该接口时返回固定值</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">countAll</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="mi">1314L</span><span class="o">);</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">deleteByPrimaryKey</span><span class="o">(</span><span class="n">any</span><span class="o">(</span><span class="nc">String</span><span class="o">.</span><span class="na">class</span><span class="o">))).</span><span class="na">thenReturn</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+
+        <span class="c1">// 如果调用该方法的值是null，则抛异常</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">insertSelective</span><span class="o">(</span><span class="kc">null</span><span class="o">)).</span><span class="na">thenThrow</span><span class="o">(</span><span class="k">new</span> <span class="nc">RuntimeException</span><span class="o">(</span><span class="s">"insertSelective prams is null！"</span><span class="o">));</span>
+
+        <span class="c1">// 主要测试com-app中调用的这个方法，先准备查询秘钥的返回初始值挡板。</span>
+        <span class="n">when</span><span class="o">(</span><span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">getAllSecretKeys</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">convertResponse</span><span class="o">());</span>
+
+        <span class="c1">// SensitiveDataManager的注入方式是构造方法注入，也可以用set注入，但是在SensitiveDataManager中参数标识是final</span>
+        <span class="c1">// Mockito是不支持final标识的类、参数、方法的，会被直接赋值为null或0</span>
+        <span class="n">sensitiveDataManager</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SensitiveDataManager</span><span class="o">(</span><span class="n">sensitiveDataSecretKeyFacade</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">private</span> <span class="nc">Response</span><span class="o">&lt;</span><span class="nc">List</span><span class="o">&lt;</span><span class="nc">SensitiveDataSecretKeyDomain</span><span class="o">&gt;&gt;</span> <span class="nf">convertResponse</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">Response</span><span class="o">&lt;</span><span class="nc">List</span><span class="o">&lt;</span><span class="nc">SensitiveDataSecretKeyDomain</span><span class="o">&gt;&gt;</span> <span class="n">response</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Response</span><span class="o">&lt;&gt;();</span>
+        <span class="nc">List</span><span class="o">&lt;</span><span class="nc">SensitiveDataSecretKeyDomain</span><span class="o">&gt;</span> <span class="n">responseList</span> <span class="o">=</span> <span class="nc">Lists</span><span class="o">.</span><span class="na">newArrayList</span><span class="o">();</span>
+        <span class="nc">SensitiveDataSecretKeyDomain</span> <span class="n">domain</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SensitiveDataSecretKeyDomain</span><span class="o">();</span>
+        <span class="n">domain</span><span class="o">.</span><span class="na">setAction</span><span class="o">(</span><span class="s">"action"</span><span class="o">);</span>
+        <span class="nc">LocalDate</span> <span class="n">dateEffective</span> <span class="o">=</span> <span class="nc">LocalDate</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="mi">2018</span><span class="o">,</span> <span class="mi">9</span><span class="o">,</span> <span class="mi">24</span><span class="o">);</span>
+        <span class="n">domain</span><span class="o">.</span><span class="na">setDateEffective</span><span class="o">(</span><span class="nc">Date</span><span class="o">.</span><span class="na">from</span><span class="o">(</span><span class="n">dateEffective</span><span class="o">.</span><span class="na">atStartOfDay</span><span class="o">().</span><span class="na">atZone</span><span class="o">(</span><span class="nc">ZoneId</span><span class="o">.</span><span class="na">systemDefault</span><span class="o">()).</span><span class="na">toInstant</span><span class="o">()));</span>
+
+        <span class="nc">LocalDate</span> <span class="n">dateExpired</span> <span class="o">=</span> <span class="nc">LocalDate</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="mi">2021</span><span class="o">,</span> <span class="mi">9</span><span class="o">,</span> <span class="mi">24</span><span class="o">);</span>
+        <span class="n">domain</span><span class="o">.</span><span class="na">setDateExpired</span><span class="o">(</span><span class="nc">Date</span><span class="o">.</span><span class="na">from</span><span class="o">(</span><span class="n">dateExpired</span><span class="o">.</span><span class="na">atStartOfDay</span><span class="o">().</span><span class="na">atZone</span><span class="o">(</span><span class="nc">ZoneId</span><span class="o">.</span><span class="na">systemDefault</span><span class="o">()).</span><span class="na">toInstant</span><span class="o">()));</span>
+        <span class="n">domain</span><span class="o">.</span><span class="na">setDeleteFlag</span><span class="o">(</span><span class="s">"N"</span><span class="o">);</span>
+        <span class="n">domain</span><span class="o">.</span><span class="na">setId</span><span class="o">(</span><span class="mi">1L</span><span class="o">);</span>
+        <span class="n">domain</span><span class="o">.</span><span class="na">setName</span><span class="o">(</span><span class="s">"name"</span><span class="o">);</span>
+        <span class="n">domain</span><span class="o">.</span><span class="na">setSecretKey</span><span class="o">(</span><span class="s">"secretKey"</span><span class="o">);</span>
+        <span class="n">domain</span><span class="o">.</span><span class="na">setVersion</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+        <span class="n">responseList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">domain</span><span class="o">);</span>
+        <span class="n">response</span><span class="o">.</span><span class="na">success</span><span class="o">(</span><span class="n">responseList</span><span class="o">);</span>
+        <span class="k">return</span> <span class="n">response</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">testMock</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">// 调用前面指定的mock接口</span>
+        <span class="kt">long</span> <span class="n">result</span> <span class="o">=</span> <span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">countAll</span><span class="o">();</span>
+        <span class="c1">// 检验返回的固定值</span>
+        <span class="n">assertThat</span><span class="o">(</span><span class="mi">1314L</span><span class="o">).</span><span class="na">as</span><span class="o">(</span><span class="s">"校验countAll"</span><span class="o">).</span><span class="na">isEqualTo</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+
+        <span class="c1">// 调用前面指定的mock接口</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">deleteByPrimaryKey</span><span class="o">(</span><span class="s">"aaaa"</span><span class="o">);</span>
+        <span class="c1">// 检验返回的固定值</span>
+        <span class="n">assertThat</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="na">as</span><span class="o">(</span><span class="s">"校验deleteByPrimaryKey"</span><span class="o">).</span><span class="na">isEqualTo</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+
+        <span class="c1">// 私有方法如果用Mockito是搞不定的，要配合PowerMockito来组合使用</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="c1">//私有方法调用方式一</span>
+            <span class="nc">SensitiveDataManager</span> <span class="n">spy</span> <span class="o">=</span> <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">spy</span><span class="o">(</span><span class="n">sensitiveDataManager</span><span class="o">);</span>
+            <span class="c1">//调用一个不存在的让他抛异常，如果有入参，在方法后面加即可；如果有返回类型可用这个方法返回指定值.thenReturn(返回值);</span>
+            <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">when</span><span class="o">(</span><span class="n">spy</span><span class="o">,</span> <span class="s">"check"</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">assertThat</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">fillInStackTrace</span><span class="o">()).</span><span class="na">isInstanceOf</span><span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">powermock</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">exceptions</span><span class="o">.</span><span class="na">MethodNotFoundException</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+                    <span class="o">.</span><span class="na">hasMessageContaining</span><span class="o">(</span><span class="s">"No method found with name"</span><span class="o">);</span>
+        <span class="o">}</span>
+
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="c1">//私有方法调用方式二</span>
+            <span class="nc">Method</span> <span class="n">method</span> <span class="o">=</span> <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">method</span><span class="o">(</span><span class="nc">SensitiveDataManager</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="s">"init"</span><span class="o">);</span>
+            <span class="n">method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">sensitiveDataManager</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="c1">//解密失败</span>
+            <span class="n">assertThat</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">fillInStackTrace</span><span class="o">()).</span><span class="na">isInstanceOfAny</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">InvocationTargetException</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">javax</span><span class="o">.</span><span class="na">crypto</span><span class="o">.</span><span class="na">BadPaddingException</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="o">}</span>
+
+        <span class="c1">//判断是否为空</span>
+        <span class="n">assertThat</span><span class="o">(</span><span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">insertSelective</span><span class="o">(</span><span class="k">new</span> <span class="nc">SensitiveDataSecretKeyDomain</span><span class="o">())).</span><span class="na">isNotNull</span><span class="o">();</span>
+
+        <span class="c1">//判断是否会抛异常</span>
+        <span class="n">assertThatThrownBy</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">insertSelective</span><span class="o">(</span><span class="kc">null</span><span class="o">))</span>
+                <span class="o">.</span><span class="na">isInstanceOf</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+                <span class="c1">//异常是否包含该字符串</span>
+                <span class="o">.</span><span class="na">hasMessageContaining</span><span class="o">(</span><span class="s">"prams is null"</span><span class="o">);</span>
+
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p><img src="/images/mockito-test-service/image-20201130145237412.png" alt="image-20201130145237412" /></p>
+
+<p>运行的结果如上图所示</p>
+
+<p>init方法是我没有设置正确的秘钥，所以秘钥解析失败直接保存，打印：这里有错误！insertSelective方法插入为null的参数所有抛了自定义的异常。还有几个调用私有方法的示例，但私有方法本身是有工具方法抛异常的，这里有两种异常判断方式供参考。</p>
+
+<p>我使用了AssertJ工具后把抛异常的代码块都拦截了，这样的实例有益于研发参考且符合单元测试规范。</p>
+
+<p><strong>为了方便给予示例，我把测试的逻辑都写到了一起，这是不符合规范的，请各位编写单元测试时把各个功能点分开写。</strong></p>
+
+<p>最后修改为：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">countAllTest</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">// 调用前面指定的mock接口</span>
+        <span class="kt">long</span> <span class="n">result</span> <span class="o">=</span> <span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">countAll</span><span class="o">();</span>
+        <span class="c1">// 检验返回的固定值</span>
+        <span class="n">assertThat</span><span class="o">(</span><span class="mi">1314L</span><span class="o">).</span><span class="na">as</span><span class="o">(</span><span class="s">"校验countAll"</span><span class="o">).</span><span class="na">isEqualTo</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">deleteByPrimaryKeyTest</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">// 调用前面指定的mock接口</span>
+        <span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">deleteByPrimaryKey</span><span class="o">(</span><span class="s">"aaaa"</span><span class="o">);</span>
+        <span class="c1">// 检验返回的固定值</span>
+        <span class="n">assertThat</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="na">as</span><span class="o">(</span><span class="s">"校验deleteByPrimaryKey"</span><span class="o">).</span><span class="na">isEqualTo</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">checkNotThisMethodTest</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">// 私有方法如果用Mockito是搞不定的，要配合PowerMockito来组合使用</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="c1">//私有方法调用方式一</span>
+            <span class="nc">SensitiveDataManager</span> <span class="n">spy</span> <span class="o">=</span> <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">spy</span><span class="o">(</span><span class="n">sensitiveDataManager</span><span class="o">);</span>
+            <span class="c1">//调用一个不存在的让他抛异常，如果有入参，在方法后面加即可；如果有返回类型可用这个方法返回指定值.thenReturn(返回值);</span>
+            <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">when</span><span class="o">(</span><span class="n">spy</span><span class="o">,</span> <span class="s">"check"</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">assertThat</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">fillInStackTrace</span><span class="o">()).</span><span class="na">isInstanceOf</span><span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">powermock</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">exceptions</span><span class="o">.</span><span class="na">MethodNotFoundException</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+                    <span class="o">.</span><span class="na">hasMessageContaining</span><span class="o">(</span><span class="s">"No method found with name"</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">initTest</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="c1">//私有方法调用方式二</span>
+            <span class="nc">Method</span> <span class="n">method</span> <span class="o">=</span> <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">method</span><span class="o">(</span><span class="nc">SensitiveDataManager</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="s">"init"</span><span class="o">);</span>
+            <span class="n">method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">sensitiveDataManager</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="c1">//解密失败</span>
+            <span class="n">assertThat</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">fillInStackTrace</span><span class="o">()).</span><span class="na">isInstanceOfAny</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">InvocationTargetException</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">javax</span><span class="o">.</span><span class="na">crypto</span><span class="o">.</span><span class="na">BadPaddingException</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">insertSelectiveParamsNotNullTest</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">//判断是否为空</span>
+        <span class="n">assertThat</span><span class="o">(</span><span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">insertSelective</span><span class="o">(</span><span class="k">new</span> <span class="nc">SensitiveDataSecretKeyDomain</span><span class="o">())).</span><span class="na">isNotNull</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Test</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">insertSelectiveParamsIsNullTest</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">//判断是否会抛异常</span>
+        <span class="n">assertThatThrownBy</span><span class="o">(()</span> <span class="o">-&gt;</span> <span class="n">sensitiveDataSecretKeyFacade</span><span class="o">.</span><span class="na">insertSelective</span><span class="o">(</span><span class="kc">null</span><span class="o">))</span>
+                <span class="o">.</span><span class="na">isInstanceOf</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">RuntimeException</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+                <span class="c1">//异常是否包含该字符串</span>
+                <span class="o">.</span><span class="na">hasMessageContaining</span><span class="o">(</span><span class="s">"prams is null"</span><span class="o">);</span>
+    <span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="最后">最后</h3>
+
+<p>整个Test代码不需要准备Dubbo环境或其他应用依赖，直接等于main方法测试，效率非常快。如果是平时的WEB测试，可能还依赖启动，用junit的Spring测试也会启动应用才能执行到@Test里面的单元测试代码，有些应用很重，启动一次要很久，反复测一个单元测试会让人发疯，导致没人愿意去写单元测试代码。这种Mockito测试方式能让你尽量简化测试代码测试依赖，从而快速验证你关键的方法体。</p>
+
+<ol>
+  <li>不建议依赖启动整个项目才能测试的方式。</li>
+  <li>模拟依赖的接口挡板并初始化好数据即可。</li>
+  <li>只测试关键的代码功能方法体。</li>
+  <li>要测试完整流程，先测试完方法体再启动整个应用去整体验证。</li>
+  <li>Mockito是不支持final标识的类、参数、方法的，会被直接赋值为null或0，请注意！！！</li>
+</ol>
+
+<p>本章分享结束。</p>
+:ET

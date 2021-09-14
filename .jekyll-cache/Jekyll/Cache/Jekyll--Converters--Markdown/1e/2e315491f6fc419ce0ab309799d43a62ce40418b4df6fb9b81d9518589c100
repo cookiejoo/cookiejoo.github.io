@@ -1,0 +1,274 @@
+I"�r<h3 id="正常场景测试技巧">正常场景测试技巧</h3>
+
+<p>在这半个月我写的单元测试用例代码中，遇到了很多问题，比如私有变量、方法内部new对象、静态方法mock等，有些代码我们确实难以模拟的，我把我的解决方式跟大家分享一下。</p>
+
+<h4 id="各种service接口模拟">各种service接口模拟</h4>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Spring里面的接口、Dubbo接口等注入</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestServiceImpl</span><span class="o">{</span>
+	<span class="nd">@Resource</span>
+	<span class="kd">private</span> <span class="nc">MyService</span> <span class="n">myService</span><span class="o">;</span>
+  
+<span class="o">}</span>
+
+<span class="c1">// 单元测试这么做</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span><span class="o">{</span>
+  <span class="nd">@Mock</span>
+  <span class="nc">MyService</span> <span class="n">myService</span><span class="o">;</span>
+  <span class="nd">@InjectMocks</span>
+  <span class="nc">TestServiceImpl</span> <span class="n">testService</span><span class="o">;</span>
+
+  <span class="nd">@Before</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setUp</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+    <span class="c1">// 用@Mock注解即可搞定所有的Spring注入</span>
+    <span class="nc">MockitoAnnotations</span><span class="o">.</span><span class="na">initMocks</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+    <span class="c1">// 再用when().thenReturn()模拟返回值</span>
+    <span class="c1">// 这类的相对简单</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>@Mock为需要注入依赖的类使用，等于在要测试的类里面自动将该类new一个类或接口。</p>
+
+<p>@InjectMocks为待测试的类使用。</p>
+
+<h4 id="各种静态工具类模拟">各种静态工具类模拟</h4>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestServiceImpl</span><span class="o">{</span>
+	<span class="cm">/** 
+	 * 比如MSF的ServiceContext 或 ApplicationName
+	 * 如果不mock出来是为null，又报空指针异常的，Mockito是不支持static、final等修饰符的
+	 * 所以要借助org.powermock.api.mockito.PowerMockito 
+	 * public static void mockStatic这个工具类配合使用
+	 **/</span>
+	<span class="nc">ApplicationName</span><span class="o">.</span><span class="na">getName</span><span class="o">();</span>
+  <span class="nc">ServiceContext</span><span class="o">.</span><span class="na">getContext</span><span class="o">().</span><span class="na">getRequestNo</span><span class="o">();</span>
+  
+<span class="o">}</span>
+
+<span class="c1">// 单元测试这么做</span>
+<span class="cm">/**
+ * 还需要在头部加注解
+ * @PrepareForTest 请注意用了哪些静态类就加进去，最好也要把要测试的这个当前类也加进去(后面讲为什么)
+ **/</span>
+<span class="nd">@RunWith</span><span class="o">(</span><span class="nc">PowerMockRunner</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="c1">// 要加这个忽略包，否则启动测试会加载这个虚拟机类导致无法执行单元测试。</span>
+<span class="nd">@PowerMockIgnore</span><span class="o">(</span><span class="n">value</span> <span class="o">=</span> <span class="o">{</span><span class="s">"javax.management.*"</span><span class="o">})</span>
+<span class="nd">@PrepareForTest</span><span class="o">({</span><span class="nc">ApplicationName</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="nc">ServiceContext</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="nc">TestServiceImpl</span><span class="o">.</span><span class="na">class</span><span class="o">})</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span><span class="o">{</span>
+  <span class="nd">@InjectMocks</span>
+  <span class="nc">TestServiceImpl</span> <span class="n">testService</span><span class="o">;</span>
+
+  <span class="nd">@Before</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setUp</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+    <span class="nc">MockitoAnnotations</span><span class="o">.</span><span class="na">initMocks</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+    <span class="c1">// 这样就保证静态方法不会为null，不会执行测试用例的时候报空指针异常</span>
+    <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">mockStatic</span><span class="o">(</span><span class="nc">ApplicationName</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">mockStatic</span><span class="o">(</span><span class="nc">ServiceContext</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="n">when</span><span class="o">(</span><span class="nc">ApplicationName</span><span class="o">.</span><span class="na">getName</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="s">"xxx-app"</span><span class="o">);</span>
+    <span class="n">when</span><span class="o">(</span><span class="nc">ServiceContext</span><span class="o">.</span><span class="na">getContext</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="k">new</span> <span class="nc">ServiceContext</span><span class="o">());</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h4 id="file文件如何不指定真实文件">File文件如何不指定真实文件</h4>
+
+<p>我在测试warehouse-app的时候功能就是上传下载，但是我mac book本机有文件想要模拟一个文件，需要指定文件真实路径，但是这个代码提交后，到别人那执行就会报错，因为别人用的是Win，并且别人也没有这个文件，那这个文件就导致了测试依赖第三方资源了。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestServiceImpl</span><span class="o">{</span>
+	<span class="kd">public</span> <span class="kt">void</span> <span class="nf">getFile</span><span class="o">(</span><span class="nc">String</span> <span class="n">filePath</span><span class="o">)</span> <span class="o">{</span>
+		<span class="nc">File</span> <span class="n">file</span> <span class="o">=</span> <span class="nc">FileUtils</span><span class="o">.</span><span class="na">getFile</span><span class="o">(</span><span class="n">firstPath</span><span class="o">);</span>
+   	<span class="nc">FileUtils</span><span class="o">.</span><span class="na">writeByteArrayToFile</span><span class="o">(</span><span class="n">file</span><span class="o">,</span> <span class="s">"data"</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// 单元测试这么做</span>
+<span class="nd">@RunWith</span><span class="o">(</span><span class="nc">PowerMockRunner</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="c1">// 要加这个忽略包，否则启动测试会加载这个虚拟机类导致无法执行单元测试。</span>
+<span class="nd">@PowerMockIgnore</span><span class="o">(</span><span class="n">value</span> <span class="o">=</span> <span class="o">{</span><span class="s">"javax.management.*"</span><span class="o">})</span>
+<span class="nd">@PrepareForTest</span><span class="o">({</span><span class="nc">FileUtils</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="nc">TestServiceImpl</span><span class="o">.</span><span class="na">class</span><span class="o">})</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span><span class="o">{</span>
+  <span class="nd">@InjectMocks</span>
+  <span class="nc">TestServiceImpl</span> <span class="n">testService</span><span class="o">;</span>
+
+  <span class="nd">@Before</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setUp</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+    <span class="nc">MockitoAnnotations</span><span class="o">.</span><span class="na">initMocks</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+    <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">mockStatic</span><span class="o">(</span><span class="nc">FileUtils</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="c1">// mock一个File类出来，用FileUtils工具的时候直接返回mock的File，这样File就不会为null</span>
+    <span class="nc">File</span> <span class="n">file</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">File</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="n">when</span><span class="o">(</span><span class="nc">FileUtils</span><span class="o">.</span><span class="na">getFile</span><span class="o">(</span><span class="n">any</span><span class="o">())).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">file</span><span class="o">);</span>
+    <span class="c1">// FileUtils已经被静态mock了，所以安全的使用里面所有的静态方法</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h4 id="如何mock在方法里面new的对象">如何mock在方法里面new的对象</h4>
+
+<p>我在测试某些mongodb的工具类的时候，发现有些人写的方法里面new了第三方接口，而且这第三方接口如果手工new还得要很多泛型的参数，困扰了我几个小时，请看我下面的实例和解决方式。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestServiceImpl</span><span class="o">{</span>
+  <span class="nd">@Resource</span><span class="o">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">"newMongoDataStore"</span><span class="o">)</span>
+  <span class="kd">private</span> <span class="nc">Datastore</span> <span class="n">newMongoDataStore</span><span class="o">;</span>
+  <span class="cm">/**
+   * 功能是判断fs.files集合中是否存在文件名为{fileId}的文件，没有就将文件写入mongo的fs.files集合中，需要GridFSDBFile和GridFSInputFile类的特殊处理
+   **/</span>
+	<span class="kd">public</span> <span class="kt">void</span> <span class="nf">sendToMongo</span><span class="o">(</span><span class="nc">String</span> <span class="n">fileId</span><span class="o">)</span> <span class="o">{</span>
+    <span class="nc">EntityDTO</span> <span class="n">entity</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">EntityDTO</span><span class="o">();</span>
+    <span class="n">entity</span><span class="o">.</span><span class="na">setFileId</span><span class="o">(</span><span class="n">fileId</span><span class="o">);</span>
+    <span class="n">newMongoDataStore</span><span class="o">.</span><span class="na">save</span><span class="o">(</span><span class="n">entity</span><span class="o">);</span>
+
+    <span class="c1">// 按@Mock注解，newMongoDataStore不可能为空，但是返回的db就是空的</span>
+    <span class="no">DB</span> <span class="n">db</span> <span class="o">=</span> <span class="n">newMongoDataStore</span><span class="o">.</span><span class="na">getDB</span><span class="o">();</span>
+    <span class="cm">/**
+     * 1：如果db为空，这里new GridFS(db)就抛异常
+     * 2：可以用when(newMongoDataStore.getDB())返回一个new DB解决
+     * 3：new GridFS里面有一行代码this.filesCollection = db.getCollection(bucketName + ".files");需要一个Collection对象也可以when解决
+     * 4：但GridFS gridFS = new GridFS(db);这个是内部new处理的，不属于mock，到下面gridFS.xxx()就开始报空指针了？？？？？
+     * 5：请看Test类解决方式
+     **/</span>
+    <span class="nc">GridFS</span> <span class="n">gridFS</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">GridFS</span><span class="o">(</span><span class="n">db</span><span class="o">);</span>
+    
+    <span class="nc">GridFSDBFile</span> <span class="n">gridFSDBFile</span> <span class="o">=</span> <span class="n">gridFS</span><span class="o">.</span><span class="na">findOne</span><span class="o">(</span><span class="n">fileId</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">gridFSDBFile</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="nc">GridFSInputFile</span> <span class="n">gridFSInputFile</span> <span class="o">=</span> <span class="n">gridFS</span><span class="o">.</span><span class="na">createFile</span><span class="o">(</span><span class="n">data</span><span class="o">);</span>
+      <span class="n">gridFSInputFile</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">"filename"</span><span class="o">,</span> <span class="n">entity</span><span class="o">.</span><span class="na">getFileId</span><span class="o">());</span>
+      <span class="c1">//写MongoDB 文件</span>
+      <span class="n">gridFSInputFile</span><span class="o">.</span><span class="na">save</span><span class="o">();</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// 单元测试这么做</span>
+<span class="nd">@RunWith</span><span class="o">(</span><span class="nc">PowerMockRunner</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="nd">@PowerMockIgnore</span><span class="o">(</span><span class="n">value</span> <span class="o">=</span> <span class="o">{</span><span class="s">"javax.management.*"</span><span class="o">})</span>
+<span class="c1">// 这里解释一下为什么要加待测试TestServiceImpl的类在这，就是因为方法内部new的mock需要声明在这个注解里面，否则不会生效</span>
+<span class="nd">@PrepareForTest</span><span class="o">({</span><span class="nc">FileUtils</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="nc">TestServiceImpl</span><span class="o">.</span><span class="na">class</span><span class="o">})</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span><span class="o">{</span>
+  <span class="nd">@Mock</span>
+  <span class="no">DB</span> <span class="n">db</span><span class="o">;</span>
+  <span class="nd">@Mock</span>
+  <span class="nc">DBCollection</span> <span class="n">dbCollection</span><span class="o">;</span>
+  <span class="nd">@Mock</span>
+  <span class="nc">GridFS</span> <span class="n">gridFS</span><span class="o">;</span>
+  <span class="nd">@Mock</span>
+  <span class="nc">GridFSDBFile</span> <span class="n">gridFSDBFile</span><span class="o">;</span>
+  <span class="nd">@Mock</span>
+  <span class="nc">GridFSInputFile</span> <span class="n">gridFSInputFile</span><span class="o">;</span>
+  
+  <span class="nd">@Mock</span>
+  <span class="nc">Datastore</span> <span class="n">newMongoDataStore</span><span class="o">;</span>
+  
+  <span class="nd">@InjectMocks</span>
+  <span class="nc">TestServiceImpl</span> <span class="n">testService</span><span class="o">;</span>
+
+  <span class="nd">@Before</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setUp</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+    <span class="nc">MockitoAnnotations</span><span class="o">.</span><span class="na">initMocks</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+    <span class="c1">// 这两句when解决1、2、3问题</span>
+    <span class="n">when</span><span class="o">(</span><span class="n">newMongoDataStore</span><span class="o">.</span><span class="na">getDB</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">db</span><span class="o">);</span>
+    <span class="n">when</span><span class="o">(</span><span class="n">db</span><span class="o">.</span><span class="na">getCollection</span><span class="o">(</span><span class="n">anyString</span><span class="o">())).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">dbCollection</span><span class="o">);</span>
+    <span class="c1">// 借助PowerMockito解决第4点new GridFS()文问题，等于new GridFS()直接返回@Mock的对象</span>
+    <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">whenNew</span><span class="o">(</span><span class="nc">GridFS</span><span class="o">.</span><span class="na">class</span><span class="o">).</span><span class="na">withAnyArguments</span><span class="o">().</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">gridFS</span><span class="o">);</span>
+    <span class="c1">// 经过上面的whenNew声明gridFS就被mock了，下面就能thenReturn其他的类了</span>
+    <span class="n">when</span><span class="o">(</span><span class="n">gridFS</span><span class="o">.</span><span class="na">findOne</span><span class="o">(</span><span class="n">anyString</span><span class="o">())).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">gridFSDBFile</span><span class="o">);</span>
+    <span class="n">when</span><span class="o">(</span><span class="n">gridFS</span><span class="o">.</span><span class="na">createFile</span><span class="o">(</span><span class="n">any</span><span class="o">(</span><span class="kt">byte</span><span class="o">[].</span><span class="na">class</span><span class="o">))).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">gridFSInputFile</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>关键字：PowerMockito.whenNew(GridFS.class).withAnyArguments().thenReturn(gridFS);</p>
+
+<h4 id="如何类里面修改私有属性">如何类里面修改私有属性</h4>
+
+<p>根据上面的类我们大概已经知道怎么用方法内部new对象来解决mock问题了，下面mongo还有人另外一种使用方式的，是在Bean初始化的时候再连接mongo，但是我们不想模拟init方法里面的代码，我们能不能也注入一个mock的MongoClient对象呢。。。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestServiceImpl</span><span class="o">{</span>
+  <span class="kd">private</span> <span class="nc">MongoClient</span> <span class="n">mongoClient</span><span class="o">;</span>
+  <span class="kd">private</span> <span class="nc">String</span> <span class="n">database</span><span class="o">;</span>
+  <span class="nd">@PostConstruct</span>
+  <span class="kd">private</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nc">MongoClientFactory</span> <span class="n">mongoClientFactory</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">MongoClientFactory</span><span class="o">(</span><span class="n">uri</span><span class="o">,</span> <span class="n">qcmPort</span><span class="o">);</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">mongoClient</span> <span class="o">=</span> <span class="n">mongoClientFactory</span><span class="o">.</span><span class="na">createMongoClient</span><span class="o">();</span>
+  <span class="o">}</span>
+
+  <span class="nd">@PreDestroy</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">close</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">mongoClient</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">mongoClient</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+	<span class="kd">public</span> <span class="kt">void</span> <span class="nf">sendToMongo</span><span class="o">(</span><span class="nc">String</span> <span class="n">fileId</span><span class="o">)</span> <span class="o">{</span>
+    <span class="no">DB</span> <span class="n">db</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">mongoClient</span><span class="o">.</span><span class="na">getDB</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">database</span><span class="o">);</span>
+    <span class="nc">GridFS</span> <span class="n">gridFS</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">GridFS</span><span class="o">(</span><span class="n">db</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// 单元测试这么做</span>
+<span class="nd">@RunWith</span><span class="o">(</span><span class="nc">PowerMockRunner</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="nd">@PowerMockIgnore</span><span class="o">(</span><span class="n">value</span> <span class="o">=</span> <span class="o">{</span><span class="s">"javax.management.*"</span><span class="o">})</span>
+<span class="nd">@PrepareForTest</span><span class="o">({</span><span class="nc">FileUtils</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="nc">TestServiceImpl</span><span class="o">.</span><span class="na">class</span><span class="o">})</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span><span class="o">{</span>
+  <span class="nd">@Mock</span>
+  <span class="no">DB</span> <span class="n">db</span><span class="o">;</span>
+  <span class="nd">@Mock</span>
+  <span class="nc">DBCollection</span> <span class="n">dbCollection</span><span class="o">;</span>
+  
+  <span class="nd">@Mock</span>
+  <span class="nc">Datastore</span> <span class="n">newMongoDataStore</span><span class="o">;</span>
+  
+  <span class="nd">@InjectMocks</span>
+  <span class="nc">TestServiceImpl</span> <span class="n">testService</span><span class="o">;</span>
+
+  <span class="nd">@Before</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setUp</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+    <span class="nc">MockitoAnnotations</span><span class="o">.</span><span class="na">initMocks</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+    
+    <span class="nc">MongoClient</span> <span class="n">mongoClient</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">MongoClient</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="c1">// FieldSetter是利用反射来解决私有属性问题，把Mock出来的MongoClient设置到里面，在@Test测试启动后里面的值也会跟着修改，修改私有属性值有几种方式，我习惯选这种</span>
+    <span class="nc">FieldSetter</span><span class="o">.</span><span class="na">setField</span><span class="o">(</span><span class="n">testService</span><span class="o">,</span> <span class="nc">TestServiceImpl</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">"mongoClient"</span><span class="o">),</span> <span class="n">mongoClient</span><span class="o">);</span>
+    <span class="nc">FieldSetter</span><span class="o">.</span><span class="na">setField</span><span class="o">(</span><span class="n">testService</span><span class="o">,</span> <span class="nc">TestServiceImpl</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">"database"</span><span class="o">),</span> <span class="s">"warehouse"</span><span class="o">);</span>
+    
+    <span class="c1">// 这两句解决new GridFS(db)不为null的问题</span>
+    <span class="n">when</span><span class="o">(</span><span class="n">newMongoDataStore</span><span class="o">.</span><span class="na">getDB</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">db</span><span class="o">);</span>
+    <span class="n">when</span><span class="o">(</span><span class="n">db</span><span class="o">.</span><span class="na">getCollection</span><span class="o">(</span><span class="n">anyString</span><span class="o">())).</span><span class="na">thenReturn</span><span class="o">(</span><span class="n">dbCollection</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h4 id="如何测试私有方法">如何测试私有方法</h4>
+
+<p>上面测试了修改私有属性，下面来测试私有方法</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestServiceImpl</span><span class="o">{</span>
+  
+  <span class="kd">private</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"success"</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// 单元测试这么做</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span><span class="o">{</span>
+  <span class="nd">@InjectMocks</span>
+  <span class="nc">TestServiceImpl</span> <span class="n">testService</span><span class="o">;</span>
+
+  <span class="nd">@Before</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setUp</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+    <span class="nc">MockitoAnnotations</span><span class="o">.</span><span class="na">initMocks</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+  <span class="o">}</span>
+  
+  <span class="nd">@Test</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">test</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span><span class="o">{</span>
+    <span class="c1">// 私有方法的执行还是用到PowerMockito工具类，</span>
+    <span class="nc">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">method</span><span class="o">(</span><span class="nc">TestServiceImpl</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="s">"init"</span><span class="o">).</span><span class="na">invoke</span><span class="o">(</span><span class="n">testService</span><span class="o">,</span> <span class="n">如果有参数就附加到这</span><span class="o">);</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="总结">总结</h3>
+
+<p>上面的实例都是编写单元测试用例常用的方式，就Mockito和PowerMockito结合使用。</p>
+
+<p>注意：mock一个类，但其类中的方法都是返回为空的对象。但可以用when让该方法返回一个自定义mock的对象回来。</p>
+
+:ET
