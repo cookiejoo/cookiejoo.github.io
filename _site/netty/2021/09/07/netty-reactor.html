@@ -12,8 +12,8 @@
 <meta property="og:title" content="netty-reactor">
 <meta name="author" content="GitHub User">
 <meta property="og:locale" content="en_US">
-<meta name="description" content="什么是经典的三种I/O模式">
-<meta property="og:description" content="什么是经典的三种I/O模式">
+<meta name="description" content="Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.">
+<meta property="og:description" content="Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.">
 <link rel="canonical" href="/netty/2021/09/07/netty-reactor.html">
 <meta property="og:url" content="/netty/2021/09/07/netty-reactor.html">
 <meta property="og:site_name" content="Cookie.Joo Blog">
@@ -22,7 +22,7 @@
 <meta name="twitter:card" content="summary">
 <meta property="twitter:title" content="netty-reactor">
 <script type="application/ld+json">
-{"headline":"netty-reactor","dateModified":"2021-09-07T00:00:00+08:00","datePublished":"2021-09-07T00:00:00+08:00","@type":"BlogPosting","author":{"@type":"Person","name":"GitHub User"},"mainEntityOfPage":{"@type":"WebPage","@id":"/netty/2021/09/07/netty-reactor.html"},"description":"什么是经典的三种I/O模式","url":"/netty/2021/09/07/netty-reactor.html","@context":"https://schema.org"}</script>
+{"headline":"netty-reactor","dateModified":"2021-09-07T00:00:00+08:00","datePublished":"2021-09-07T00:00:00+08:00","@type":"BlogPosting","author":{"@type":"Person","name":"GitHub User"},"mainEntityOfPage":{"@type":"WebPage","@id":"/netty/2021/09/07/netty-reactor.html"},"description":"Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.","url":"/netty/2021/09/07/netty-reactor.html","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="shortcut icon" href="favicon.ico">
   <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
@@ -798,7 +798,9 @@ function googleTranslateElementInit() {
 
     <div class="post-content e-content" itemprop="articleBody">
 
-      <p><strong>什么是经典的三种I/O模式</strong></p>
+      <p><img src="/images/2021-09-07-netty-reactor/1.jpg" alt="71631627038_.pic_hd"></p>
+
+<p><strong>什么是经典的三种I/O模式</strong></p>
 
 <p>我们在学Netty的时候讲的最多的就是Reactor的三种模式，因为他的这个模式用的最广泛，涉及的I/O知识点很基础也很常用。</p>
 
@@ -926,9 +928,11 @@ function googleTranslateElementInit() {
 
 <p><strong>Reactor单线程模型</strong></p>
 
-<p>下面的单线程Reactor模式因为服务端只有一个线程处理IO和业务逻辑，服务端性能肯定受到限制。虽然用了NIO的非阻塞方式，但一个线程如果挂了，这个应用基本也就挂了。因此就有了多线程版本。</p>
+<p>注：Netty将这些读写、编解码等操作包装成事件，想想NIO的非堵塞的原理和包装成事件有何必然关联性。</p>
 
 <p><img src="/images/netty-reactor/70-20210907141509987.png" alt="在这里插入图片描述"></p>
+
+<p>上面的单线程Reactor模式因为服务端只有一个线程处理IO和业务逻辑，服务端性能肯定受到限制。虽然用了NIO的非阻塞方式，但一个线程如果挂了，这个应用基本也就挂了。因此就有了多线程版本。</p>
 
 <p><strong>Reactor多线程模型</strong></p>
 
@@ -962,10 +966,10 @@ function googleTranslateElementInit() {
 <div class="post-related">
       <div>Related Articles</div>
       <ul>
-        <li><a class="post-link" href="/netty/2021/09/07/netty-reactor.html" title="">netty-reactor</a></li>
-<li><a class="post-link" href="/example/2017/12/15/table-example.html" title="">Table example</a></li>
-<li><a class="post-link" href="/markdown/2017/06/10/quick-mardown-example.html" title="">Quick markdown example</a></li>
-<li><a class="post-link" href="/junk/2016/08/12/my-example-post.html" title="">My Example Post</a></li>
+        <li><a class="post-link" href="/example/2017/12/08/mermaid-example.html" title="">Mermaid example</a></li>
+<li><a class="post-link" href="/jekyll/2018/12/07/welcome-to-jekyll.html" title="">Welcome to Jekyll!</a></li>
+<li><a class="post-link" href="/misc/2016/05/19/super-short-article.html" title="">Some articles are just so short that we have to make the...</a></li>
+<li><a class="post-link" href="/unit/test/2021/06/20/mockito-test-service.html" title="">Mockito 接口测试《第一章》</a></li>
 </ul>
     </div>
 <div class="post-comments"></div></section>

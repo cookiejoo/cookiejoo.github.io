@@ -6,6 +6,8 @@ tags: [netty]
 categories: Netty
 ---
 
+![71631627038_.pic_hd](/images/2021-09-07-netty-reactor/1.jpg)
+
 **什么是经典的三种I/O模式**
 
 我们在学Netty的时候讲的最多的就是Reactor的三种模式，因为他的这个模式用的最广泛，涉及的I/O知识点很基础也很常用。

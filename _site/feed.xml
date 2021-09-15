@@ -1,4 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-09-14T18:42:49+08:00</updated><id>/feed.xml</id><title type="html">Cookie.Joo Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><author><name>GitHub User</name></author><entry><title type="html">netty-reactor</title><link href="/netty/2021/09/07/netty-reactor.html" rel="alternate" type="text/html" title="netty-reactor" /><published>2021-09-07T00:00:00+08:00</published><updated>2021-09-07T00:00:00+08:00</updated><id>/netty/2021/09/07/netty-reactor</id><content type="html" xml:base="/netty/2021/09/07/netty-reactor.html">&lt;p&gt;&lt;strong&gt;什么是经典的三种I/O模式&lt;/strong&gt;&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-09-15T10:17:01+08:00</updated><id>/feed.xml</id><title type="html">Cookie.Joo Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><author><name>GitHub User</name></author><entry><title type="html">netty-reactor</title><link href="/netty/2021/09/07/netty-reactor.html" rel="alternate" type="text/html" title="netty-reactor" /><published>2021-09-07T00:00:00+08:00</published><updated>2021-09-07T00:00:00+08:00</updated><id>/netty/2021/09/07/netty-reactor</id><content type="html" xml:base="/netty/2021/09/07/netty-reactor.html">&lt;p&gt;&lt;img src=&quot;/images/2021-09-07-netty-reactor/1.jpg&quot; alt=&quot;71631627038_.pic_hd&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;什么是经典的三种I/O模式&lt;/strong&gt;&lt;/p&gt;
 
 &lt;p&gt;我们在学Netty的时候讲的最多的就是Reactor的三种模式，因为他的这个模式用的最广泛，涉及的I/O知识点很基础也很常用。&lt;/p&gt;
 
@@ -126,9 +128,11 @@
 
 &lt;p&gt;&lt;strong&gt;Reactor单线程模型&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;下面的单线程Reactor模式因为服务端只有一个线程处理IO和业务逻辑，服务端性能肯定受到限制。虽然用了NIO的非阻塞方式，但一个线程如果挂了，这个应用基本也就挂了。因此就有了多线程版本。&lt;/p&gt;
+&lt;p&gt;注：Netty将这些读写、编解码等操作包装成事件，想想NIO的非堵塞的原理和包装成事件有何必然关联性。&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/images/netty-reactor/70-20210907141509987.png&quot; alt=&quot;在这里插入图片描述&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;上面的单线程Reactor模式因为服务端只有一个线程处理IO和业务逻辑，服务端性能肯定受到限制。虽然用了NIO的非阻塞方式，但一个线程如果挂了，这个应用基本也就挂了。因此就有了多线程版本。&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;Reactor多线程模型&lt;/strong&gt;&lt;/p&gt;
 
@@ -150,7 +154,7 @@
 
 &lt;p&gt;我们所以的Netty服务端开发都是用了主从Reactor模式开编写，虽然说他不是最优的，比如我的业务就是只要几个连接就能完成事情，比如一个线程像一个VIP服务一样，也不会占用更多资源；或者这个项目就目前属于维护型项目，就不用什么改动了，就算改了也没有明显的效率提升反而增加了上线测试风险。但是考虑未来更多的可能性，都是建议使用第三种方式。&lt;/p&gt;
 
-&lt;p&gt;分析问题要从场景来分析，并非BIO就弱于NIO。&lt;/p&gt;</content><author><name>GitHub User</name></author><category term="Netty" /><category term="netty" /><summary type="html">什么是经典的三种I/O模式</summary></entry><entry><title type="html">netty-http-server</title><link href="/netty/2021/09/02/netty-http-server.html" rel="alternate" type="text/html" title="netty-http-server" /><published>2021-09-02T00:00:00+08:00</published><updated>2021-09-02T00:00:00+08:00</updated><id>/netty/2021/09/02/netty-http-server</id><content type="html" xml:base="/netty/2021/09/02/netty-http-server.html">&lt;h2 id=&quot;场景&quot;&gt;场景&lt;/h2&gt;
+&lt;p&gt;分析问题要从场景来分析，并非BIO就弱于NIO。&lt;/p&gt;</content><author><name>GitHub User</name></author><category term="Netty" /><category term="netty" /><summary type="html"></summary></entry><entry><title type="html">netty-http-server</title><link href="/netty/2021/09/02/netty-http-server.html" rel="alternate" type="text/html" title="netty-http-server" /><published>2021-09-02T00:00:00+08:00</published><updated>2021-09-02T00:00:00+08:00</updated><id>/netty/2021/09/02/netty-http-server</id><content type="html" xml:base="/netty/2021/09/02/netty-http-server.html">&lt;h2 id=&quot;场景&quot;&gt;场景&lt;/h2&gt;
 
 &lt;p&gt;一个应用如果不是web应用，如何使用http接口上传文件下载文件？&lt;/p&gt;
 
