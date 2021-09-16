@@ -20,7 +20,7 @@
 <meta name="twitter:card" content="summary">
 <meta property="twitter:title" content="Home">
 <script type="application/ld+json">
-{"headline":"Home","@type":"WebSite","author":{"@type":"Person","name":"GitHub User"},"description":"Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.","name":"Cookie.Joo Blog","url":"/","@context":"https://schema.org"}</script>
+{"author":{"@type":"Person","name":"GitHub User"},"@type":"WebSite","url":"/","description":"Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.","name":"Cookie.Joo Blog","headline":"Home","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="shortcut icon" href="favicon.ico">
   <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
@@ -761,6 +761,97 @@ function googleTranslateElementInit() {
   <div class="pagination">
   <!-- Post list links -->
   <ul class="post-list">
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/spring/2021/09/16/spring-value.html">
+          Spring @Value注解详解
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Sep 16, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 3 mins</span>
+      </div>
+      <a class="post-excerpt" href="/spring/2021/09/16/spring-value.html">
+        <p>
+        说明
+
+通过@Value注解将配置文件中的属性注入到容器内组件中（可用在@Controller、@Service、@Configuration、@Component等Spring托管的类中）。该注解在Spring容器使用非常广泛，配合Apollo等配置化管理平台更是爽的不得了。
+
+@Value(“#{xxxx.key}”) 表示支持SpEl表达式，可以调用某个方法来对配置进行增强，甚至可以用其他的@Bean里面的属性给自己。当然还有可以表示常量。
+
+@Value(“${xxxx.key}”) 表示从配置文件读取值的用法。
+
+@Value(“${xxxx.key:val}”) 加冒号表示初始值，在没有获取到配置的时候默认用冒号后面这个字符串val当初始值。
+
+用法
+
+从Spring pr... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#spring">#spring</a></div>
+    </li>
 <li>
       
 
@@ -3218,7 +3309,7 @@ Here’s a useless table:
   <ul>
     <li>
       <a href="/index.html">
-        All<span>26</span>
+        All<span>27</span>
       </a>
     </li>
 
@@ -3226,6 +3317,12 @@ Here’s a useless table:
       <li>
         <a href="/categories.html#h-Netty">
           Netty <span>2</span>
+        </a>
+      </li>
+    
+      <li>
+        <a href="/categories.html#h-Spring">
+          Spring <span>1</span>
         </a>
       </li>
     
