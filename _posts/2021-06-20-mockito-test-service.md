@@ -33,10 +33,10 @@ Mock 可以分解在单元测试中耦合的其他类或者接口，它能够帮
 
 ```java
 import com.google.common.collect.Lists;
-import com.qihoo.finance.com.modules.crypto.domain.SensitiveDataSecretKeyDomain;
-import com.qihoo.finance.com.modules.crypto.facade.SensitiveDataSecretKeyFacade;
-import com.qihoo.finance.msf.api.domain.Response;
-import com.qihoo.finance.msf.core.crypto.SensitiveDataManager;
+import com.cdg.com.modules.crypto.domain.SensitiveDataSecretKeyDomain;
+import com.cdg.com.modules.crypto.facade.SensitiveDataSecretKeyFacade;
+import com.cdg.msf.api.domain.Response;
+import com.cdg.msf.core.crypto.SensitiveDataManager;
 
 import static org.assertj.core.api.Assertions.*;
 

@@ -18,7 +18,7 @@ categories: Unit Test
 
 ```java
 
-import com.qihoo.finance.msf.cache.redis.RedisCache;
+import com.cdg.msf.cache.redis.RedisCache;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.data.redis.connection.RedisConnection;

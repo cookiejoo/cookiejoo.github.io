@@ -19,7 +19,7 @@ MSF框架中提供了抽象类，用户只要继承该类去实现handle方法�
 首先需要建一个子类的实现类，并且实现父类的handle方法
 
 ```java
-import com.qihoo.finance.msf.event.bus.base.EventBus;
+import com.cdg.msf.event.bus.base.EventBus;
 
 /**
  * @author: Cookie.Joo
@@ -48,7 +48,7 @@ public class ProbeMsfEventBusConsumer extends MsfEventBusConsumer {
 
 ```java
 import com.google.common.collect.Lists;
-import com.qihoo.finance.msf.event.bus.base.EventBus;
+import com.cdg.msf.event.bus.base.EventBus;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.consumer.ConsumeFromWhere;
 import org.apache.rocketmq.common.message.MessageExt;

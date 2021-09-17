@@ -16,9 +16,9 @@ categories: Unit Test
 
 ```java
 import com.alibaba.fastjson.JSONObject;
-import com.qihoo.finance.msf.event.bus.base.DelayTimeEnum;
-import com.qihoo.finance.msf.event.bus.base.EventBus;
-import com.qihoo.finance.msf.event.bus.base.MsfEventBusException;
+import com.cdg.msf.event.bus.base.DelayTimeEnum;
+import com.cdg.msf.event.bus.base.EventBus;
+import com.cdg.msf.event.bus.base.MsfEventBusException;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.client.producer.SendResult;
