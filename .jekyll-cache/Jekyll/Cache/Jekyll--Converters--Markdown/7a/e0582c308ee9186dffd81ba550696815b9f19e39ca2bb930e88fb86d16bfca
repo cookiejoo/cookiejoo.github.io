@@ -1,4 +1,4 @@
-I"v<h3 id="什么是mock测试">什么是Mock测试</h3>
+I"�u<h3 id="什么是mock测试">什么是Mock测试</h3>
 
 <p>Mock测试就是在测试过程中，对于某些不容易构造或者不容易获取的对象，用一个虚拟的对象来创建以便测试的测试方法。什么是不容易构造的对象呢？例如HttpServletRequest，需要在有servlet容器环境中创建获取。那不容易获取的对象呢？如一个JedisCluster，需要准备redis相关环境，然后设置进去等等。</p>
 
@@ -23,10 +23,10 @@
 <p>请看下面实例：</p>
 
 <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">com.google.common.collect.Lists</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">com.qihoo.finance.com.modules.crypto.domain.SensitiveDataSecretKeyDomain</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">com.qihoo.finance.com.modules.crypto.facade.SensitiveDataSecretKeyFacade</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.api.domain.Response</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.core.crypto.SensitiveDataManager</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.cdg.com.modules.crypto.domain.SensitiveDataSecretKeyDomain</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.cdg.com.modules.crypto.facade.SensitiveDataSecretKeyFacade</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.cdg.msf.api.domain.Response</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.cdg.msf.core.crypto.SensitiveDataManager</span><span class="o">;</span>
 
 <span class="kn">import</span> <span class="nn">static</span> <span class="n">org</span><span class="o">.</span><span class="na">assertj</span><span class="o">.</span><span class="na">core</span><span class="o">.</span><span class="na">api</span><span class="o">.</span><span class="na">Assertions</span><span class="o">.*;</span>
 

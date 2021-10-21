@@ -1,0 +1,118 @@
+I"�-<h3 id="精神交锋">精神交锋</h3>
+
+<p><strong>一个人如果把自己的一颗心（情感）关注在某一个事（人）上，专心致志地做某件事。能在很大的程度应对某件事时避免自己把自己绊倒。</strong></p>
+
+<h3 id="用法">用法</h3>
+
+<p>从Spring properties文件或者配置中心（apollo、nacos等）读取配置。</p>
+
+<p>提示：如果集合类没有默认值话是会报错的，所以建议都给冒号，但空串也会产生一下bug，请使用集合的时候要注意。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">//普通字符串获取</span>
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"${mysql.user:root}"</span><span class="o">)</span>  
+<span class="kd">private</span> <span class="nc">String</span> <span class="n">mysqlUser</span><span class="o">;</span>
+
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"${mysql.password:123456}"</span><span class="o">)</span>  
+<span class="kd">private</span> <span class="nc">String</span> <span class="n">mysqlPwd</span><span class="o">;</span>
+
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"${mysql.pool:8}"</span><span class="o">)</span>  
+<span class="kd">private</span> <span class="nc">Integer</span> <span class="n">pool</span><span class="o">;</span>
+
+<span class="c1">//////////////////////////////////////////////////////////////////////////////</span>
+<span class="c1">//数组，</span>
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"${value.array1:aaa,bbb,ccc}"</span><span class="o">)</span>
+<span class="kd">private</span> <span class="nc">String</span><span class="o">[]</span> <span class="n">testArray1</span><span class="o">;</span>
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"${value.array2:111,222,333}"</span><span class="o">)</span>
+<span class="kd">private</span> <span class="nc">Integer</span><span class="o">[]</span> <span class="n">testArray2</span><span class="o">;</span>
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"${value.array3:11.1,22.2,33.3}"</span><span class="o">)</span>
+<span class="kd">private</span> <span class="nc">Double</span><span class="o">[]</span> <span class="n">testArray3</span><span class="o">;</span>
+
+<span class="c1">//////////////////////////////////////////////////////////////////////////////</span>
+<span class="c1">//如果要转成List就用El表达式切割法，这种是基本类型的，相信大家也不会让它转自定义对象吧，那这个配置挺奇葩的</span>
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"#{'${value.list:ccc,ddd,ggg}'.split(',')}"</span><span class="o">)</span>  
+<span class="kd">private</span> <span class="nc">List</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;</span> <span class="n">valueList</span><span class="o">;</span>
+<span class="c1">//也可以用Set</span>
+<span class="kd">private</span> <span class="nc">Set</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;</span> <span class="n">valueSet</span><span class="o">;</span>
+<span class="c1">//冒号后面是个空串的话是size会为1，这个判断会容易出bug，可以这么解决空指针问题</span>
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"#{'${value.list:}'.empty ? null : '${test.list:}'.split(',')}"</span><span class="o">)</span>  
+<span class="kd">private</span> <span class="nc">List</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;</span> <span class="n">testList</span><span class="o">;</span>  
+
+<span class="c1">//字符串转成Map</span>
+<span class="c1">//注意：必须有值，空串也会报错，暂时没有找到支持空串的方法，所以使用Map配置值时要考虑这一点</span>
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"#{${value.map:{'key1':'value1','key2':'value2','key3':'value3'}}}"</span><span class="o">)</span>
+<span class="kd">private</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">String</span><span class="o">&gt;</span> <span class="n">valueMap</span><span class="o">;</span>
+
+<span class="c1">//////////////////////////////////////////////////////////////////////////////</span>
+<span class="c1">//如果有必要将配置转成Bean对象，可以用自定义json解析方法方式来做</span>
+<span class="kn">package</span> <span class="nn">com.cdg.demo</span><span class="o">;</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Decoder</span> <span class="o">{</span>  
+    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Person</span><span class="o">&gt;</span> <span class="nf">decodeMap</span><span class="o">(</span><span class="nc">String</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>  
+        <span class="k">try</span> <span class="o">{</span>  
+            <span class="k">return</span> <span class="nc">JSONObject</span><span class="o">.</span><span class="na">parseObject</span><span class="o">(</span><span class="n">value</span><span class="o">,</span> <span class="k">new</span> <span class="nc">TypeReference</span><span class="o">&lt;</span><span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Person</span><span class="o">&gt;&gt;(){});</span>  
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>  
+            <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>  
+        <span class="o">}</span>  
+    <span class="o">}</span>
+  
+  	<span class="kd">public</span> <span class="kd">static</span> <span class="nc">List</span><span class="o">&lt;</span><span class="nc">Person</span><span class="o">&gt;</span> <span class="nf">decodeList</span><span class="o">(</span><span class="nc">String</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>  
+        <span class="k">try</span> <span class="o">{</span>  
+            <span class="k">return</span> <span class="nc">JSONObject</span><span class="o">.</span><span class="na">parseArray</span><span class="o">(</span><span class="n">value</span><span class="o">,</span> <span class="nc">Person</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>  
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>  
+            <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>  
+        <span class="o">}</span>  
+    <span class="o">}</span>
+<span class="o">}</span>  
+
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"#{T(com.cdg.demo.Decoder).decodeMap('${value.person.map:json串}')}"</span><span class="o">)</span>  
+<span class="kd">private</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Person</span><span class="o">&gt;</span> <span class="n">map</span><span class="o">;</span>  
+  
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"#{T(com.cdg.demo.Decoder).decodeList('${value.person.list:json串}')}"</span><span class="o">)</span>  
+<span class="kd">private</span> <span class="nc">List</span><span class="o">&lt;</span><span class="nc">Person</span><span class="o">&gt;</span> <span class="n">list</span><span class="o">;</span> 
+
+<span class="c1">//////////////////////////////////////////////////////////////////////////////</span>
+<span class="c1">// 其他bean，自定义名称为 myBeans</span>
+<span class="nd">@Component</span><span class="o">(</span><span class="s">"myBeans"</span><span class="o">)</span>
+<span class="nd">@Getter</span>
+<span class="nd">@Setter</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">OtherBean</span> <span class="o">{</span>
+    <span class="nd">@Value</span><span class="o">(</span><span class="s">"cookie"</span><span class="o">)</span>
+    <span class="kd">private</span> <span class="nc">String</span> <span class="n">name</span><span class="o">;</span>
+<span class="o">}</span>
+ 
+<span class="c1">// 用法</span>
+<span class="nd">@Component</span>
+<span class="nd">@Getter</span>
+<span class="nd">@Setter</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyBean</span> <span class="o">{</span>
+  	<span class="c1">//如果他不指定myBeans名称，那么就是类名首字母小写：@Value("#{otherBean.name}")</span>
+    <span class="nd">@Value</span><span class="o">(</span><span class="s">"#{myBeans.name}"</span><span class="o">)</span>
+    <span class="kd">private</span> <span class="nc">String</span> <span class="n">parentName</span><span class="o">;</span>
+ 
+<span class="o">}</span>
+
+<span class="c1">//////////////////////////////////////////////////////////////////////////////</span>
+<span class="c1">// 注入文件资源</span>
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"classpath:application.properties"</span><span class="o">)</span>
+<span class="kd">private</span> <span class="nc">Resource</span> <span class="n">fileResource</span><span class="o">;</span>
+ 
+<span class="c1">// 注入URL资源</span>
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"https://www.caodegao.com"</span><span class="o">)</span>
+<span class="kd">private</span> <span class="nc">Resource</span> <span class="n">urlResource</span><span class="o">;</span>
+
+
+<span class="c1">//////////////////////////////////////////////////////////////////////////////</span>
+<span class="c1">//有朋友会用到static的静态变量，静态变量使用要注意，这种是无效的。</span>
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"${value.test:}"</span><span class="o">)</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="nc">String</span> <span class="n">test</span><span class="o">;</span>
+
+<span class="c1">//要用set方法来注入</span>
+<span class="nd">@Value</span><span class="o">(</span><span class="s">"${value.test:}"</span><span class="o">)</span>
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">setTest</span><span class="o">(</span><span class="nc">String</span> <span class="n">test</span><span class="o">)</span> <span class="o">{</span>
+    <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"setStr1 ===&gt; "</span> <span class="o">+</span> <span class="n">test</span><span class="o">);</span>
+    <span class="nc">MyBean</span><span class="o">.</span><span class="na">test</span> <span class="o">=</span> <span class="n">test</span><span class="o">;</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<p>@Value的常见用法基本上就是示例里面的了，如果还有其他更高级的用法可能官方也会在新版Spring支持推广。</p>
+:ET

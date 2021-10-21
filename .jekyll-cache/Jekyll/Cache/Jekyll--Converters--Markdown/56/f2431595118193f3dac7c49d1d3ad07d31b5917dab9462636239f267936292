@@ -1,4 +1,4 @@
-I"3<h3 id="前言">前言</h3>
+I"�2<h3 id="前言">前言</h3>
 
 <p>在消息中间件中我们要模拟的是收发信息的动作，MQ这类的是依赖第三方消息中间件的，除去启动消息中间件去消费消息这一动作外，其实我们最关心的是我们接受到消息后怎么处理的问题，那么收消息是MQ中多线程去拉取数据的，也是官方jar提供工具类帮我们做的，所以我们需要入手的就是模拟有人给我们发消息，这个接收类是我们重点Mock的对象。本章主要讲如何在单元测试中模拟收RocketMQ服务器消息操作。</p>
 
@@ -10,7 +10,7 @@
 
 <p>首先需要建一个子类的实现类，并且实现父类的handle方法</p>
 
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.event.bus.base.EventBus</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">com.cdg.msf.event.bus.base.EventBus</span><span class="o">;</span>
 
 <span class="cm">/**
  * @author: Cookie.Joo
@@ -38,7 +38,7 @@
 <p>简单打印EventBus即可，下面是Mock Test的实例</p>
 
 <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">com.google.common.collect.Lists</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.event.bus.base.EventBus</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.cdg.msf.event.bus.base.EventBus</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.apache.rocketmq.client.exception.MQClientException</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.apache.rocketmq.common.consumer.ConsumeFromWhere</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.apache.rocketmq.common.message.MessageExt</span><span class="o">;</span>

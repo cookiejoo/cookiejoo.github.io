@@ -1,4 +1,4 @@
-I"d8<h3 id="前言">前言</h3>
+I"F8<h3 id="前言">前言</h3>
 
 <p>上一章说到了RocketMQ在EvnetBus包装下的测试工具。本章主要讲MSF EventBus生产者操作。</p>
 
@@ -7,9 +7,9 @@
 <p>请看下面实例：</p>
 
 <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">com.alibaba.fastjson.JSONObject</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.event.bus.base.DelayTimeEnum</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.event.bus.base.EventBus</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.event.bus.base.MsfEventBusException</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.cdg.msf.event.bus.base.DelayTimeEnum</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.cdg.msf.event.bus.base.EventBus</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.cdg.msf.event.bus.base.MsfEventBusException</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.apache.rocketmq.client.exception.MQClientException</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.apache.rocketmq.client.producer.DefaultMQProducer</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.apache.rocketmq.client.producer.SendResult</span><span class="o">;</span>

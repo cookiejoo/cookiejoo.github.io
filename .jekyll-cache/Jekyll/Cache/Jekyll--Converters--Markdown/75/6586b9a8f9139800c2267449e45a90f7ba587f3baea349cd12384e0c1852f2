@@ -1,4 +1,4 @@
-I"-<h3 id="前言">前言</h3>
+I"�,<h3 id="前言">前言</h3>
 
 <p>上一章说到了Mockito测试工具，大概入门的使用了该工具模拟调用Dubbo接口。本章主要讲如何在单元测试中模拟Redis服务器操作。</p>
 
@@ -9,7 +9,7 @@
 <p>请看下面实例：</p>
 
 <div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
-<span class="kn">import</span> <span class="nn">com.qihoo.finance.msf.cache.redis.RedisCache</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">com.cdg.msf.cache.redis.RedisCache</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.junit.Before</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.junit.Test</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.springframework.data.redis.connection.RedisConnection</span><span class="o">;</span>
