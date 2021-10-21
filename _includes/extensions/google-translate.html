@@ -5,22 +5,6 @@
 <div id="google_translate_element" style="display: none;">
 </div>
 
-<span class="ct-language">
-  <ul class="list-unstyled ct-language-dropdown">
-    {% for item in translate_langs %}
-      <li>
-        <a href="#" class="lang-select" data-lang="{{ item.lang }}">
-          {% if item.img %}
-          <img src="{{ item.img }}" title="{{ item.text }}">
-          {% else %}
-            {{ item.text }}
-          {% endif %}
-        </a>
-      </li>
-    {% endfor %}
-  </ul>
-</span>
-
 <script type="text/javascript">
 function googleTranslateElementInit() {
   new google.translate.TranslateElement({
