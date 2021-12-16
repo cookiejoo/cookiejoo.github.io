@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-12-16T21:17:50+08:00</updated><id>/feed.xml</id><title type="html">Cookie.Joo Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><author><name>GitHub User</name></author><entry><title type="html">提问的艺术</title><link href="/self-cultivation/2021/12/16/self-cultivation.html" rel="alternate" type="text/html" title="提问的艺术" /><published>2021-12-16T00:00:00+08:00</published><updated>2021-12-16T00:00:00+08:00</updated><id>/self-cultivation/2021/12/16/self-cultivation</id><content type="html" xml:base="/self-cultivation/2021/12/16/self-cultivation.html">&lt;p&gt;&lt;img src=&quot;/images/2021-12-16-self-cultivation/v2-094bcea9f191a273e37612ffd33acc7c_1440w.jpg&quot; alt=&quot;v2-094bcea9f191a273e37612ffd33acc7c_1440w&quot; /&gt;&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-12-16T21:53:17+08:00</updated><id>/feed.xml</id><title type="html">Cookie.Joo Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><author><name>GitHub User</name></author><entry><title type="html">提问的艺术</title><link href="/self-cultivation/2021/12/16/self-cultivation.html" rel="alternate" type="text/html" title="提问的艺术" /><published>2021-12-16T00:00:00+08:00</published><updated>2021-12-16T00:00:00+08:00</updated><id>/self-cultivation/2021/12/16/self-cultivation</id><content type="html" xml:base="/self-cultivation/2021/12/16/self-cultivation.html">&lt;p&gt;&lt;img src=&quot;/images/2021-12-16-self-cultivation/v2-094bcea9f191a273e37612ffd33acc7c_1440w.jpg&quot; alt=&quot;v2-094bcea9f191a273e37612ffd33acc7c_1440w&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;最近我在解决一些日常维护应用的过程中遇到很多提问的同事，有些许感慨和无奈，我们工作确实有时候很无聊或久而久之麻木了，程序员确实是有些闷的职业于是导致很多人对沟通交流技能退化了，提问的方式和语句让人无力和不想与之交谈。&lt;/p&gt;
 
@@ -44,13 +44,16 @@
 
 &lt;h3 id=&quot;最后&quot;&gt;最后&lt;/h3&gt;
 
-&lt;p&gt;&lt;strong&gt;下面我提供⑥点提问要素，尽量精简易概：&lt;/strong&gt;
-&lt;u&gt;\- 谨慎明确的描述症状&lt;/u&gt;
-&lt;u&gt;\- 提供问题发生的环境（机器配置、操作系统、应用程序以及别的什么）&lt;/u&gt;
-&lt;u&gt;\- 说明你在提问前是怎样去研究和理解这个问题的&lt;/u&gt;
-&lt;u&gt;\- 说明你在提问前采取了什么步骤去解决它&lt;/u&gt;
-&lt;u&gt;\- 罗列最近做过什么可能有影响的硬件、软件变更&lt;/u&gt;
-&lt;u&gt;\- 尽量想象一个程序员会怎样反问你，在提问的时候预先给他答案（这点换位思考很重要）&lt;/u&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;下面我提供⑥点提问要素，尽量精简易概：&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;谨慎明确的描述症状&lt;/li&gt;
+  &lt;li&gt;提供问题发生的环境（机器配置、操作系统、应用程序以及别的什么）&lt;/li&gt;
+  &lt;li&gt;说明你在提问前是怎样去研究和理解这个问题的&lt;/li&gt;
+  &lt;li&gt;说明你在提问前采取了什么步骤去解决它&lt;/li&gt;
+  &lt;li&gt;罗列最近做过什么可能有影响的硬件、软件变更&lt;/li&gt;
+  &lt;li&gt;尽量想象一个程序员会怎样反问你，在提问的时候预先给他答案（这点换位思考很重要）&lt;/li&gt;
+&lt;/ol&gt;
 
 &lt;p&gt;当你认真看完并思考后，如果看完还还认为这是对的，那么请每次提问时按照这几点做下去，你会发现你比没有这里思维的人进步很大。你可以感谢你自己-成长了。&lt;/p&gt;</content><author><name>曹德高</name></author><category term="self-cultivation" /><category term="self-cultivation" /><summary type="html"></summary></entry><entry><title type="html">自立的代价</title><link href="/self-cultivation/2021/10/28/self-cultivation.html" rel="alternate" type="text/html" title="自立的代价" /><published>2021-10-28T00:00:00+08:00</published><updated>2021-10-28T00:00:00+08:00</updated><id>/self-cultivation/2021/10/28/self-cultivation</id><content type="html" xml:base="/self-cultivation/2021/10/28/self-cultivation.html">&lt;h3 id=&quot;何为自立&quot;&gt;何为自立&lt;/h3&gt;
 
