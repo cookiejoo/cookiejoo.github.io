@@ -1,0 +1,196 @@
+I"�/<h2 id="1原因现象">1.原因现象</h2>
+
+<p>应用中如果需要用iframe嵌套某个应用的页面，该应用也是用了灵犀登录，但在iframe中出现无限循环登录。</p>
+
+<p>该现象是在谷歌浏览器中出现，原因是谷歌浏览器限制了嵌入的网页不可设置cookie，导致无法访问。仔细检查，在浏览Set-cookie的响应头出发现提示：</p>
+
+<pre><code class="language-txt">This Set-Cookie didn't specify a "SameSite" attribute and was defaulted to "SameSite=lax", and was blocked because it came from a cross-site response which was not the response to a top-level navigation. ....
+</code></pre>
+
+<p>原因：谷歌最新版的浏览器默认SameSite=Lax （该设置从2020 年7月14全面展开，具体见： https://www.chromestatus.com/feature/5088147346030592），如果设置SameSite=Lax , 并且嵌入Iframe的地址和iframe外的地址不是SameSite,那么嵌入iframe的地址将无法设置设置cookie。关于什么是SameSite，首先应该理解site，所谓Site就是域名后缀和其前面的第一部分，比如web.dev可以是一个Site，从而 www.web.dev 和 <a href="">static.web.dev</a> 可以看成相同的Site。具体可以参考SameSite解释 或 https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00 。</p>
+
+<p>如此图：由于主页登录过后，iframe的第三方页面无法设置已登录的信息在cookie中导致第三方页面无法获取到登录信息总是显示登录页</p>
+
+<p><img src="/images/iframe_cors/image-20211230102458015.png" alt="image-20211230102458015" /></p>
+
+<h2 id="2samesite-属性">2.SameSite 属性</h2>
+
+<p>Cookie 的<code class="language-plaintext highlighter-rouge">SameSite</code>属性用来限制第三方 Cookie，从而减少安全风险。</p>
+
+<p>它可以设置三个值。</p>
+
+<blockquote>
+  <ul>
+    <li>Strict</li>
+    <li>Lax</li>
+    <li>None</li>
+  </ul>
+</blockquote>
+
+<h3 id="21-strict">2.1 Strict</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Strict</code>最为严格，完全禁止第三方 Cookie，跨站点时，任何情况下都不会发送 Cookie。换言之，只有当前网页的 URL 与请求目标一致，才会带上 Cookie。</p>
+
+<blockquote>
+  <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Set-Cookie: <span class="nv">CookieName</span><span class="o">=</span>CookieValue<span class="p">;</span> <span class="nv">SameSite</span><span class="o">=</span>Strict<span class="p">;</span> 
+</code></pre></div>  </div>
+</blockquote>
+
+<p>这个规则过于严格，可能造成非常不好的用户体验。比如，当前网页有一个 GitHub 链接，用户点击跳转就不会带有 GitHub 的 Cookie，跳转过去总是未登陆状态。</p>
+
+<h3 id="22-lax">2.2 Lax</h3>
+
+<p><code class="language-plaintext highlighter-rouge">Lax</code>规则稍稍放宽，大多数情况也是不发送第三方 Cookie，但是导航到目标网址的 Get 请求除外。</p>
+
+<blockquote>
+  <pre><code class="language-markup">Set-Cookie: CookieName=CookieValue; SameSite=Lax;
+</code></pre>
+</blockquote>
+
+<p>导航到目标网址的 GET 请求，只包括三种情况：链接，预加载请求，GET 表单。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">请求类型</th>
+      <th style="text-align: left">示例</th>
+      <th style="text-align: left">正常情况</th>
+      <th style="text-align: left">Lax</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">链接</td>
+      <td style="text-align: left"><code class="language-plaintext highlighter-rouge">&lt;a href="..."&gt;&lt;/a&gt;</code></td>
+      <td style="text-align: left">发送 Cookie</td>
+      <td style="text-align: left">发送 Cookie</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">预加载</td>
+      <td style="text-align: left"><code class="language-plaintext highlighter-rouge">&lt;link rel="prerender" href="..."/&gt;</code></td>
+      <td style="text-align: left">发送 Cookie</td>
+      <td style="text-align: left">发送 Cookie</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">GET 表单</td>
+      <td style="text-align: left"><code class="language-plaintext highlighter-rouge">&lt;form method="GET" action="..."&gt;</code></td>
+      <td style="text-align: left">发送 Cookie</td>
+      <td style="text-align: left">发送 Cookie</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">POST 表单</td>
+      <td style="text-align: left"><code class="language-plaintext highlighter-rouge">&lt;form method="POST" action="..."&gt;</code></td>
+      <td style="text-align: left">发送 Cookie</td>
+      <td style="text-align: left">不发送</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">iframe</td>
+      <td style="text-align: left"><code class="language-plaintext highlighter-rouge">&lt;iframe src="..."&gt;&lt;/iframe&gt;</code></td>
+      <td style="text-align: left">发送 Cookie</td>
+      <td style="text-align: left">不发送</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">AJAX</td>
+      <td style="text-align: left"><code class="language-plaintext highlighter-rouge">$.get("...")</code></td>
+      <td style="text-align: left">发送 Cookie</td>
+      <td style="text-align: left">不发送</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">Image</td>
+      <td style="text-align: left"><code class="language-plaintext highlighter-rouge">&lt;img src="..."&gt;</code></td>
+      <td style="text-align: left">发送 Cookie</td>
+      <td style="text-align: left">不发送</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="23-none">2.3 None</h3>
+
+<p>Chrome 计划将<code class="language-plaintext highlighter-rouge">Lax</code>变为默认设置。这时，网站可以选择显式关闭<code class="language-plaintext highlighter-rouge">SameSite</code>属性，将其设为<code class="language-plaintext highlighter-rouge">None</code>。不过，前提是必须同时设置<code class="language-plaintext highlighter-rouge">Secure</code>属性（Cookie 只能通过 HTTPS 协议发送），否则无效。</p>
+
+<p>解决方案一（不推荐）：</p>
+
+<p>低版本的谷歌浏览器(80一下)在地址栏输入：Chrome://flags回车搜索cookies，设置两个值为Disabled，主要是Same-Site这个值是允许第三方设置Cookies属性。（此方法只能让用户去设置浏览器属性并不友好）</p>
+
+<p><img src="/images/iframe_cors/image-20211230102641324.png" alt="image-20211230102641324" /></p>
+
+<p>解决方案二（不推荐）</p>
+
+<p>在设置Cookie的响应头中添加 SameSite=None；Secure ，在Cookie响应头设置SameSite=None就可以替换谷歌浏览器的默认配置，而SameSite=None可以允许跨Site设置Cookie。一个完整的cookie响应头可以像这样： Set-Cookie: JSESSIONID=ACD341E8840C03003E4532921C21C035;Path=/begin01; SameSite=None; Secure ，至于怎么加响应头SameSite=None；Secure，可以考虑在nginx里设置，参考：</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 只支持 proxy 模式下设置，SameSite 不需要可删除(默认不设置则：Lax)，如果想更安全可以把 SameSite 设置为 Strict，我们需要Cookie则是None</span>
+proxy_cookie_path / <span class="s2">"/; httponly; secure; SameSite=None"</span><span class="p">;</span>
+
+<span class="c"># 示例</span>
+server <span class="o">{</span>
+    listen 443 ssl http2<span class="p">;</span>
+    server_name www.cat73.org<span class="p">;</span>
+
+    ssl_certificate /etc/letsencrypt/live/cat73.org/fullchain.pem<span class="p">;</span>
+    ssl_certificate_key /etc/letsencrypt/live/cat73.org/privkey.pem<span class="p">;</span>
+
+    ssl_trusted_certificate /etc/letsencrypt/live/cat73.org/chain.pem<span class="p">;</span>
+
+    add_header X-XSS-Protection <span class="s2">"1; mode=block"</span><span class="p">;</span>
+    add_header X-Frame-Options SAMEORIGIN<span class="p">;</span>
+    add_header Strict-Transport-Security <span class="s2">"max-age=15768000"</span><span class="p">;</span>
+
+    location / <span class="o">{</span>
+        root /var/www/html<span class="p">;</span>
+    <span class="o">}</span>
+
+    location /api <span class="o">{</span>
+        proxy_pass http://localhost:8080<span class="p">;</span>
+        proxy_set_header Host <span class="nv">$host</span><span class="p">;</span>
+        proxy_set_header X-Real-IP <span class="nv">$remote_addr</span><span class="p">;</span>
+        proxy_set_header X-Forwarded-For <span class="nv">$proxy_add_x_forwarded_for</span><span class="p">;</span>
+        <span class="c"># 在这里设置</span>
+        proxy_cookie_path / <span class="s2">"/; httponly; secure; SameSite=None"</span><span class="p">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>也可以在后台代码里设置，推荐nginx吧。这里注意一点 Secure 属性，这个属性说明设置的该cookie只能在https下传输，所以要求你使用https，不使用行吗，不行，因为SameSite=None 要求必须要和Secure=true一起使用。所以采用这个方法解决，你嵌入iframe的页面必须使用https。</p>
+
+<p><strong>（我们在本次解决方案中只设置了Cas的登录这边的Ng重启后就有效了，iframe的第三方没有改任何配置。这里为何不推荐使用此方式，是因为如果允许跨域传输cookie会让自身暴露在不安全的环境中，容易遭受CSRF漏洞工具或跨域追踪）</strong></p>
+
+<p><img src="../images/iframe_cors/20200904161952679.png" alt="20200904161952679" /></p>
+
+<p>解决方案三</p>
+
+<p>改造该模式不再使用ifram方式嵌入页面，可用跳转子系统tab页展示第三方应用页面，由于已经全部集成了CAS登录，所以一次登录可多次流量SSO页面，从而避免跨域攻击。</p>
+
+<p>解决方案四</p>
+
+<p>页面UI的开发独立到一个应用中如xxx-ui(参考灵犀UI)，请求可以用网关转发即可，此方式缺点在于发布UI要统一版本发布，集中式管理，如果是要用到其他第三方非本公司的系统页面还是无法解决。优势是后端不受集中式发布影响，可避免嵌入Iframe。</p>
+
+<h2 id="3-跨域攻击csrf和跨域追踪">3. 跨域攻击CSRF和跨域追踪</h2>
+
+<h3 id="31-跨域攻击">3.1 跨域攻击</h3>
+
+<p>可伪造你的身份去访问受信任的网站，以你名义发送邮件，发消息，盗取你的账号，甚至于购买商品，虚拟货币转账……造成的问题包括：个人隐私泄露以及财产安全。</p>
+
+<p><img src="../images/iframe_cors/WX20211230-114247.png" alt="WX20211230-114247" /></p>
+
+<p>示例：</p>
+
+<p>银行网站A，它以GET/POST请求来完成银行转账的操作，如： http://www.mybank.com/loan.do?toBankId=cdg&amp;money=1000</p>
+
+<p>危险网站B，它里面有一段HTML的代码如下：</p>
+
+<p>&lt;img src= http://www.mybank.com/loan.do?toBankId=hack&amp;money=1000 &gt;</p>
+
+<p>首先，你登录了银行网站A，然后访问危险网站B，噢，这时你会发现你的银行账户少了1000块……</p>
+
+<p>为什么会这样呢？原因是在访问危险网站B的之前，你已经登录了银行网站A，而B中的<img />以GET的方式请求第三方资源（这里的第三方就是指银行网站了，原本这是一个合法的请求，但这里被不法分子利用了），所以你的浏览器会带上你的银行网站A的Cookie发出Get/POST请求，去获取资源“ http://www.mybank.com/loan.do?toBankId=hack&amp;money=1000”，结果银行网站服务器收到请求后，认为这是一个更新资源操作（转账操作），所以就立刻进行转账操作……</p>
+
+<h3 id="32-跨域追踪">3.2 跨域追踪</h3>
+
+<p>第三方网站引导发出的 Cookie，就称为第三方 Cookie。它除了用于 CSRF 攻击，还可以用于用户追踪。</p>
+
+<p>比如，Facebook 在第三方网站插入一张看不见的图片。</p>
+
+<p>&lt;img src= facebook.com?d=xx style= visibility:hidden &gt;</p>
+
+<p>浏览器加载上面代码时，就会向 Facebook 发出带有 Cookie 的请求，从而 Facebook 就会知道你是谁，访问了什么网站。</p>
+:ET

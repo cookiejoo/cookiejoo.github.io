@@ -785,6 +785,91 @@ function googleTranslateElementInit() {
 
 
 <h2 class="post-title">
+        <a class="post-link" href="/http/2021/12/29/iframe-cors.html">
+          iframe跨域解决方案
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Dec 29, 2021</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 3 mins</span>
+      </div>
+      <a class="post-excerpt" href="/http/2021/12/29/iframe-cors.html">
+        <p>
+        1.原因现象
+
+应用中如果需要用iframe嵌套某个应用的页面，该应用也是用了灵犀登录，但在iframe中出现无限循环登录。
+
+该现象是在谷歌浏览器中出现，原因是谷歌浏览器限制了嵌入的网页不可设置cookie，导致无法访问。仔细检查，在浏览Set-cookie的响应头出发现提示：
+
+This Set-Cookie didn't specify a "SameSite" attribute and was defaulted to "SameSite=lax", and was blocked because it came from a cross-site response which was not the response to a top-level navigation. .... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#http">#http</a></div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
         <a class="post-link" href="/self-cultivation/2021/12/16/self-cultivation.html">
           提问的艺术
         </a>
@@ -3529,10 +3614,16 @@ Here’s a useless table:
   <ul>
     <li>
       <a href="/index.html">
-        All<span>30</span>
+        All<span>31</span>
       </a>
     </li>
 
+    
+      <li>
+        <a href="/categories.html#h-Http">
+          Http <span>1</span>
+        </a>
+      </li>
     
       <li>
         <a href="/categories.html#h-Netty">
