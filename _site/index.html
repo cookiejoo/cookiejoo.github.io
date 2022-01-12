@@ -785,6 +785,98 @@ function googleTranslateElementInit() {
 
 
 <h2 class="post-title">
+        <a class="post-link" href="/jvm/2022/01/12/java-fixed-heap-size.html">
+          JVM固定堆大小原理概解
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jan 12, 2022</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
+      </div>
+      <a class="post-excerpt" href="/jvm/2022/01/12/java-fixed-heap-size.html">
+        <p>
+        前言
+
+可能很多人都知道Java程序上生产后，运维人员都会设定好JVM的堆大小，而且还是把最大最小设置成一样的值。那究竟是为什么呢？
+
+你是否有这个疑问？设置堆大小为何要设置成两个相同的固定值，一般不是小的设置小点，大的是一个上限值，我们一般的人认知不也是说随用随取吗，你设置为大小都一样会不会一开始就把空间全占了，让自己独享经济呗。
+
+我也有这个疑问，昨天我的同事让我给某个应用这么配，我也没想明白，然后我就找了好多资料，总结后跟你分享一下。
+
+初始化内存做了什么
+
+一般而言，Java程序如果你不显示设定该值得话，会自动进行初始化设定。
+
+　　-Xmx #的默认值为你当前机器最大内存的 1/4		如本机有4G内存，这里1G
+　　-Xms #的默认值为你当前机器最大内存的 1/64		这里... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#jvm">#jvm</a></div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
         <a class="post-link" href="/http/2021/12/29/iframe-cors.html">
           iframe跨域解决方案
         </a>
@@ -797,11 +889,11 @@ function googleTranslateElementInit() {
         <p>
         1.原因现象
 
-应用中如果需要用iframe嵌套某个应用的页面，该应用也是用了灵犀登录，但在iframe中出现无限循环登录。
+应用中如果需要用iframe嵌套某个应用的页面，该应用也是用了相同的CAS-SSO登录，但在iframe中出现无限循环登录。
 
 该现象是在谷歌浏览器中出现，原因是谷歌浏览器限制了嵌入的网页不可设置cookie，导致无法访问。仔细检查，在浏览Set-cookie的响应头出发现提示：
 
-This Set-Cookie didn't specify a "SameSite" attribute and was defaulted to "SameSite=lax", and was blocked because it came from a cross-site response which was not the response to a top-level navigation. .... <span class="read_more">Read More</span>
+This Set-Cookie didn't specify a "SameSite" attribute and was defaulted to "SameSite=lax", and was blocked because it came from a cross-site response which was not the response to a top-level navig... <span class="read_more">Read More</span>
         </p>
       </a>
       <div class="post-tags"><a class="post-tag" href="/tags.html#http">#http</a></div>
@@ -3614,7 +3706,7 @@ Here’s a useless table:
   <ul>
     <li>
       <a href="/index.html">
-        All<span>31</span>
+        All<span>32</span>
       </a>
     </li>
 
@@ -3622,6 +3714,12 @@ Here’s a useless table:
       <li>
         <a href="/categories.html#h-Http">
           Http <span>1</span>
+        </a>
+      </li>
+    
+      <li>
+        <a href="/categories.html#h-Jvm">
+          Jvm <span>1</span>
         </a>
       </li>
     

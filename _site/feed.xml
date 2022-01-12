@@ -1,6 +1,64 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-12-30T14:24:51+08:00</updated><id>/feed.xml</id><title type="html">Cookie.Joo Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><author><name>GitHub User</name></author><entry><title type="html">iframe跨域解决方案</title><link href="/http/2021/12/29/iframe-cors.html" rel="alternate" type="text/html" title="iframe跨域解决方案" /><published>2021-12-29T00:00:00+08:00</published><updated>2021-12-29T00:00:00+08:00</updated><id>/http/2021/12/29/iframe-cors</id><content type="html" xml:base="/http/2021/12/29/iframe-cors.html">&lt;h2 id=&quot;1原因现象&quot;&gt;1.原因现象&lt;/h2&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2022-01-12T12:06:35+08:00</updated><id>/feed.xml</id><title type="html">Cookie.Joo Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><author><name>GitHub User</name></author><entry><title type="html">JVM固定堆大小原理概解</title><link href="/jvm/2022/01/12/java-fixed-heap-size.html" rel="alternate" type="text/html" title="JVM固定堆大小原理概解" /><published>2022-01-12T00:00:00+08:00</published><updated>2022-01-12T00:00:00+08:00</updated><id>/jvm/2022/01/12/java-fixed-heap-size</id><content type="html" xml:base="/jvm/2022/01/12/java-fixed-heap-size.html">&lt;h3 id=&quot;前言&quot;&gt;&lt;strong&gt;前言&lt;/strong&gt;&lt;/h3&gt;
 
-&lt;p&gt;应用中如果需要用iframe嵌套某个应用的页面，该应用也是用了灵犀登录，但在iframe中出现无限循环登录。&lt;/p&gt;
+&lt;p&gt;可能很多人都知道Java程序上生产后，运维人员都会设定好JVM的堆大小，而且还是把最大最小设置成一样的值。那究竟是为什么呢？&lt;/p&gt;
+
+&lt;p&gt;你是否有这个疑问？设置堆大小为何要设置成两个相同的固定值，一般不是小的设置小点，大的是一个上限值，我们一般的人认知不也是说随用随取吗，你设置为大小都一样会不会一开始就把空间全占了，让自己独享经济呗。&lt;/p&gt;
+
+&lt;p&gt;我也有这个疑问，昨天我的同事让我给某个应用这么配，我也没想明白，然后我就找了好多资料，总结后跟你分享一下。&lt;/p&gt;
+
+&lt;h3 id=&quot;初始化内存做了什么&quot;&gt;&lt;strong&gt;初始化内存做了什么&lt;/strong&gt;&lt;/h3&gt;
+
+&lt;p&gt;一般而言，Java程序如果你不显示设定该值得话，会自动进行初始化设定。&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;　　-Xmx &lt;span class=&quot;c&quot;&gt;#的默认值为你当前机器最大内存的 1/4		如本机有4G内存，这里1G&lt;/span&gt;
+　　-Xms &lt;span class=&quot;c&quot;&gt;#的默认值为你当前机器最大内存的 1/64		这里就是64M&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;显然这样配置的意义是希望JVM可以根据当前运行的环境，动态伸缩堆内存大小。之所以生产上设置成固定大小，网上也是说法有很多，很多时候都是使用“防止内存抖动”这样的模糊词语给出解释。但是我相信各位也很懵很难去理解，不知道这个词具体表达什么含义。&lt;/p&gt;
+
+&lt;p&gt;最大堆或最小堆，从字面上理解就是JVM在运行Java程序时，为其分配堆内存空间的上限和下限值。我们把最大和最小堆设置成相同值那意思就是分配了固定大小的内存呗。这样不就省去了动态调整内存（申请和释放）以及频繁的用户态和内核态的切换带来的开销吗？&lt;/p&gt;
+
+&lt;p&gt;常理推论肯定是这样的。然而当我们尝试去做个模拟实验，事实却并非如此。比如，随便写个Java程序，使用如下命令启动之。并设置好固定大小堆为1G。&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;java -Xmx1024m -Xms1024m -jar demo.jar
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;然后我们通过查看进程的内存占用时，发现程序并没有占用1G的空间，而是很小的占用。这个实验结果和我们预期的完全不一致，&lt;strong&gt;并非独占、独享空间&lt;/strong&gt;。如下图所示。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/java-fixed-heap-size/1-1956987.png&quot; alt=&quot;1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;究竟是什么原因呢？&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;问题其实出在我们对内存模型的理解上有问题。很多人可能都是像上面图中那样理解程序分配内存的。实际上是不对的，且也更复杂。首先我们要理解一个重要概念，那就是“进程的虚拟地址空间”，我们应用程序通过（malloc）这个系统函数申请内存，实际上就是申请了一个虚拟的内存，并不是真正的物理内存。&lt;strong&gt;大家要注意，这个虚拟的内存就是指“进程的虚拟地址空间”，而不是我们通常理解的Windows下的虚拟内存或Linux下的swap(分区交换)&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;注：
+   malloc 函数是C语言库函数，void *malloc(size_t size) 分配所需的内存空间，并返回一个指向它的指针。
+   free 函数释放由其分配的内存。
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;内存操作真相&quot;&gt;&lt;strong&gt;内存操作真相&lt;/strong&gt;&lt;/h3&gt;
+
+&lt;p&gt;应用程序申请的虚拟内存（虚拟地址空间），也就是通过malloc函数调用，本质就是在进程的虚拟地址空间里分配了一块&lt;strong&gt;地址范围&lt;/strong&gt;而已。32位系统理论上最大4G，每个进程都有自己的虚拟地址空间，都能申请到最大4G内存。但是申请了的内存，如果没有实际使用（写入数据），&lt;strong&gt;则操作系统不会给这块虚拟空间分配实际的物理内存&lt;/strong&gt;。其实原因很简单，物理内存一直属于紧缺资源，所以现代操作系统都设计为由内核程序统一管理，&lt;strong&gt;应用程序无权直接干涉&lt;/strong&gt;。不是说你申请多少就真的给你多少，而是你实际使用多少才会给你多少。&lt;/p&gt;
+
+&lt;p&gt;你发现启动后程序内存占用很小就是这个原因。尽管JVM已经在你启动时向系统申请了1G的固定堆大小空间。程序刚启动时并没有实际的操作业务，所以你实际上只用到了很小的物理内存空间。但是如果随着系统的运行业务量越来越大，实际占用物理内存就会越来越多，直到达到申请的上限值1G。运行期间，你的程序同时也会通过GC释放一些对象，并在适当的时机归还一些物理内存给操作系统。所以占用的物理内存大小，也会动态有所调整。这样操作系统就可以给其他程序使用，提高了内存利用效率。这样的设计也没什么不好的。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/java-fixed-heap-size/2.png&quot; alt=&quot;2&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如上图所示，操作系统对内存管理是以页为基本单位的，一个页代表了一个固定大小的地址范围。应用程序给某个变量比如String赋值时，此时该变量对应的进程虚拟地址空间所在的页在物理内存上找不到对应的页映射时，就会触发了一个缺页中断异常，操作系统就会重新将虚拟地址的页映射到物理内存中的页，此时才是真正实现了内存分配，会占用实际的物理内存空间。假如Java程序的GC把这个String变量收回了，也就是不需要占用内存空间了，用户进程的堆管理器会适当的归还一些物理内存给操作系统，以便下次可以给其他任何程序使用。&lt;strong&gt;需要注意的是应用程序调用的malloc和free两个函数，都是针对应用进程的虚拟地址空间而言的，并不是实际操作物理内存。只有操作系统才拥有对实际物理内存的管理权限&lt;/strong&gt;。操作系统可以使用有效的各种算法，来独立高效的管理物理内存。&lt;/p&gt;
+
+&lt;p&gt;我们发现在实际的Java程序，配置成固定堆大小后，内存占用一旦上去了就下不来了。即使当前程序处于比较空闲的状态下。这又是为什么呢？难道Java的GC没有回收内存？&lt;/p&gt;
+
+&lt;p&gt;其实并不是GC没有回收内存，上面有提到GC回收内存并不是指物理内存，而是指当前进程的虚拟内存（虚拟地址空间）。一般而言，回收的虚拟内存并不会立即归还给操作系统，从而操作系统也就无法回收它了。至于何时归还物理内存，这取决于一个叫glibc的堆管理器。它根据一定的策略和算法适当的释放真实的物理内存。否则即便Java程序GC了对象，该对象占用的物理内存也不会立即释放出来。由于这里我们是设置了固定大小的堆空间，实际上GC回收的虚拟内存，也不会被释放归还给操作系统。故Java进程内存占用一旦增长，内存占用几乎都不会再下降了，这样也是出于对象再分配的效率考虑的。&lt;strong&gt;这样显然可以避免操作系统反复把进程的虚拟地址页复映射物理内存页（缺页中断异常）操作，导致频繁的用户态和内核态切换造成的性能问题&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;h3 id=&quot;总结&quot;&gt;总结&lt;/h3&gt;
+
+&lt;p&gt;现在我们大概知道了为什么要设置JVM堆内存一样的原理了，总结起来有两点金句：&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;1：应用进程的内存都是操作虚拟地址空间，并不是实际操作物理内存。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2：避免操作系统反复把进程的虚拟地址页复映射物理内存页（缺页中断异常）操作，导致频繁的用户态和内核态切换造成的性能耗损。&lt;/strong&gt;&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Jvm" /><category term="jvm" /><summary type="html">前言</summary></entry><entry><title type="html">iframe跨域解决方案</title><link href="/http/2021/12/29/iframe-cors.html" rel="alternate" type="text/html" title="iframe跨域解决方案" /><published>2021-12-29T00:00:00+08:00</published><updated>2021-12-29T00:00:00+08:00</updated><id>/http/2021/12/29/iframe-cors</id><content type="html" xml:base="/http/2021/12/29/iframe-cors.html">&lt;h2 id=&quot;1原因现象&quot;&gt;1.原因现象&lt;/h2&gt;
+
+&lt;p&gt;应用中如果需要用iframe嵌套某个应用的页面，该应用也是用了相同的CAS-SSO登录，但在iframe中出现无限循环登录。&lt;/p&gt;
 
 &lt;p&gt;该现象是在谷歌浏览器中出现，原因是谷歌浏览器限制了嵌入的网页不可设置cookie，导致无法访问。仔细检查，在浏览Set-cookie的响应头出发现提示：&lt;/p&gt;
 
@@ -1270,90 +1328,4 @@ server &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
 
 &lt;p&gt;以上是测试上传和下载文件的方法，这个个例子涵盖了所有的传参和传参类型，是否有返回值等情况，消息体放body还是header例子都包含了。&lt;/p&gt;
 
-&lt;p&gt;而且上传文件也不依赖本地的某个文件指定，直接就能模拟一个文件出来。最重要的是脱离了依赖启动整个web容器。&lt;/p&gt;</content><author><name>GitHub User</name></author><category term="Unit" /><category term="Test" /><category term="test" /><category term="mockito" /><summary type="html">前言</summary></entry><entry><title type="html">Mockito 异常场景测试技巧《第七章》</title><link href="/unit/test/2021/07/18/mockito-exception-skill.html" rel="alternate" type="text/html" title="Mockito 异常场景测试技巧《第七章》" /><published>2021-07-18T00:00:00+08:00</published><updated>2021-07-18T00:00:00+08:00</updated><id>/unit/test/2021/07/18/mockito-exception-skill</id><content type="html" xml:base="/unit/test/2021/07/18/mockito-exception-skill.html">&lt;h3 id=&quot;异常场景测试技巧&quot;&gt;异常场景测试技巧&lt;/h3&gt;
-
-&lt;p&gt;我们的方法有时候没有异常返回，但是内部的某些方法我们try catch了需要测试覆盖到，这类的场景我们也是非常常见的且着重要注意到的。&lt;/p&gt;
-
-&lt;h4 id=&quot;模拟执行某方法异常测试&quot;&gt;模拟执行某方法异常测试&lt;/h4&gt;
-
-&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;TestServiceImpl&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-  &lt;span class=&quot;nd&quot;&gt;@Resource&lt;/span&gt;
-	&lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;MyService&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;myService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
-  
-	&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;doSomeThing&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(){&lt;/span&gt;
-    &lt;span class=&quot;kt&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;isError&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-      &lt;span class=&quot;n&quot;&gt;myService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
-    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;catch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Exception&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;e&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-      &lt;span class=&quot;n&quot;&gt;isError&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
-    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;isError&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
-  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-  
-  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;throwRuntimeException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(){&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-      &lt;span class=&quot;n&quot;&gt;myService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
-    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;catch&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Exception&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;e&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-      &lt;span class=&quot;k&quot;&gt;throw&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;RuntimeException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;我的异常&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-  
-  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;getName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(){&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;myService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
-  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-  
-  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;openInputStream&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;throws&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;IOException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;nc&quot;&gt;FileUtils&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;openInputStream&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;File&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;文件不存在抛异常&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;));&lt;/span&gt;
-  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-
-&lt;span class=&quot;c1&quot;&gt;// 单元测试这么做&lt;/span&gt;
-&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Test&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-  &lt;span class=&quot;nd&quot;&gt;@Mock&lt;/span&gt;
-  &lt;span class=&quot;nc&quot;&gt;MyService&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;myService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
-  &lt;span class=&quot;nd&quot;&gt;@InjectMocks&lt;/span&gt;
-  &lt;span class=&quot;nc&quot;&gt;TestServiceImpl&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;testService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
-
-  &lt;span class=&quot;nd&quot;&gt;@Before&lt;/span&gt;
-  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;setUp&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;throws&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Exception&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;nc&quot;&gt;MockitoAnnotations&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;initMocks&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
-  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-  
-  &lt;span class=&quot;c1&quot;&gt;// 令某方法执行异常，但异常被内部补货处理了。&lt;/span&gt;
-  &lt;span class=&quot;nd&quot;&gt;@Test&lt;/span&gt;
-  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;doSomeThingMethodReturnTrueTest&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;doThrow&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;RuntimeException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;when&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;myService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
-    &lt;span class=&quot;kt&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;testService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;doSomeThing&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;assertThat&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;result&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;as&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;check result is false!&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;isEqualTo&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kc&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
-  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-  
-  &lt;span class=&quot;c1&quot;&gt;// 令某方法执行异常，但是没有被捕获，断言指定的异常类是否包含某关键字&lt;/span&gt;
-  &lt;span class=&quot;nd&quot;&gt;@Test&lt;/span&gt;
-  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;throwExceptionTest&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;doThrow&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;RuntimeException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;when&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;myService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;throwException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
-    &lt;span class=&quot;c1&quot;&gt;// 使用assertJ的异常断言来测试该方法是否抛了指定异常，还可以判断里面的异常信息是否包含某关键字&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;assertThatThrownBy&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;testService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;doSomeThing&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;isInstanceOf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;RuntimeException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;hasMessageContaining&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;我的异常&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
-  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-  
-  &lt;span class=&quot;c1&quot;&gt;// 如上，就判断异常类型&lt;/span&gt;
-  &lt;span class=&quot;nd&quot;&gt;@Test&lt;/span&gt;
-  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;getNameThrowExceptionTest&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;doThrow&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;RuntimeException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;when&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;myService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;assertThatThrownBy&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;testService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;getName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;isInstanceOf&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;RuntimeException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
-  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-  
-  &lt;span class=&quot;c1&quot;&gt;// 也可以用catch里面的异常来断言是否是指定的异常&lt;/span&gt;
-  &lt;span class=&quot;nd&quot;&gt;@Test&lt;/span&gt;
-  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;throwIOExceptionTest&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-      &lt;span class=&quot;n&quot;&gt;testService&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;openInputStream&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
-    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;catch&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;Exception&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;e&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-       &lt;span class=&quot;n&quot;&gt;assertThat&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;e&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;fillInStackTrace&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()).&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;isInstanceOfAny&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;FileNotFoundException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;建议在很多个方法场景内去编写不同的执行返回或执行异常，setUp只写公共的不会被修改的无状态动作，如果都写在setUp里面会显得臃肿如果要定制某个方法放回不同的数据导致冲突。&lt;/p&gt;
-
-&lt;p&gt;异常的处理基本上这几种非常常见常用的，对大家非常有帮助。&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Unit" /><category term="Test" /><category term="test" /><category term="mockito" /><summary type="html">异常场景测试技巧</summary></entry></feed>
+&lt;p&gt;而且上传文件也不依赖本地的某个文件指定，直接就能模拟一个文件出来。最重要的是脱离了依赖启动整个web容器。&lt;/p&gt;</content><author><name>GitHub User</name></author><category term="Unit" /><category term="Test" /><category term="test" /><category term="mockito" /><summary type="html">前言</summary></entry></feed>

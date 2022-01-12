@@ -7,22 +7,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google-translate-customization" content="108d9124921d80c3-80e20d618ff053c8-g4f02ec6f3dba68b7-c">
 <!-- Begin Jekyll SEO tag v2.7.1 -->
-<title>Plantuml example | Cookie.Joo Blog</title>
+<title>JVM固定堆大小原理概解 | Cookie.Joo Blog</title>
 <meta name="generator" content="Jekyll v4.2.0">
-<meta property="og:title" content="Plantuml example">
-<meta name="author" content="GitHub User">
+<meta property="og:title" content="JVM固定堆大小原理概解">
+<meta name="author" content="曹德高">
 <meta property="og:locale" content="en_US">
-<meta name="description" content="My First PlantUML">
-<meta property="og:description" content="My First PlantUML">
-<link rel="canonical" href="/example/2017/12/04/plantuml-example.html">
-<meta property="og:url" content="/example/2017/12/04/plantuml-example.html">
+<meta name="description" content="前言">
+<meta property="og:description" content="前言">
+<link rel="canonical" href="/jvm/2022/01/12/java-fixed-heap-size.html">
+<meta property="og:url" content="/jvm/2022/01/12/java-fixed-heap-size.html">
 <meta property="og:site_name" content="Cookie.Joo Blog">
 <meta property="og:type" content="article">
-<meta property="article:published_time" content="2017-12-04T00:00:00+08:00">
+<meta property="article:published_time" content="2022-01-12T00:00:00+08:00">
 <meta name="twitter:card" content="summary">
-<meta property="twitter:title" content="Plantuml example">
+<meta property="twitter:title" content="JVM固定堆大小原理概解">
 <script type="application/ld+json">
-{"headline":"Plantuml example","dateModified":"2017-12-04T00:00:00+08:00","datePublished":"2017-12-04T00:00:00+08:00","@type":"BlogPosting","author":{"@type":"Person","name":"GitHub User"},"mainEntityOfPage":{"@type":"WebPage","@id":"/example/2017/12/04/plantuml-example.html"},"description":"My First PlantUML","url":"/example/2017/12/04/plantuml-example.html","@context":"https://schema.org"}</script>
+{"headline":"JVM固定堆大小原理概解","dateModified":"2022-01-12T00:00:00+08:00","datePublished":"2022-01-12T00:00:00+08:00","@type":"BlogPosting","author":{"@type":"Person","name":"曹德高"},"mainEntityOfPage":{"@type":"WebPage","@id":"/jvm/2022/01/12/java-fixed-heap-size.html"},"description":"前言","url":"/jvm/2022/01/12/java-fixed-heap-size.html","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="shortcut icon" href="favicon.ico">
   <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
@@ -710,11 +710,11 @@ function googleTranslateElementInit() {
 
 
 <header class="post-header">
-  <h1 class="post-title p-name" itemprop="name headline">Plantuml example</h1>
+  <h1 class="post-title p-name" itemprop="name headline">JVM固定堆大小原理概解</h1>
   <h2 class="post-subtitle"></h2>
 
   <p class="post-meta">
-    <time class="dt-published" datetime="2017-12-04T00:00:00+08:00" itemprop="datePublished"><i class="fa fa-calendar"></i> Dec 04, 2017
+    <time class="dt-published" datetime="2022-01-12T00:00:00+08:00" itemprop="datePublished"><i class="fa fa-calendar"></i> Jan 12, 2022
     </time>
 
     
@@ -753,40 +753,85 @@ function googleTranslateElementInit() {
 
     <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
   </p>
-<div class="post-tags"><a class="post-tag" href="/tags.html#plantuml">#plantuml</a></div></header>
+<div class="post-tags"><a class="post-tag" href="/tags.html#jvm">#jvm</a></div></header>
 <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
     <div class="post-content e-content" itemprop="articleBody">
 
-      <h2 id="my-first-plantuml">My First PlantUML</h2>
+      <h3 id="前言"><strong>前言</strong></h3>
 
-<h3 id="plantuml-block-1">PlantUML Block-1</h3>
-<p><img class="plantuml" src="http://www.plantuml.com/plantuml/svg/~h407374617274756d6c0a426f62202d3e20416c696365203a2068656c6c6f0a40656e64756d6c"></p>
+<p>可能很多人都知道Java程序上生产后，运维人员都会设定好JVM的堆大小，而且还是把最大最小设置成一样的值。那究竟是为什么呢？</p>
 
-<h3 id="plantuml-block-2">PlantUML Block-2</h3>
-<p><img class="plantuml" src="http://www.plantuml.com/plantuml/svg/~h407374617274756d6c0a426f62202d3e20416c696365203a2068656c6c6f20776f726c640a40656e64756d6c"></p>
+<p>你是否有这个疑问？设置堆大小为何要设置成两个相同的固定值，一般不是小的设置小点，大的是一个上限值，我们一般的人认知不也是说随用随取吗，你设置为大小都一样会不会一开始就把空间全占了，让自己独享经济呗。</p>
 
-<h3 id="plantuml-block-3">PlantUML Block-3</h3>
-<p><img class="plantuml" src="http://www.plantuml.com/plantuml/svg/~h407374617274756d6c0a282a29202d2d3e2022496e697469616c697a6174696f6e220a0a69662022536f6d65205465737422207468656e0a20202d2d3e5b747275655d2022536f6d65204163746976697479220a20202d2d3e2022416e6f74686572206163746976697479220a20202d72696768742d3e20282a290a656c73650a20202d3e5b66616c73655d2022536f6d657468696e6720656c7365220a20202d2d3e5b456e64696e672070726f636573735d20282a290a656e6469660a40656e64756d6c"></p>
+<p>我也有这个疑问，昨天我的同事让我给某个应用这么配，我也没想明白，然后我就找了好多资料，总结后跟你分享一下。</p>
 
-<h3 id="plantuml-block-4">PlantUML Block-4</h3>
+<h3 id="初始化内存做了什么"><strong>初始化内存做了什么</strong></h3>
 
-<p><img class="plantuml" src="http://www.plantuml.com/plantuml/svg/~h407374617274756d6c0a736b696e706172616d2068616e647772697474656e20747275650a0a736b696e706172616d2075736563617365207b0a20204261636b67726f756e64436f6c6f72204461726b536561477265656e0a2020426f72646572436f6c6f72204461726b536c617465477261790a0a20204261636b67726f756e64436f6c6f723c3c204d61696e203e3e2059656c6c6f77477265656e0a2020426f72646572436f6c6f723c3c204d61696e203e3e2059656c6c6f77477265656e0a0a20204172726f77436f6c6f72204f6c6976650a20204163746f72426f72646572436f6c6f7220626c61636b0a20204163746f72466f6e744e616d6520436f75726965720a0a20204163746f724261636b67726f756e64436f6c6f723c3c2048756d616e203e3e20476f6c640a7d0a0a55736572203c3c2048756d616e203e3e0a3a4d61696e2044617461626173653a206173204d7953716c203c3c204170706c69636174696f6e203e3e0a28537461727429203c3c204f6e652053686f74203e3e0a2855736520746865206170706c69636174696f6e29206173202855736529203c3c204d61696e203e3e0a0a55736572202d3e20285374617274290a55736572202d2d3e2028557365290a0a4d7953716c202d2d3e2028557365290a0a40656e64756d6c"></p>
+<p>一般而言，Java程序如果你不显示设定该值得话，会自动进行初始化设定。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>　　-Xmx <span class="c">#的默认值为你当前机器最大内存的 1/4		如本机有4G内存，这里1G</span>
+　　-Xms <span class="c">#的默认值为你当前机器最大内存的 1/64		这里就是64M</span>
+</code></pre></div></div>
+
+<p>显然这样配置的意义是希望JVM可以根据当前运行的环境，动态伸缩堆内存大小。之所以生产上设置成固定大小，网上也是说法有很多，很多时候都是使用“防止内存抖动”这样的模糊词语给出解释。但是我相信各位也很懵很难去理解，不知道这个词具体表达什么含义。</p>
+
+<p>最大堆或最小堆，从字面上理解就是JVM在运行Java程序时，为其分配堆内存空间的上限和下限值。我们把最大和最小堆设置成相同值那意思就是分配了固定大小的内存呗。这样不就省去了动态调整内存（申请和释放）以及频繁的用户态和内核态的切换带来的开销吗？</p>
+
+<p>常理推论肯定是这样的。然而当我们尝试去做个模拟实验，事实却并非如此。比如，随便写个Java程序，使用如下命令启动之。并设置好固定大小堆为1G。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>java -Xmx1024m -Xms1024m -jar demo.jar
+</code></pre></div></div>
+
+<p>然后我们通过查看进程的内存占用时，发现程序并没有占用1G的空间，而是很小的占用。这个实验结果和我们预期的完全不一致，<strong>并非独占、独享空间</strong>。如下图所示。</p>
+
+<p><img src="/images/java-fixed-heap-size/1-1956987.png" alt="1"></p>
+
+<p><strong>究竟是什么原因呢？</strong></p>
+
+<p>问题其实出在我们对内存模型的理解上有问题。很多人可能都是像上面图中那样理解程序分配内存的。实际上是不对的，且也更复杂。首先我们要理解一个重要概念，那就是“进程的虚拟地址空间”，我们应用程序通过（malloc）这个系统函数申请内存，实际上就是申请了一个虚拟的内存，并不是真正的物理内存。<strong>大家要注意，这个虚拟的内存就是指“进程的虚拟地址空间”，而不是我们通常理解的Windows下的虚拟内存或Linux下的swap(分区交换)</strong>。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>注：
+   malloc 函数是C语言库函数，void *malloc(size_t size) 分配所需的内存空间，并返回一个指向它的指针。
+   free 函数释放由其分配的内存。
+</code></pre></div></div>
+
+<h3 id="内存操作真相"><strong>内存操作真相</strong></h3>
+
+<p>应用程序申请的虚拟内存（虚拟地址空间），也就是通过malloc函数调用，本质就是在进程的虚拟地址空间里分配了一块<strong>地址范围</strong>而已。32位系统理论上最大4G，每个进程都有自己的虚拟地址空间，都能申请到最大4G内存。但是申请了的内存，如果没有实际使用（写入数据），<strong>则操作系统不会给这块虚拟空间分配实际的物理内存</strong>。其实原因很简单，物理内存一直属于紧缺资源，所以现代操作系统都设计为由内核程序统一管理，<strong>应用程序无权直接干涉</strong>。不是说你申请多少就真的给你多少，而是你实际使用多少才会给你多少。</p>
+
+<p>你发现启动后程序内存占用很小就是这个原因。尽管JVM已经在你启动时向系统申请了1G的固定堆大小空间。程序刚启动时并没有实际的操作业务，所以你实际上只用到了很小的物理内存空间。但是如果随着系统的运行业务量越来越大，实际占用物理内存就会越来越多，直到达到申请的上限值1G。运行期间，你的程序同时也会通过GC释放一些对象，并在适当的时机归还一些物理内存给操作系统。所以占用的物理内存大小，也会动态有所调整。这样操作系统就可以给其他程序使用，提高了内存利用效率。这样的设计也没什么不好的。</p>
+
+<p><img src="/images/java-fixed-heap-size/2.png" alt="2"></p>
+
+<p>如上图所示，操作系统对内存管理是以页为基本单位的，一个页代表了一个固定大小的地址范围。应用程序给某个变量比如String赋值时，此时该变量对应的进程虚拟地址空间所在的页在物理内存上找不到对应的页映射时，就会触发了一个缺页中断异常，操作系统就会重新将虚拟地址的页映射到物理内存中的页，此时才是真正实现了内存分配，会占用实际的物理内存空间。假如Java程序的GC把这个String变量收回了，也就是不需要占用内存空间了，用户进程的堆管理器会适当的归还一些物理内存给操作系统，以便下次可以给其他任何程序使用。<strong>需要注意的是应用程序调用的malloc和free两个函数，都是针对应用进程的虚拟地址空间而言的，并不是实际操作物理内存。只有操作系统才拥有对实际物理内存的管理权限</strong>。操作系统可以使用有效的各种算法，来独立高效的管理物理内存。</p>
+
+<p>我们发现在实际的Java程序，配置成固定堆大小后，内存占用一旦上去了就下不来了。即使当前程序处于比较空闲的状态下。这又是为什么呢？难道Java的GC没有回收内存？</p>
+
+<p>其实并不是GC没有回收内存，上面有提到GC回收内存并不是指物理内存，而是指当前进程的虚拟内存（虚拟地址空间）。一般而言，回收的虚拟内存并不会立即归还给操作系统，从而操作系统也就无法回收它了。至于何时归还物理内存，这取决于一个叫glibc的堆管理器。它根据一定的策略和算法适当的释放真实的物理内存。否则即便Java程序GC了对象，该对象占用的物理内存也不会立即释放出来。由于这里我们是设置了固定大小的堆空间，实际上GC回收的虚拟内存，也不会被释放归还给操作系统。故Java进程内存占用一旦增长，内存占用几乎都不会再下降了，这样也是出于对象再分配的效率考虑的。<strong>这样显然可以避免操作系统反复把进程的虚拟地址页复映射物理内存页（缺页中断异常）操作，导致频繁的用户态和内核态切换造成的性能问题</strong>。</p>
+
+<h3 id="总结">总结</h3>
+
+<p>现在我们大概知道了为什么要设置JVM堆内存一样的原理了，总结起来有两点金句：</p>
+
+<p><strong>1：应用进程的内存都是操作虚拟地址空间，并不是实际操作物理内存。</strong></p>
+
+<p><strong>2：避免操作系统反复把进程的虚拟地址页复映射物理内存页（缺页中断异常）操作，导致频繁的用户态和内核态切换造成的性能耗损。</strong></p>
 
 
     </div>
 
 </article>
 <div class="post-nav">
-<a class="previous" href="/markdown/2017/06/10/quick-mardown-example.html" title="Quick markdown example">Quick markdown example</a><a class="next" href="/example/2017/12/08/mermaid-example.html" title="Mermaid example">Mermaid example</a>
+<a class="previous" href="/http/2021/12/29/iframe-cors.html" title="iframe跨域解决方案">iframe跨域解决方案</a><span></span>
 </div>
 <div class="post-related">
       <div>Related Articles</div>
       <ul>
-        <li><a class="post-link" href="/jekyll/2018/12/07/welcome-to-jekyll.html" title="Mermaid example">Welcome to Jekyll!</a></li>
-<li><a class="post-link" href="/example/2017/12/15/table-example.html" title="Mermaid example">Table example</a></li>
-<li><a class="post-link" href="/markdown/2017/06/10/quick-mardown-example.html" title="Mermaid example">Quick markdown example</a></li>
-<li><a class="post-link" href="/unit/test/2021/07/24/mockito-assert-verify.html" title="Mermaid example">Mockito 断言和校验器《第九章》</a></li>
+        <li><a class="post-link" href="/unit/test/2021/06/19/mockito-test-standard.html" title="">单元测试准则《开篇》</a></li>
+<li><a class="post-link" href="/http/2021/12/29/iframe-cors.html" title="">iframe跨域解决方案</a></li>
+<li><a class="post-link" href="/unit/test/2021/07/24/mockito-assert-verify.html" title="">Mockito 断言和校验器《第九章》</a></li>
+<li><a class="post-link" href="/misc/2016/05/20/super-long-article.html" title="">Some articles are just so long they deserve a really long title...</a></li>
 </ul>
     </div>
 <div class="post-comments"></div></section>
