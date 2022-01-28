@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-translate-customization" content="108d9124921d80c3-80e20d618ff053c8-g4f02ec6f3dba68b7-c">
+<!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>netty-reactor | Cookie.Joo Blog</title>
+<meta name="generator" content="Jekyll v4.2.0">
+<meta property="og:title" content="netty-reactor">
+<meta name="author" content="GitHub User">
+<meta property="og:locale" content="en_US">
+<meta name="description" content="Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.">
+<meta property="og:description" content="Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.">
+<link rel="canonical" href="/netty/2021/09/07/netty-reactor.html">
+<meta property="og:url" content="/netty/2021/09/07/netty-reactor.html">
+<meta property="og:site_name" content="Cookie.Joo Blog">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2021-09-07T00:00:00+08:00">
+<meta name="twitter:card" content="summary">
+<meta property="twitter:title" content="netty-reactor">
+<script type="application/ld+json">
+{"headline":"netty-reactor","dateModified":"2021-09-07T00:00:00+08:00","datePublished":"2021-09-07T00:00:00+08:00","@type":"BlogPosting","author":{"@type":"Person","name":"GitHub User"},"mainEntityOfPage":{"@type":"WebPage","@id":"/netty/2021/09/07/netty-reactor.html"},"description":"Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.","url":"/netty/2021/09/07/netty-reactor.html","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="shortcut icon" href="favicon.ico">
+  <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/assets/css/index.min.css">
+  <link rel="stylesheet" href="/assets/css/main.css">
+  <script src="/assets/js/main.js"></script><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Cookie.Joo Blog">
+<link rel="stylesheet" href="/assets/css/default.min.css">
+<script src="/assets/js/highlight.min.js"></script>
+<!-- and it's easy to individually load additional languages -->
+<script charset="UTF-8" src="/assets/js/go.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// Init highlight js
+document.addEventListener('DOMContentLoaded', function(event) {
+  var els = document.querySelectorAll('pre code')
+
+  function addLangData(block) {
+    var outer = block.parentElement.parentElement.parentElement;
+    var lang = block.getAttribute('data-lang');
+    for (var i = 0; i < outer.classList.length; i++) {
+      var cls = outer.classList[i];
+      if (cls.startsWith('language-')) {
+        lang = cls;
+        break;
+      }
+    }
+    if (!lang) {
+      cls = block.getAttribute('class');
+      lang = cls ? cls.replace('hljs ', '') : '';
+    }
+    if (lang.startsWith('language-')) {
+      lang = lang.substr(9);
+    }
+    block.setAttribute('class', 'hljs ' + lang);
+    block.parentNode.setAttribute('data-lang', lang);
+  }
+
+  function addBadge(block) {
+    var enabled = ('true' || 'true').toLowerCase();
+    if (enabled == 'true') {
+      var pre = block.parentElement;
+      pre.classList.add('badge');
+    }
+  }
+
+  function handle(block) {
+    addLangData(block);
+    addBadge(block)
+    hljs.highlightBlock(block);
+  }
+
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    handle(el);
+  }
+});
+</script>
+
+<style>
+  /* code language badge */
+  pre.badge::before {
+    content: attr(data-lang);
+    color: #fff;
+    background-color: #ff4e00;
+    padding: 0 .5em;
+    border-radius: 0 2px;
+    text-transform: uppercase;
+    text-align: center;
+    min-width: 32px;
+    display: inline-block;
+    position: absolute;
+    right: 0;
+  }
+
+  /* fix wrong badge display for firefox browser */
+  code > table pre::before {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<header class="site-header " role="banner">
+
+  <div class="wrapper">
+    <div class="site-header-inner">
+<span class="site-brand"><a class="site-brand-inner" rel="author" href="/">
+  <img class="site-favicon" title="Cookie.Joo Blog" src="favicon.ico" onerror="this.style.display='none'">
+  Cookie.Joo Blog
+</a>
+</span><nav class="site-nav">
+          <input type="checkbox" id="nav-trigger" class="nav-trigger">
+          <label for="nav-trigger">
+            <span class="menu-icon">
+              <svg viewbox="0 0 18 15" width="18px" height="15px">
+                <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"></path>
+              </svg>
+            </span>
+          </label>
+
+          <div class="trigger">
+<a class="page-link" href="/about.html">ABOUT</a><a class="page-link" href="/archives.html">ARCHIVES</a><a class="page-link" href="/categories.html">CATEGORIES</a><a class="page-link" href="/">HOME</a><a class="page-link" href="/tags.html">TAGS</a>
+
+
+
+
+<span class="page-link">
+
+<div id="google_translate_element" style="display: none;">
+</div>
+
+<span class="ct-language">
+  <ul class="list-unstyled ct-language-dropdown">
+    
+      <li>
+        <a href="#" class="lang-select" data-lang="zh-CN">
+          
+          <img src="https://cookiejoo.gitee.io/favicon.ico" title="Chinese(Simple)">
+          
+        </a>
+      </li>
+    
+  </ul>
+</span>
+
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: '',
+    autoDisplay: false,
+    layout: google.translate.TranslateElement.InlineLayout.VERTICAL
+  }, 'google_translate_element');
+
+  function restoreLang() {
+    var iframe = document.getElementsByClassName('goog-te-banner-frame')[0];
+    if (!iframe) return;
+
+    var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+    var restore_el = innerDoc.getElementsByTagName("button");
+
+    for (var i = 0; i < restore_el.length; i++) {
+      if (restore_el[i].id.indexOf("restore") >= 0) {
+        restore_el[i].click();
+        var close_el = innerDoc.getElementsByClassName("goog-close-link");
+        close_el[0].click();
+        return;
+      }
+    }
+  }
+
+  function triggerHtmlEvent(element, eventName) {
+    var event;
+    if (document.createEvent) {
+      event = document.createEvent('HTMLEvents');
+      event.initEvent(eventName, true, true);
+      element.dispatchEvent(event);
+    } else {
+      event = document.createEventObject();
+      event.eventType = eventName;
+      element.fireEvent('on' + event.eventType, event);
+    }
+  }
+
+  var googleCombo = document.querySelector("select.goog-te-combo");
+  var langSelect = document.querySelector('.ct-language');
+  langSelect.addEventListener('click', function(event) {
+    if (!event.target) {
+      return;
+    }
+
+    var selected = document.querySelector('.ct-language .ct-language-selected');
+    if (selected) {
+      selected.classList.remove('ct-language-selected');
+    }
+
+    var target = event.target;
+    while (target && target !== langSelect ) {
+      if (target.matches('.lang-select')) {
+        break;
+      }
+      target = target.parentElement;
+    }
+
+    if (target && target.matches('.lang-select')) {
+      var lang = target.getAttribute('data-lang');
+      if (googleCombo.value == lang) {
+        restoreLang();
+      } else {
+        target.parentElement.classList.add('ct-language-selected');
+        googleCombo.value = lang;
+        triggerHtmlEvent(googleCombo, 'change');
+      }
+    }
+
+    event.preventDefault();
+  });
+}
+</script>
+
+<script type="text/javascript" src="/assets/js/element.js?cb=googleTranslateElementInit"></script>
+</span>
+</div>
+        </nav>
+</div>
+  </div>
+</header>
+
+<script>
+  (function() {
+    var lastScrollY = getScrollPos().y;
+    var documentElement = document.documentElement;
+
+    function storeScrollData() {
+      var y = getScrollPos().y;var scrollStatus = "";
+
+      if (y <= 0) {
+        scrollStatus = "top";
+      } else if ((window.innerHeight + y) >= document.body.offsetHeight) {
+        scrollStatus = "bottom";
+      } else {
+        var isScrollDown = (y - lastScrollY > 0) ? true : false;
+        scrollStatus = isScrollDown ? "down" : "up";
+      }
+
+      lastScrollY = y;
+      documentElement.setAttribute("data-scroll-status", scrollStatus);
+    }
+
+    window.addEventListener('scroll', function(e) {
+      storeScrollData();
+    });
+
+    storeScrollData();
+  })();
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+  function hashLocate(hashValue) {
+    hashValue = hashValue.replace(/^.*#h-/, '');
+    hashValue = decodeURIComponent(hashValue);
+    var element = document.getElementById(hashValue);
+
+    if (!element) {
+      return;
+    }
+
+    var header = document.querySelector('header.site-header');
+    var headerRect = header.getBoundingClientRect();
+    var headerTop = Math.floor(headerRect.top);
+    var headerHeight = Math.floor(headerRect.height);
+    var scrollPos = getScrollPos();
+    var offsetY = element.offsetTop - (headerTop + headerHeight + 20);
+
+    if (offsetY == scrollPos.y) {
+      return;
+    }
+
+    if (headerTop == 0  && offsetY > scrollPos.y) {
+      offsetY += headerHeight + 2;
+    } else if (headerTop < 0  && offsetY < scrollPos.y) {
+      offsetY -= headerHeight - 2;
+    }
+
+    smoothScrollTo(offsetY);
+  }
+
+  // The first event occurred
+  window.addEventListener('load', function(event) {
+    if (window.location.hash) {
+      hashLocate(window.location.hash);
+    }
+  });
+
+  // The first event occurred
+  window.addEventListener('click', function(event) {
+    if (event.target.tagName.toLowerCase() == 'a') {
+      hashLocate(event.target.getAttribute('href'));
+    }
+  });
+</script>
+<div class="theme-toggle">
+  <input type="checkbox" id="theme-switch">
+  <label for="theme-switch">
+    <div class="toggle"></div>
+    <div class="names">
+      <p class="light">Light</p>
+      <p class="dark">Dark</p>
+    </div>
+  </label>
+</div>
+
+
+
+
+<script>
+  (function() {
+    var sw = document.getElementById('theme-switch');
+    var html = document.getElementsByTagName('html')[0];
+    var nightModeOption = ('auto' || 'auto').toLowerCase();
+    var storage = nightModeOption === 'manual'
+        ? localStorage
+        : sessionStorage;
+    var themeData = loadThemeData();
+
+    function saveThemeData(data) {
+      storage.setItem('theme', JSON.stringify(data));
+    }
+
+    function loadThemeData() {
+      var data = storage.getItem('theme');
+      try {
+        data = JSON.parse(data ? data : '');
+      } catch(e) {
+        data = { nightShift: undefined, autoToggleAt: 0 };
+        saveThemeData(data);
+      }
+      return data;
+    }
+
+    function handleThemeToggle(nightShift) {
+      themeData.nightShift = nightShift;
+      saveThemeData(themeData);
+      html.dataset.theme = nightShift ? 'dark' : 'light';
+      setTimeout(function() {
+        sw.checked = nightShift ? true : false;
+      }, 50);
+    }
+
+    function autoThemeToggle() {
+      // Next time point of theme toggle
+      var now = new Date();
+      var toggleAt = new Date();
+      var hours = now.getHours();
+      var nightShift = hours >= 19 || hours <=7;
+
+      if (nightShift) {
+        if (hours > 7) {
+          toggleAt.setDate(toggleAt.getDate() + 1);
+        }
+        toggleAt.setHours(7);
+      } else {
+        toggleAt.setHours(19);
+      }
+
+      toggleAt.setMinutes(0);
+      toggleAt.setSeconds(0);
+      toggleAt.setMilliseconds(0)
+
+      var delay = toggleAt.getTime() - now.getTime();
+
+      // auto toggle theme mode
+      setTimeout(function() {
+        handleThemeToggle(!nightShift);
+      }, delay);
+
+      return {
+        nightShift: nightShift,
+        toggleAt: toggleAt.getTime()
+      };
+    }
+
+    // Listen the theme toggle event
+    sw.addEventListener('change', function(event) {
+      handleThemeToggle(event.target.checked);
+    });
+
+    if (nightModeOption == 'auto') {
+      var data = autoThemeToggle();
+
+      // Toggle theme by local setting
+      if (data.toggleAt > themeData.autoToggleAt) {
+        themeData.autoToggleAt = data.toggleAt;
+        handleThemeToggle(data.nightShift);
+      } else {
+        handleThemeToggle(themeData.nightShift);
+      }
+    } else if (nightModeOption == 'manual') {
+      handleThemeToggle(themeData.nightShift);
+    } else {
+      var nightShift = themeData.nightShift;
+      if (nightShift === undefined) {
+        nightShift = nightModeOption === 'on';
+      }
+      handleThemeToggle(nightShift);
+    }
+  })();
+</script>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <div class="framework">
+  <section class="main">
+
+     <div class="post">
+  <section>
+
+
+
+
+
+
+
+
+
+<header class="post-header">
+  <h1 class="post-title p-name" itemprop="name headline">netty-reactor</h1>
+  <h2 class="post-subtitle"></h2>
+
+  <p class="post-meta">
+    <time class="dt-published" datetime="2021-09-07T00:00:00+08:00" itemprop="datePublished"><i class="fa fa-calendar"></i> Sep 07, 2021
+    </time>
+
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
+  </p>
+<div class="post-tags"><a class="post-tag" href="/tags.html#netty">#netty</a></div></header>
+<article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+    <div class="post-content e-content" itemprop="articleBody">
+
+      <p><img src="/images/2021-09-07-netty-reactor/1.jpg" alt="71631627038_.pic_hd"></p>
+
+<p><strong>什么是经典的三种I/O模式</strong></p>
+
+<p>我们在学Netty的时候讲的最多的就是Reactor的三种模式，因为他的这个模式用的最广泛，涉及的I/O知识点很基础也很常用。</p>
+
+<!-- more -->
+<ul>
+  <li>我们去吃饭的时候：</li>
+</ul>
+
+<p>1：家乐园排队打饭，排队在窗口，打好才走。</p>
+
+<p>2：点单，拿一个号码牌等待被叫，好了自己去端走。</p>
+
+<p>3：辣可可包厢模式，点单后菜直接端上桌。</p>
+
+<ul>
+  <li>类比：</li>
+</ul>
+
+<p>饭店-&gt;服务器</p>
+
+<p>饭菜-&gt;数据</p>
+
+<p>饭菜好了-&gt;数据就绪</p>
+
+<p>端菜、送菜-&gt;读取数据</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>模式</th>
+      <th>特点</th>
+      <th>JDK版本</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>排队打饭模式</td>
+      <td>BIO（阻塞）</td>
+      <td>JDK1.4之前</td>
+    </tr>
+    <tr>
+      <td>点单被叫模式</td>
+      <td>NIO（非阻塞）</td>
+      <td>JDK1.4</td>
+    </tr>
+    <tr>
+      <td>包厢消费模式</td>
+      <td>AIO（异步）</td>
+      <td>JDK1.7</td>
+    </tr>
+  </tbody>
+</table>
+
+<ul>
+  <li>
+    <p>阻塞与非阻塞区别：</p>
+
+    <p>菜没好，要不要死等 -&gt; 数据就绪之前要不要等待。</p>
+
+    <p>阻塞：没有数据传过来时，读会阻塞直到有数据；缓冲区满时，写操作也会阻塞。非阻塞：遇到这些情况都是直接返回。</p>
+  </li>
+  <li>
+    <p>同步与异步区别：</p>
+
+    <p>菜好了，谁端 -&gt; 数据就绪后，数据操作谁来完成？</p>
+
+    <p>数据就绪后需要自己去读就是同步，数据就绪后直接读好再回调给程序是异步。</p>
+  </li>
+</ul>
+
+<p><strong>总结</strong></p>
+
+<p>所以BIO是阻塞同步方式；NIO是非阻塞同步方式；AIO是非阻塞异步方式。</p>
+
+<p><strong>疑问</strong></p>
+
+<p>Netty为什么仅仅支持NIO模式呢？为什么不用AIO模式呢？（Netty删掉了AIO的实现）</p>
+
+<p>1：Windows实现AIO很成熟，但Win很少用来做服务器。</p>
+
+<p>2：Linux常用来做服务器，但AIO实现不够成熟。</p>
+
+<p>3：Linux下的AIO相比较NIO的性能提升不够明显。</p>
+
+<p><strong>Reactor线程模型</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>生活场景</th>
+      <th>饭店规模变化</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1：一个人包揽所有</td>
+      <td>迎宾、点菜、做饭、上菜、送客等。</td>
+    </tr>
+    <tr>
+      <td>2：多招几个伙计</td>
+      <td>大家一起做上面的事情。</td>
+    </tr>
+    <tr>
+      <td>3：进一步分工</td>
+      <td>选一个或多个人专门做迎宾。</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Netty中的Reactor线程模型有三种，分别如下：</p>
+
+<ol>
+  <li>Reactor单线程模型；</li>
+  <li>Reactor多线程模型；</li>
+  <li>主从Reactor多线程模型；</li>
+</ol>
+
+<p><strong>–传统单线程模型–</strong></p>
+
+<p>单线程模型简单，一个线程就一路走到底，优点是开发简单；缺点是如果某一个环节慢了，整个线程资源就拖垮了，甚至应用也会处理相当慢。</p>
+
+<p>这个模型中最主要的就是每一步都是阻塞的，也就是BIO模型。有朋友会说改造成多线程不就解决了吗，多线程也只是用更多的线程做同样的事情而已，对应的每一步还是阻塞的。</p>
+
+<p><img src="/images/netty-reactor/70.png" alt="在这里插入图片描述"></p>
+
+<p><strong>Reactor单线程模型</strong></p>
+
+<p>注：Netty将这些读写、编解码等操作包装成事件，想想NIO的非堵塞的原理和包装成事件有何必然关联性。</p>
+
+<p>有同学会问，这个绿色的圈怎么理解，其实如上所说的，netty把所有的请求操作内部操作都认定为事件，绿色是一个客户端连接事件，这个连接事件也是这三种模型的关键优化点。</p>
+
+<p><img src="/images/netty-reactor/70-20210907141509987.png" alt="在这里插入图片描述"></p>
+
+<p>上面的单线程Reactor模式因为服务端只有一个线程处理IO和业务逻辑，服务端性能肯定受到限制。虽然用了NIO的非阻塞方式，但一个线程如果挂了，这个应用基本也就挂了。因此就有了多线程版本。</p>
+
+<p><strong>Reactor多线程模型</strong></p>
+
+<p>如下图所示，Reactor还是一个线程，负责监听IO事件以及分发，业务逻辑处理部分使用了一个线程池来进行处理（解码、计算、编码），这样就解决了服务端单线程处理请求而带来的性能瓶颈。就如生活场景中说的第二点，找多个人一起干同样的事。</p>
+
+<p>但是这样还是有问题，这样会把性能的瓶颈转移到IO处理上。因为IO事件的监听和分发采用的还是单个线程，在并发量比较高的情况下，这个也是比较影响性能的。这是否还有继续优化的空间呢？</p>
+
+<p><img src="/images/netty-reactor/70-20210907141512872.png" alt="在这里插入图片描述"></p>
+
+<p><strong>主从多线程模式</strong></p>
+
+<p>我们知道Reactor主要是负责IO事件的监听和分发。单个Reactor单个线程这种模式在并发量比较高的情况下，会存在性能瓶颈。我们可以想象一下生活场景，开饭店最重要的是什么？我觉得是迎宾，找几个漂亮的小姑娘在门口，把客人先招揽进来，咱们做菜慢一点又有什么关系呢？流量都没进来，你的应用再强大饭菜做的再香也没有任何体现的价值。</p>
+
+<p>再次提到这个绿色的连接事件，第一和第二两种模型为啥会进化成主从模式，你想一想，客户端连接上来都会立即传输数据吗？都会立即发送数据交互请求吗？不一定吧。</p>
+
+<p>用生活场景说：用户到饭店门口了，如果我们都在店里面忙不过来，没有人招呼外面的客人会怎么样？客人就会走吧。连接也一样，如果线程都在里面忙碌或者卡住了，那么客户端连接就会超时。</p>
+
+<p>再结合起来看看，我们第一步就先要保证和客户端连接稳定，而且客户端连接这个操作是不耗啥资源的，很快就完成了，先和客人建立了联系，客人就不会走。大家想想是不是这个道理。</p>
+
+<p>所以对于服务器而言最重要的是什么呢？是“接收连接”这个事情。主从模式更好的模式提高了性能利用率，他把acceptor单独注册到mainReactor里面去做接收连接事件。</p>
+
+<p><img src="/images/netty-reactor/70-20210907142437684.png" alt="在这里插入图片描述"></p>
+
+<p><strong>最后</strong></p>
+
+<p>我们所以的Netty服务端开发都是用了主从Reactor模式开编写，虽然说他不是最优的，比如我的业务就是只要几个连接就能完成事情，比如一个线程像一个VIP服务一样，也不会占用更多资源；或者这个项目就目前属于维护型项目，就不用什么改动了，就算改了也没有明显的效率提升反而增加了上线测试风险。但是考虑未来更多的可能性，都是建议使用第三种方式。</p>
+
+<p>分析问题要从场景来分析，并非BIO就弱于NIO。</p>
+
+
+    </div>
+
+</article>
+<div class="post-nav">
+<a class="previous" href="/netty/2021/09/02/netty-http-server.html" title="netty-http-server">netty-http-server</a><a class="next" href="/spring/2021/09/16/spring-value.html" title="Spring @Value注解详解">Spring @Value注解详解</a>
+</div>
+<div class="post-related">
+      <div>Related Articles</div>
+      <ul>
+        <li><a class="post-link" href="/jekyll/2018/12/07/welcome-to-jekyll.html" title="Spring @Value注解详解">Welcome to Jekyll!</a></li>
+<li><a class="post-link" href="/netty/2021/09/07/netty-reactor.html" title="Spring @Value注解详解">netty-reactor</a></li>
+<li><a class="post-link" href="/unit/test/2021/06/20/mockito-test-service.html" title="Spring @Value注解详解">Mockito 接口测试《第一章》</a></li>
+<li><a class="post-link" href="/markdown/2016/01/01/another-test-markdown.html" title="Spring @Value注解详解">Another test markdown</a></li>
+</ul>
+    </div>
+<div class="post-comments"></div></section>
+</div>
+
+
+  </section>
+  <section class="sidebar" style="margin-left: 15px;">
+    <!-- Get sidebar items --><style type="text/css" media="screen">
+.post-menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+</style>
+
+<div class="post-menu">
+  <div class="post-menu-title">TOC</div>
+  <div class="post-menu-content"></div>
+</div>
+
+<script>
+  function generateContent() {
+    var menu = document.querySelector(".post-menu");
+    var menuContent =  menu.querySelector(".post-menu-content");
+    var headings = document.querySelector(".post-content").querySelectorAll("h2, h3, h4, h5, h6");
+
+    // Hide menu when no headings
+    if (headings.length === 0) {
+      return menu.style.display = "none";
+    }
+
+    // Generate post menu
+    var menuHTML = '';
+    for (var i = 0; i < headings.length; i++) {
+      var h = headings[i];
+      menuHTML += (
+        '<li class="h-' + h.tagName.toLowerCase() + '">'
+        + '<a href="#h-' + h.getAttribute('id') + '">' + h.textContent + '</a></li>');
+    }
+
+    menuContent.innerHTML = '<ul>' + menuHTML + '</ul>';
+
+    // The header element
+    var header = document.querySelector('header.site-header');
+
+    function doMenuCollapse(index, over_items) {
+      var items = menuContent.firstChild.children;
+
+      if (over_items == undefined) {
+        over_items = 20;
+      }
+
+      if (items.length < over_items) {
+        return;
+      }
+
+      var activeItem = items[index];
+      var beginItem = activeItem
+      var endItem = activeItem
+      var beginIndex = index;
+      var endIndex = index + 1;
+      while (beginIndex >= 0
+        && !items[beginIndex].classList.contains('h-h2')) {
+        beginIndex -= 1;
+      }
+      while (endIndex < items.length
+        && !items[endIndex].classList.contains('h-h2')) {
+        endIndex += 1;
+      }
+      for (var i = 0; i < beginIndex; i++) {
+        item = items[i]
+        if (!item.classList.contains('h-h2')) {
+          item.style.display = 'none';
+        }
+      }
+      for (var i = beginIndex + 1; i < endIndex; i++) {
+        item = items[i]
+        // if (!item.classList.contains('h-h2')) {
+          item.style.display = '';
+        // }
+      }
+      for (var i = endIndex; i < items.length; i++) {
+        item = items[i]
+        if (!item.classList.contains('h-h2')) {
+          item.style.display = 'none';
+        }
+      }
+    }
+
+    // Init menu collapsed
+    doMenuCollapse(-1);
+
+    // Active the menu item
+    window.addEventListener('scroll', function (event) {
+      var lastActive = menuContent.querySelector('.active');
+      var changed = true;
+      var activeIndex = -1;
+      for (var i = headings.length - 1; i >= 0; i--) {
+        var h = headings[i];
+        var headingRect = h.getBoundingClientRect();
+        var headerRect = header.getBoundingClientRect();
+        var headerTop = Math.floor(headerRect.top);
+        var headerHeight = Math.floor(headerRect.height);
+        var headerHeight = headerTop + headerHeight + 20;
+        if (headingRect.top <= headerHeight) {
+          var id = 'h-' + h.getAttribute('id');
+          var a = menuContent.querySelector('a[href="#' + id  + '"]');
+          var curActive = a.parentNode;
+          if (curActive) {
+            curActive.classList.add('active');
+            activeIndex = i;
+          }
+          if (lastActive == curActive) {
+            changed = false;
+          }
+          break;
+        }
+      }
+      if (changed) {
+        if (lastActive) {
+          lastActive.classList.remove('active');
+        }
+        doMenuCollapse(activeIndex);
+      }
+      event.preventDefault();
+    });
+  }
+  generateContent();
+</script>
+</section>
+</div>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+    <div class="site-footer-inner">
+      <div>Copyright © 1970-2010 @GitHub User</div>
+      <div>Powered by <a title="Jekyll is a simple, blog-aware, static site
+      generator." href="http://jekyllrb.com/">Jekyll</a> &amp; <a title="Yat, yet
+      another theme." href="https://github.com/jeffreytse/jekyll-theme-yat">Yat Theme</a>.</div>
+      <div class="footer-col rss-subscribe">Subscribe <a href="/feed.xml">via RSS</a>
+</div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

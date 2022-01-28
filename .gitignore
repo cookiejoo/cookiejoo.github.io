@@ -36,5 +36,3 @@ logs/
 # system ignore
 .DS_Store
 Thumbs.db
-_sass/
-_site/
