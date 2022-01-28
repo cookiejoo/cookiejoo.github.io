@@ -167,7 +167,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	}
 ```
 
-3、Bean初始化缓存升级到顶级过程。DefaultSingletonBeanRegistry#**addSingleton**
+3、Bean初始化缓存升级到一级过程。DefaultSingletonBeanRegistry#**addSingleton**，这里可以理解为给人间种下因果，无论如何都是要投胎的，所以不管是人是妖是灵都被虚拟化了一个位置在人间，等待真正实化的那一刻（变成^(*￣(oo)￣)^）。三个环节一环套一环。
 
 ```java
 	//当上面的doCreateBean做完后才会到这里把Bean上升到可用状态
@@ -184,6 +184,8 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 ```
 
 ### 总结
+
+**总的过程是先看投胎在人间了没有，没有就通知造物主在三级混沌世界修炼一下，发现三级混沌在苦逼修炼就大发慈悲上升到二级生死簿记载，一切罪孽都消除后就上升一级人间投胎，整个过程需要结合代码来不停的去验证才知道其中奥妙。**
 
 我们搞个例子加图来过一遍吧，加深印象。
 
