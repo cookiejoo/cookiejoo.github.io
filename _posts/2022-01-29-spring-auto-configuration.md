@@ -1,6 +1,6 @@
 ---
 
-title: "Spring自动注入流程"
+title: "Spring自动配置流程"
 layout: post
 author: 曹德高
 tags: [spring]
@@ -9,7 +9,7 @@ categories: Spring
 
 ### **前言**
 
-Spring Boot自动注入了解一下，所谓自动配置那自然是要关注@Configuration这个注解啦。
+Spring Boot自动配置了解一下，所谓自动配置那自然是要关注@Configuration这个注解啦。
 
 追溯到源码发现有点像SPI技术，了解SPI技术的朋友看起来就没花什么力气了。SPI说白一点就是在某个规定的路径下存放的特定的配置文件（这就是技术规范），里面的内容就是需要应用启动的时候去加载类、初始化类的功能。如果各位朋友看SpringBoot源码到最后，其实也就是在特定的文件路径下特定的文件名，其内容是要初始化的全类路径，就是告诉Spring你要帮我搞定这些自定义类帮我变成你管理的Bean。
 
@@ -19,7 +19,7 @@ Spring Boot自动注入了解一下，所谓自动配置那自然是要关注@Co
 
 ### 源码
 
-要了解Spring Boot自动注入，那就要从Spring Boot启动类注解开始，这也可以间接的了解了Spring Boot为啥不需要Tomcat容器去启动(有兴趣自己先去找资料了解一下)。
+要了解Spring Boot自动配置，那就要从Spring Boot启动类注解开始，这也可以间接的了解了Spring Boot为啥不需要Tomcat容器去启动(有兴趣自己先去找资料了解一下)。
 
 #### SpringBoot启动类
 
