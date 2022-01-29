@@ -1,6 +1,6 @@
 ---
 
-title: "Spring自动配置流程"
+title: "Spring Boot自动装配流程"
 layout: post
 author: 曹德高
 tags: [spring]
@@ -9,7 +9,7 @@ categories: Spring
 
 ### **前言**
 
-Spring Boot自动配置了解一下，所谓自动配置那自然是要关注@Configuration这个注解啦。
+Spring Boot自动装配了解一下，所谓自动装配那自然是要关注@Configuration这个注解啦。
 
 追溯到源码发现有点像SPI技术，了解SPI技术的朋友看起来就没花什么力气了。SPI说白一点就是在某个规定的路径下存放的特定的配置文件（这就是技术规范），里面的内容就是需要应用启动的时候去加载类、初始化类的功能。如果各位朋友看SpringBoot源码到最后，其实也就是在特定的文件路径下特定的文件名，其内容是要初始化的全类路径，就是告诉Spring你要帮我搞定这些自定义类帮我变成你管理的Bean。
 
@@ -19,7 +19,7 @@ Spring Boot自动配置了解一下，所谓自动配置那自然是要关注@Co
 
 ### 源码
 
-要了解Spring Boot自动配置，那就要从Spring Boot启动类注解开始，这也可以间接的了解了Spring Boot为啥不需要Tomcat容器去启动(有兴趣自己先去找资料了解一下)。
+要了解Spring Boot自动装配，那就要从Spring Boot启动类注解开始，这也可以间接的了解了Spring Boot为啥不需要Tomcat容器去启动(有兴趣自己先去找资料了解一下)。
 
 #### SpringBoot启动类
 
@@ -66,7 +66,7 @@ public @interface SpringBootApplication {
 #### Spring Boot启动类重要的三个注解
 
 - @SpringBootConfiguration 一看到这个就大概知道是个配置类注解
-- @EnableAutoConfiguration 这看英文单词就知道是个开关，就是是否要开始自动配置的功能注解**（我们说自动配置嘛！这个注解意思很明确啦）**
+- @EnableAutoConfiguration 这看英文单词就知道是个开关，就是是否要开始自动装配的功能注解**（我们说自动装配嘛！这个注解意思很明确啦）**
 - @ComponentScan 上面有说
 
 #### EnableAutoConfiguration注解
@@ -171,10 +171,10 @@ public class MongoProperties {
 
 总的来说就是创建Mongodb的连接类给你用如：MongoDbFactory、mongoTemplate、gridFsTemplate，**需要额外说明的是它关注的是这个注解@Configuration**。我们要注意的是它有一个@ConditionalOnMissingBean注解，这个注解是如果你已经自己写了这种类，那么Spring就不会创建这个Bean了，会返回你创建的那个Bean，我们一般用Spring的咯。
 
-到了这里大家在写连接Redis、Mongo的例子的时候就会发现，你其实就引入Spring Boot redi/mongo的start依赖，然后配置文件配置一下连接地址等信息，你在Spring中就能使用这些连接模板类了吧，就是由于自动配置的功能帮你把Bean都给创建了，你只管用就行。
+到了这里大家在写连接Redis、Mongo的例子的时候就会发现，你其实就引入Spring Boot redi/mongo的start依赖，然后配置文件配置一下连接地址等信息，你在Spring中就能使用这些连接模板类了吧，就是由于自动装配的功能帮你把Bean都给创建了，你只管用就行。
 
 ### 总结
 
-我以前也是不知道META/spring.factories这个文件的，我也是先去了解java的SPI机制后，发现Spring中有这么个文件，我也不知道这个文件干嘛用的，自从接触Spring Boot自定义start依赖后才去了解这个自动配置。
+我以前也是不知道META/spring.factories这个文件的，我也是先去了解java的SPI机制后，发现Spring中有这么个文件，我也不知道这个文件干嘛用的，自从接触Spring Boot自定义start依赖后才去了解这个自动装配。
 
 我是自己自定义配置了一些需要的框架工具方法才用到了这个技术，然后了解这个技术，其实你不用到也不会去了解，也没有机会去了解，没事就去论坛看看、公众号看看一些技术文章或面试题，有助于你去专研底层的原理，为什么呢？因为你也怕假如有一天去面试被问到同样的问题。
