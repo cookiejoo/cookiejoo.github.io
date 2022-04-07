@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-translate-customization" content="108d9124921d80c3-80e20d618ff053c8-g4f02ec6f3dba68b7-c">
+<!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Spring Boot自动装配流程 | Cookie.Joo Blog</title>
+<meta name="generator" content="Jekyll v4.2.0">
+<meta property="og:title" content="Spring Boot自动装配流程">
+<meta name="author" content="曹德高">
+<meta property="og:locale" content="en_US">
+<meta name="description" content="前言">
+<meta property="og:description" content="前言">
+<link rel="canonical" href="/spring/2022/01/29/spring-auto-configuration.html">
+<meta property="og:url" content="/spring/2022/01/29/spring-auto-configuration.html">
+<meta property="og:site_name" content="Cookie.Joo Blog">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2022-01-29T00:00:00+08:00">
+<meta name="twitter:card" content="summary">
+<meta property="twitter:title" content="Spring Boot自动装配流程">
+<script type="application/ld+json">
+{"headline":"Spring Boot自动装配流程","dateModified":"2022-01-29T00:00:00+08:00","datePublished":"2022-01-29T00:00:00+08:00","@type":"BlogPosting","author":{"@type":"Person","name":"曹德高"},"mainEntityOfPage":{"@type":"WebPage","@id":"/spring/2022/01/29/spring-auto-configuration.html"},"description":"前言","url":"/spring/2022/01/29/spring-auto-configuration.html","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="shortcut icon" href="favicon.ico">
+  <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/assets/css/index.min.css">
+  <link rel="stylesheet" href="/assets/css/main.css">
+  <script src="/assets/js/main.js"></script><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Cookie.Joo Blog">
+<link rel="stylesheet" href="/assets/css/default.min.css">
+<script src="/assets/js/highlight.min.js"></script>
+<!-- and it's easy to individually load additional languages -->
+<script charset="UTF-8" src="/assets/js/go.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// Init highlight js
+document.addEventListener('DOMContentLoaded', function(event) {
+  var els = document.querySelectorAll('pre code')
+
+  function addLangData(block) {
+    var outer = block.parentElement.parentElement.parentElement;
+    var lang = block.getAttribute('data-lang');
+    for (var i = 0; i < outer.classList.length; i++) {
+      var cls = outer.classList[i];
+      if (cls.startsWith('language-')) {
+        lang = cls;
+        break;
+      }
+    }
+    if (!lang) {
+      cls = block.getAttribute('class');
+      lang = cls ? cls.replace('hljs ', '') : '';
+    }
+    if (lang.startsWith('language-')) {
+      lang = lang.substr(9);
+    }
+    block.setAttribute('class', 'hljs ' + lang);
+    block.parentNode.setAttribute('data-lang', lang);
+  }
+
+  function addBadge(block) {
+    var enabled = ('true' || 'true').toLowerCase();
+    if (enabled == 'true') {
+      var pre = block.parentElement;
+      pre.classList.add('badge');
+    }
+  }
+
+  function handle(block) {
+    addLangData(block);
+    addBadge(block)
+    hljs.highlightBlock(block);
+  }
+
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    handle(el);
+  }
+});
+</script>
+
+<style>
+  /* code language badge */
+  pre.badge::before {
+    content: attr(data-lang);
+    color: #fff;
+    background-color: #ff4e00;
+    padding: 0 .5em;
+    border-radius: 0 2px;
+    text-transform: uppercase;
+    text-align: center;
+    min-width: 32px;
+    display: inline-block;
+    position: absolute;
+    right: 0;
+  }
+
+  /* fix wrong badge display for firefox browser */
+  code > table pre::before {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<header class="site-header " role="banner">
+
+  <div class="wrapper">
+    <div class="site-header-inner">
+<span class="site-brand"><a class="site-brand-inner" rel="author" href="/">
+  <img class="site-favicon" title="Cookie.Joo Blog" src="favicon.ico" onerror="this.style.display='none'">
+  Cookie.Joo Blog
+</a>
+</span><nav class="site-nav">
+          <input type="checkbox" id="nav-trigger" class="nav-trigger">
+          <label for="nav-trigger">
+            <span class="menu-icon">
+              <svg viewbox="0 0 18 15" width="18px" height="15px">
+                <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"></path>
+              </svg>
+            </span>
+          </label>
+
+          <div class="trigger">
+<a class="page-link" href="/about.html">ABOUT</a><a class="page-link" href="/archives.html">ARCHIVES</a><a class="page-link" href="/categories.html">CATEGORIES</a><a class="page-link" href="/">HOME</a><a class="page-link" href="/tags.html">TAGS</a>
+
+
+
+
+<span class="page-link">
+
+<div id="google_translate_element" style="display: none;">
+</div>
+
+<span class="ct-language">
+  <ul class="list-unstyled ct-language-dropdown">
+    
+      <li>
+        <a href="#" class="lang-select" data-lang="zh-CN">
+          
+          <img src="https://cookiejoo.gitee.io/favicon.ico" title="Chinese(Simple)">
+          
+        </a>
+      </li>
+    
+  </ul>
+</span>
+
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: '',
+    autoDisplay: false,
+    layout: google.translate.TranslateElement.InlineLayout.VERTICAL
+  }, 'google_translate_element');
+
+  function restoreLang() {
+    var iframe = document.getElementsByClassName('goog-te-banner-frame')[0];
+    if (!iframe) return;
+
+    var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+    var restore_el = innerDoc.getElementsByTagName("button");
+
+    for (var i = 0; i < restore_el.length; i++) {
+      if (restore_el[i].id.indexOf("restore") >= 0) {
+        restore_el[i].click();
+        var close_el = innerDoc.getElementsByClassName("goog-close-link");
+        close_el[0].click();
+        return;
+      }
+    }
+  }
+
+  function triggerHtmlEvent(element, eventName) {
+    var event;
+    if (document.createEvent) {
+      event = document.createEvent('HTMLEvents');
+      event.initEvent(eventName, true, true);
+      element.dispatchEvent(event);
+    } else {
+      event = document.createEventObject();
+      event.eventType = eventName;
+      element.fireEvent('on' + event.eventType, event);
+    }
+  }
+
+  var googleCombo = document.querySelector("select.goog-te-combo");
+  var langSelect = document.querySelector('.ct-language');
+  langSelect.addEventListener('click', function(event) {
+    if (!event.target) {
+      return;
+    }
+
+    var selected = document.querySelector('.ct-language .ct-language-selected');
+    if (selected) {
+      selected.classList.remove('ct-language-selected');
+    }
+
+    var target = event.target;
+    while (target && target !== langSelect ) {
+      if (target.matches('.lang-select')) {
+        break;
+      }
+      target = target.parentElement;
+    }
+
+    if (target && target.matches('.lang-select')) {
+      var lang = target.getAttribute('data-lang');
+      if (googleCombo.value == lang) {
+        restoreLang();
+      } else {
+        target.parentElement.classList.add('ct-language-selected');
+        googleCombo.value = lang;
+        triggerHtmlEvent(googleCombo, 'change');
+      }
+    }
+
+    event.preventDefault();
+  });
+}
+</script>
+
+<script type="text/javascript" src="/assets/js/element.js?cb=googleTranslateElementInit"></script>
+</span>
+</div>
+        </nav>
+</div>
+  </div>
+</header>
+
+<script>
+  (function() {
+    var lastScrollY = getScrollPos().y;
+    var documentElement = document.documentElement;
+
+    function storeScrollData() {
+      var y = getScrollPos().y;var scrollStatus = "";
+
+      if (y <= 0) {
+        scrollStatus = "top";
+      } else if ((window.innerHeight + y) >= document.body.offsetHeight) {
+        scrollStatus = "bottom";
+      } else {
+        var isScrollDown = (y - lastScrollY > 0) ? true : false;
+        scrollStatus = isScrollDown ? "down" : "up";
+      }
+
+      lastScrollY = y;
+      documentElement.setAttribute("data-scroll-status", scrollStatus);
+    }
+
+    window.addEventListener('scroll', function(e) {
+      storeScrollData();
+    });
+
+    storeScrollData();
+  })();
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+  function hashLocate(hashValue) {
+    hashValue = hashValue.replace(/^.*#h-/, '');
+    hashValue = decodeURIComponent(hashValue);
+    var element = document.getElementById(hashValue);
+
+    if (!element) {
+      return;
+    }
+
+    var header = document.querySelector('header.site-header');
+    var headerRect = header.getBoundingClientRect();
+    var headerTop = Math.floor(headerRect.top);
+    var headerHeight = Math.floor(headerRect.height);
+    var scrollPos = getScrollPos();
+    var offsetY = element.offsetTop - (headerTop + headerHeight + 20);
+
+    if (offsetY == scrollPos.y) {
+      return;
+    }
+
+    if (headerTop == 0  && offsetY > scrollPos.y) {
+      offsetY += headerHeight + 2;
+    } else if (headerTop < 0  && offsetY < scrollPos.y) {
+      offsetY -= headerHeight - 2;
+    }
+
+    smoothScrollTo(offsetY);
+  }
+
+  // The first event occurred
+  window.addEventListener('load', function(event) {
+    if (window.location.hash) {
+      hashLocate(window.location.hash);
+    }
+  });
+
+  // The first event occurred
+  window.addEventListener('click', function(event) {
+    if (event.target.tagName.toLowerCase() == 'a') {
+      hashLocate(event.target.getAttribute('href'));
+    }
+  });
+</script>
+<div class="theme-toggle">
+  <input type="checkbox" id="theme-switch">
+  <label for="theme-switch">
+    <div class="toggle"></div>
+    <div class="names">
+      <p class="light">Light</p>
+      <p class="dark">Dark</p>
+    </div>
+  </label>
+</div>
+
+
+
+
+<script>
+  (function() {
+    var sw = document.getElementById('theme-switch');
+    var html = document.getElementsByTagName('html')[0];
+    var nightModeOption = ('auto' || 'auto').toLowerCase();
+    var storage = nightModeOption === 'manual'
+        ? localStorage
+        : sessionStorage;
+    var themeData = loadThemeData();
+
+    function saveThemeData(data) {
+      storage.setItem('theme', JSON.stringify(data));
+    }
+
+    function loadThemeData() {
+      var data = storage.getItem('theme');
+      try {
+        data = JSON.parse(data ? data : '');
+      } catch(e) {
+        data = { nightShift: undefined, autoToggleAt: 0 };
+        saveThemeData(data);
+      }
+      return data;
+    }
+
+    function handleThemeToggle(nightShift) {
+      themeData.nightShift = nightShift;
+      saveThemeData(themeData);
+      html.dataset.theme = nightShift ? 'dark' : 'light';
+      setTimeout(function() {
+        sw.checked = nightShift ? true : false;
+      }, 50);
+    }
+
+    function autoThemeToggle() {
+      // Next time point of theme toggle
+      var now = new Date();
+      var toggleAt = new Date();
+      var hours = now.getHours();
+      var nightShift = hours >= 19 || hours <=7;
+
+      if (nightShift) {
+        if (hours > 7) {
+          toggleAt.setDate(toggleAt.getDate() + 1);
+        }
+        toggleAt.setHours(7);
+      } else {
+        toggleAt.setHours(19);
+      }
+
+      toggleAt.setMinutes(0);
+      toggleAt.setSeconds(0);
+      toggleAt.setMilliseconds(0)
+
+      var delay = toggleAt.getTime() - now.getTime();
+
+      // auto toggle theme mode
+      setTimeout(function() {
+        handleThemeToggle(!nightShift);
+      }, delay);
+
+      return {
+        nightShift: nightShift,
+        toggleAt: toggleAt.getTime()
+      };
+    }
+
+    // Listen the theme toggle event
+    sw.addEventListener('change', function(event) {
+      handleThemeToggle(event.target.checked);
+    });
+
+    if (nightModeOption == 'auto') {
+      var data = autoThemeToggle();
+
+      // Toggle theme by local setting
+      if (data.toggleAt > themeData.autoToggleAt) {
+        themeData.autoToggleAt = data.toggleAt;
+        handleThemeToggle(data.nightShift);
+      } else {
+        handleThemeToggle(themeData.nightShift);
+      }
+    } else if (nightModeOption == 'manual') {
+      handleThemeToggle(themeData.nightShift);
+    } else {
+      var nightShift = themeData.nightShift;
+      if (nightShift === undefined) {
+        nightShift = nightModeOption === 'on';
+      }
+      handleThemeToggle(nightShift);
+    }
+  })();
+</script>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <div class="framework">
+  <section class="main">
+
+     <div class="post">
+  <section>
+
+
+
+
+
+
+
+
+
+<header class="post-header">
+  <h1 class="post-title p-name" itemprop="name headline">Spring Boot自动装配流程</h1>
+  <h2 class="post-subtitle"></h2>
+
+  <p class="post-meta">
+    <time class="dt-published" datetime="2022-01-29T00:00:00+08:00" itemprop="datePublished"><i class="fa fa-calendar"></i> Jan 29, 2022
+    </time>
+
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 3 mins</span>
+  </p>
+<div class="post-tags"><a class="post-tag" href="/tags.html#spring">#spring</a></div></header>
+<article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+    <div class="post-content e-content" itemprop="articleBody">
+
+      <h3 id="前言"><strong>前言</strong></h3>
+
+<p>Spring Boot自动装配了解一下，所谓自动装配那自然是要关注@Configuration这个注解啦。</p>
+
+<p>追溯到源码发现有点像SPI技术，了解SPI技术的朋友看起来就没花什么力气了。SPI说白一点就是在某个规定的路径下存放的特定的配置文件（这就是技术规范），里面的内容就是需要应用启动的时候去加载类、初始化类的功能。如果各位朋友看SpringBoot源码到最后，其实也就是在特定的文件路径下特定的文件名，其内容是要初始化的全类路径，就是告诉Spring你要帮我搞定这些自定义类帮我变成你管理的Bean。</p>
+
+<p>这类的实现目的是什么呢？扩展性非常高了，Spring是一个Bean对象管理的高手，不单单是它自己的一些Bean，我们很多类自己实现的，那么你这种第三方的代码也可以给Spring管理，你就按照我Spring的规范去写代码，完了就写规定的配置文件，Spring启动时去整个jar包列表中全部找出这个特定路径文件帮你初始化Bean管理Bean。</p>
+
+<p><em>（废话一下：我这人不喜欢用复杂的语言去描述一件事，很多人喜欢用复杂的东西去把一个普通的事情妖魔化，本来就是一加一等于二的事情，硬要套个二次元公式去跟别人讨论。其实你去国外的网站教程人家的解释都是讲说很简单的，很纯粹的思维。）</em></p>
+
+<h3 id="源码">源码</h3>
+
+<p>要了解Spring Boot自动装配，那就要从Spring Boot启动类注解开始，这也可以间接的了解了Spring Boot为啥不需要Tomcat容器去启动(有兴趣自己先去找资料了解一下)。</p>
+
+<h4 id="springboot启动类">SpringBoot启动类</h4>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">package</span> <span class="nn">com.cdg</span>
+<span class="nd">@ComponentScan</span>
+<span class="nd">@SpringBootApplication</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">ServerApplication</span><span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">SpringApplication</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="nc">ServerApplication</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">args</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<p>Spring Boot的启动类很简单，就是几个注解，Spring Boot为什么能简化Spring开发，就是因为它觉得单单Spring去开发一个项目pom依赖太多也太庞杂了，它开创了Spring Boot就是简化所有依赖进行整合，所以这个注解就是注解中的注解，也可以说注解功能整合或合并。</p>
+
+<p>ComponentScan也很重要啦，就是哪些类路径是我们这个项目Bean要交给Spring管理的，比如我这里就是com.cdg.*就配置一下(这里不啰嗦太多了)，一般不写就是ServerApplication下的所有包，比如这个类是在com.cdg下的，那么com.cdg.*所有的包类Spring都扫描去管理。</p>
+
+<h4 id="springbootapplication注解">SpringBootApplication注解</h4>
+
+<p>其中我们要关注的是SpringBootApplication注解。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@Target</span><span class="o">({</span><span class="nc">ElementType</span><span class="o">.</span><span class="na">TYPE</span><span class="o">})</span>
+<span class="nd">@Retention</span><span class="o">(</span><span class="nc">RetentionPolicy</span><span class="o">.</span><span class="na">RUNTIME</span><span class="o">)</span>
+<span class="nd">@Documented</span>
+<span class="nd">@Inherited</span>
+<span class="nd">@SpringBootConfiguration</span>
+<span class="nd">@EnableAutoConfiguration</span>
+<span class="nd">@ComponentScan</span><span class="o">(</span>
+    <span class="n">excludeFilters</span> <span class="o">=</span> <span class="o">{</span><span class="nd">@Filter</span><span class="o">(</span>
+    <span class="n">type</span> <span class="o">=</span> <span class="nc">FilterType</span><span class="o">.</span><span class="na">CUSTOM</span><span class="o">,</span>
+    <span class="n">classes</span> <span class="o">=</span> <span class="o">{</span><span class="nc">TypeExcludeFilter</span><span class="o">.</span><span class="na">class</span><span class="o">}</span>
+<span class="o">),</span> <span class="nd">@Filter</span><span class="o">(</span>
+    <span class="n">type</span> <span class="o">=</span> <span class="nc">FilterType</span><span class="o">.</span><span class="na">CUSTOM</span><span class="o">,</span>
+    <span class="n">classes</span> <span class="o">=</span> <span class="o">{</span><span class="nc">AutoConfigurationExcludeFilter</span><span class="o">.</span><span class="na">class</span><span class="o">}</span>
+<span class="o">)}</span>
+<span class="o">)</span>
+<span class="kd">public</span> <span class="nd">@interface</span> <span class="nc">SpringBootApplication</span> <span class="o">{</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h4 id="spring-boot启动类重要的三个注解">Spring Boot启动类重要的三个注解</h4>
+
+<ul>
+  <li>@SpringBootConfiguration 一看到这个就大概知道是个配置类注解</li>
+  <li>@EnableAutoConfiguration 这看英文单词就知道是个开关，就是是否要开始自动装配的功能注解<strong>（我们说自动装配嘛！这个注解意思很明确啦）</strong>
+</li>
+  <li>@ComponentScan 上面有说</li>
+</ul>
+
+<h4 id="enableautoconfiguration注解">EnableAutoConfiguration注解</h4>
+
+<p>该注解里面@Import(EnableAutoConfigurationImportSelector.class)是关键，是使用EnableAutoConfigurationImportSelector将所有符合条件的@Configuration配置都加载到当前SpringBoot创建并使用的IoC容器。同时借助于Spring框架的一个工具类：SpringFactoriesLoader<strong>（跟java提供的ServiceLoader类似）</strong></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@Target</span><span class="o">(</span><span class="nc">ElementType</span><span class="o">.</span><span class="na">TYPE</span><span class="o">)</span>
+<span class="nd">@Retention</span><span class="o">(</span><span class="nc">RetentionPolicy</span><span class="o">.</span><span class="na">RUNTIME</span><span class="o">)</span>
+<span class="nd">@Documented</span>
+<span class="nd">@Inherited</span>
+<span class="nd">@AutoConfigurationPackage</span>
+<span class="nd">@Import</span><span class="o">(</span><span class="nc">AutoConfigurationImportSelector</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="kd">public</span> <span class="nd">@interface</span> <span class="nc">EnableAutoConfiguration</span> <span class="o">{</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p><img src="/images/2022-01-29-spring-auto-configuration/image-20220129154109084.png" alt="image-20220129154109084"></p>
+
+<p>这个路径就是规范，约定好了这个路径下这个META/spring.factories文件内容就是Spring给用户扩展的配置文件，Spring就去里面帮你加载类且管理起来。我们找个其他jar包来看看基本就知道了。</p>
+
+<h4 id="springfactories文件">spring.factories文件</h4>
+
+<p>如Spring Boot提供了很多数据库集成，比如redis、mysql、mongodb等，我们看看这个spring-boot-autoconfigure包下的配置文件</p>
+
+<p><img src="/images/2022-01-29-spring-auto-configuration/image-20220129155243976.png" alt="image-20220129155243976"></p>
+
+<p>看看这个写法就可以了</p>
+
+<pre><code class="language-txt"># Auto Configure
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration,\
+org.springframework.boot.autoconfigure.data.jdbc.JdbcRepositoriesAutoConfiguration,\
+org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration,\
+org.springframework.boot.autoconfigure.data.ldap.LdapRepositoriesAutoConfiguration,\
+org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration,\
+org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,\
+</code></pre>
+
+<p>我们看看Mongodb连接的创建吧，网络很多是Redis，所以多看几个没坏处。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">//上面的配置idea里面点进去</span>
+<span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">boot</span><span class="o">.</span><span class="na">autoconfigure</span><span class="o">.</span><span class="na">data</span><span class="o">.</span><span class="na">mongo</span><span class="o">.</span><span class="na">MongoDataAutoConfiguration</span><span class="o">,</span><span class="err">\</span>
+  
+<span class="nd">@Configuration</span>
+<span class="nd">@ConditionalOnClass</span><span class="o">({</span> <span class="nc">MongoClient</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">com</span><span class="o">.</span><span class="na">mongodb</span><span class="o">.</span><span class="na">client</span><span class="o">.</span><span class="na">MongoClient</span><span class="o">.</span><span class="na">class</span><span class="o">,</span>
+		<span class="nc">MongoTemplate</span><span class="o">.</span><span class="na">class</span> <span class="o">})</span>
+<span class="nd">@Conditional</span><span class="o">(</span><span class="nc">AnyMongoClientAvailable</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="nd">@EnableConfigurationProperties</span><span class="o">(</span><span class="nc">MongoProperties</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="nd">@Import</span><span class="o">(</span><span class="nc">MongoDataConfiguration</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="nd">@AutoConfigureAfter</span><span class="o">(</span><span class="nc">MongoAutoConfiguration</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">MongoDataAutoConfiguration</span> <span class="o">{</span>
+
+	<span class="kd">private</span> <span class="kd">final</span> <span class="nc">MongoProperties</span> <span class="n">properties</span><span class="o">;</span>
+
+	<span class="kd">public</span> <span class="nf">MongoDataAutoConfiguration</span><span class="o">(</span><span class="nc">MongoProperties</span> <span class="n">properties</span><span class="o">)</span> <span class="o">{</span>
+		<span class="k">this</span><span class="o">.</span><span class="na">properties</span> <span class="o">=</span> <span class="n">properties</span><span class="o">;</span>
+	<span class="o">}</span>
+
+	<span class="nd">@Bean</span>
+	<span class="nd">@ConditionalOnMissingBean</span><span class="o">(</span><span class="nc">MongoDbFactory</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+	<span class="kd">public</span> <span class="nc">MongoDbFactorySupport</span><span class="o">&lt;?&gt;</span> <span class="n">mongoDbFactory</span><span class="o">(</span><span class="nc">ObjectProvider</span><span class="o">&lt;</span><span class="nc">MongoClient</span><span class="o">&gt;</span> <span class="n">mongo</span><span class="o">,</span>
+			<span class="nc">ObjectProvider</span><span class="o">&lt;</span><span class="n">com</span><span class="o">.</span><span class="na">mongodb</span><span class="o">.</span><span class="na">client</span><span class="o">.</span><span class="na">MongoClient</span><span class="o">&gt;</span> <span class="n">mongoClient</span><span class="o">)</span> <span class="o">{</span>
+    <span class="o">...</span>
+	<span class="o">}</span>
+
+	<span class="nd">@Bean</span>
+	<span class="nd">@ConditionalOnMissingBean</span>
+	<span class="kd">public</span> <span class="nc">MongoTemplate</span> <span class="nf">mongoTemplate</span><span class="o">(</span><span class="nc">MongoDbFactory</span> <span class="n">mongoDbFactory</span><span class="o">,</span>
+			<span class="nc">MongoConverter</span> <span class="n">converter</span><span class="o">)</span> <span class="o">{</span>
+		<span class="k">return</span> <span class="k">new</span> <span class="nf">MongoTemplate</span><span class="o">(</span><span class="n">mongoDbFactory</span><span class="o">,</span> <span class="n">converter</span><span class="o">);</span>
+	<span class="o">}</span>
+
+	<span class="nd">@Bean</span>
+	<span class="nd">@ConditionalOnMissingBean</span><span class="o">(</span><span class="nc">MongoConverter</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+	<span class="kd">public</span> <span class="nc">MappingMongoConverter</span> <span class="nf">mappingMongoConverter</span><span class="o">(</span><span class="nc">MongoDbFactory</span> <span class="n">factory</span><span class="o">,</span>
+			<span class="nc">MongoMappingContext</span> <span class="n">context</span><span class="o">,</span> <span class="nc">MongoCustomConversions</span> <span class="n">conversions</span><span class="o">)</span> <span class="o">{</span>
+    <span class="o">...</span>
+	<span class="o">}</span>
+
+	<span class="nd">@Bean</span>
+	<span class="nd">@ConditionalOnMissingBean</span>
+	<span class="kd">public</span> <span class="nc">GridFsTemplate</span> <span class="nf">gridFsTemplate</span><span class="o">(</span><span class="nc">MongoDbFactory</span> <span class="n">mongoDbFactory</span><span class="o">,</span>
+			<span class="nc">MongoTemplate</span> <span class="n">mongoTemplate</span><span class="o">)</span> <span class="o">{</span>
+		<span class="k">return</span> <span class="k">new</span> <span class="nf">GridFsTemplate</span><span class="o">(</span>
+				<span class="k">new</span> <span class="nf">GridFsMongoDbFactory</span><span class="o">(</span><span class="n">mongoDbFactory</span><span class="o">,</span> <span class="k">this</span><span class="o">.</span><span class="na">properties</span><span class="o">),</span>
+				<span class="n">mongoTemplate</span><span class="o">.</span><span class="na">getConverter</span><span class="o">());</span>
+	<span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>MongoProperties这个类不陌生吧，就是在配置文件中找spring.data.mongodb前缀的mongodb连接地址、用户名密码。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@ConfigurationProperties</span><span class="o">(</span><span class="n">prefix</span> <span class="o">=</span> <span class="s">"spring.data.mongodb"</span><span class="o">)</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">MongoProperties</span> <span class="o">{</span>
+  <span class="o">...</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>总的来说就是创建Mongodb的连接类给你用如：MongoDbFactory、mongoTemplate、gridFsTemplate，<strong>需要额外说明的是它关注的是这个注解@Configuration</strong>。我们要注意的是它有一个@ConditionalOnMissingBean注解，这个注解是如果你已经自己写了这种类，那么Spring就不会创建这个Bean了，会返回你创建的那个Bean，我们一般用Spring的咯。</p>
+
+<p>到了这里大家在写连接Redis、Mongo的例子的时候就会发现，你其实就引入Spring Boot redi/mongo的start依赖，然后配置文件配置一下连接地址等信息，你在Spring中就能使用这些连接模板类了吧，就是由于自动装配的功能帮你把Bean都给创建了，你只管用就行。</p>
+
+<h3 id="总结">总结</h3>
+
+<p>我以前也是不知道META/spring.factories这个文件的，我也是先去了解java的SPI机制后，发现Spring中有这么个文件，我也不知道这个文件干嘛用的，自从接触Spring Boot自定义start依赖后才去了解这个自动装配。</p>
+
+<p>我是自己自定义配置了一些需要的框架工具方法才用到了这个技术，然后了解这个技术，其实你不用到也不会去了解，也没有机会去了解，没事就去论坛看看、公众号看看一些技术文章或面试题，有助于你去专研底层的原理，为什么呢？因为你也怕假如有一天去面试被问到同样的问题。</p>
+
+
+    </div>
+
+</article>
+<div class="post-nav">
+<a class="previous" href="/spring/2022/01/28/spring-dependence.html" title="Spring是如何解决循环依赖">Spring是如何解决循环依赖</a><a class="next" href="/cloud/2022/02/15/what-is-cloud-native.html" title="什么是云原生？">什么是云原生？</a>
+</div>
+<div class="post-related">
+      <div>Related Articles</div>
+      <ul>
+        <li><a class="post-link" href="/cloud/2022/02/15/what-is-cloud-native.html" title="什么是云原生？">什么是云原生？</a></li>
+<li><a class="post-link" href="/unit/test/2021/07/01/mockito-test-mongo.html" title="什么是云原生？">Mockito MongoDB测试《第三章》</a></li>
+<li><a class="post-link" href="/spring/2022/01/28/spring-dependence.html" title="什么是云原生？">Spring是如何解决循环依赖</a></li>
+<li><a class="post-link" href="/spring/2022/01/28/spring-bean-init.html" title="什么是云原生？">Spring Bean初始化流程</a></li>
+</ul>
+    </div>
+<div class="post-comments"></div></section>
+</div>
+
+
+  </section>
+  <section class="sidebar" style="margin-left: 15px;">
+    <!-- Get sidebar items --><style type="text/css" media="screen">
+.post-menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+</style>
+
+<div class="post-menu">
+  <div class="post-menu-title">TOC</div>
+  <div class="post-menu-content"></div>
+</div>
+
+<script>
+  function generateContent() {
+    var menu = document.querySelector(".post-menu");
+    var menuContent =  menu.querySelector(".post-menu-content");
+    var headings = document.querySelector(".post-content").querySelectorAll("h2, h3, h4, h5, h6");
+
+    // Hide menu when no headings
+    if (headings.length === 0) {
+      return menu.style.display = "none";
+    }
+
+    // Generate post menu
+    var menuHTML = '';
+    for (var i = 0; i < headings.length; i++) {
+      var h = headings[i];
+      menuHTML += (
+        '<li class="h-' + h.tagName.toLowerCase() + '">'
+        + '<a href="#h-' + h.getAttribute('id') + '">' + h.textContent + '</a></li>');
+    }
+
+    menuContent.innerHTML = '<ul>' + menuHTML + '</ul>';
+
+    // The header element
+    var header = document.querySelector('header.site-header');
+
+    function doMenuCollapse(index, over_items) {
+      var items = menuContent.firstChild.children;
+
+      if (over_items == undefined) {
+        over_items = 20;
+      }
+
+      if (items.length < over_items) {
+        return;
+      }
+
+      var activeItem = items[index];
+      var beginItem = activeItem
+      var endItem = activeItem
+      var beginIndex = index;
+      var endIndex = index + 1;
+      while (beginIndex >= 0
+        && !items[beginIndex].classList.contains('h-h2')) {
+        beginIndex -= 1;
+      }
+      while (endIndex < items.length
+        && !items[endIndex].classList.contains('h-h2')) {
+        endIndex += 1;
+      }
+      for (var i = 0; i < beginIndex; i++) {
+        item = items[i]
+        if (!item.classList.contains('h-h2')) {
+          item.style.display = 'none';
+        }
+      }
+      for (var i = beginIndex + 1; i < endIndex; i++) {
+        item = items[i]
+        // if (!item.classList.contains('h-h2')) {
+          item.style.display = '';
+        // }
+      }
+      for (var i = endIndex; i < items.length; i++) {
+        item = items[i]
+        if (!item.classList.contains('h-h2')) {
+          item.style.display = 'none';
+        }
+      }
+    }
+
+    // Init menu collapsed
+    doMenuCollapse(-1);
+
+    // Active the menu item
+    window.addEventListener('scroll', function (event) {
+      var lastActive = menuContent.querySelector('.active');
+      var changed = true;
+      var activeIndex = -1;
+      for (var i = headings.length - 1; i >= 0; i--) {
+        var h = headings[i];
+        var headingRect = h.getBoundingClientRect();
+        var headerRect = header.getBoundingClientRect();
+        var headerTop = Math.floor(headerRect.top);
+        var headerHeight = Math.floor(headerRect.height);
+        var headerHeight = headerTop + headerHeight + 20;
+        if (headingRect.top <= headerHeight) {
+          var id = 'h-' + h.getAttribute('id');
+          var a = menuContent.querySelector('a[href="#' + id  + '"]');
+          var curActive = a.parentNode;
+          if (curActive) {
+            curActive.classList.add('active');
+            activeIndex = i;
+          }
+          if (lastActive == curActive) {
+            changed = false;
+          }
+          break;
+        }
+      }
+      if (changed) {
+        if (lastActive) {
+          lastActive.classList.remove('active');
+        }
+        doMenuCollapse(activeIndex);
+      }
+      event.preventDefault();
+    });
+  }
+  generateContent();
+</script>
+</section>
+</div>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+    <div class="site-footer-inner">
+      <div>Copyright © 1970-2010 @GitHub User</div>
+      <div>Powered by <a title="Jekyll is a simple, blog-aware, static site
+      generator." href="http://jekyllrb.com/">Jekyll</a> &amp; <a title="Yat, yet
+      another theme." href="https://github.com/jeffreytse/jekyll-theme-yat">Yat Theme</a>.</div>
+      <div class="footer-col rss-subscribe">Subscribe <a href="/feed.xml">via RSS</a>
+</div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

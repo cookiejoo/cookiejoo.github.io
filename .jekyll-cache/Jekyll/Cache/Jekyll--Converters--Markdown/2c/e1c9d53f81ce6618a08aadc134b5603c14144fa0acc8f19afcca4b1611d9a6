@@ -1,0 +1,135 @@
+I"�$<h3 id="背景">背景</h3>
+
+<p>我们在公司内网写代码、打包、部署都是在内网专有机器和专有网络上访问，所以基本不会考虑代码加密等问题。</p>
+
+<p>如果我们的代码要部署到公有云等外部机器上，或者与其他公司共建等共享机房内部署，那么就要考虑我们部署的代码要进行加密后上传到公有云机器上部署，从而避免别的公司会下载我们的部署包反编译查看我们的代码。</p>
+
+<p>如果我们的代码不进行加密等处理，那我们的业务极有可能</p>
+
+<p>1：被破解，内部数据隐私等泄露的风险。</p>
+
+<p>2：也很有可能被恶意通过字节码植入破坏性代码。</p>
+
+<p>3：被破解者绕过关键逻辑造成经济损失。</p>
+
+<p>正是要解决此类问题，我们不得不对代码进行加固处理。</p>
+
+<h3 id="预研">预研</h3>
+
+<p>我们正常的jar包里面的内容是什么样的呢？我们要怎么对现有的jar包进行加固呢？所以怎么下手是一个必须要面对的难题。我们以Spring-Boot的jar包为例，也是主流jar打包方式。</p>
+
+<p><img src="/images/2022-04-06-jarx/WX20220406-175405@2x.png" alt="WX20220406-175405@2x" /></p>
+
+<p>正常Spring-Boot jar包解压后有3个文件夹</p>
+
+<p>BOOT-INT：存放该应用的第一方代码(即非maven引入的jar，你在这个项目可直接编辑的代码)</p>
+
+<p>META-INT：主要是配置文件，MAINFEST.MF是文件启动描述文件，Application.java全路径启动描述</p>
+
+<p>org：Spring-Boot的启动依赖类，Spring-Boot自己的类加载用的依赖类</p>
+
+<p><img src="/images/2022-04-06-jarx/WX20220406-175557@2x.png" alt="WX20220406-175557@2x" /></p>
+
+<h3 id="确认方向">确认方向</h3>
+
+<p>从文件路径图中看，我们其实要处理的就一个文件夹「<strong>BOOT-INF</strong>」，因为这里存放的是原始第一手class文件，和依赖的二方包、三方包jar文件，也就是要防止别人看的文件。</p>
+
+<p>那BOOT-INF文件夹分四类，一类是java文件，一类是静态前端文件，一类是配置文件都在classes文件夹内，lib是maven引入的jar包文件。</p>
+
+<p>我们观察一下classes的class必然要加密，静态前端文件基本都是vue用node编译后的文件，这种文件已经极其难看了就可以不用考虑加密处理了。配置文件呢我们一般是用第三方配置系统的，所以application.properties内存放的东西很少，也不会存放敏感信息的（如有敏感信息建议放第三方配置平台），所以也不用对这类文件做出来。lib下的第二方包我们得做加密，为啥呢？因为我们有很多api包、sdk包是自己写的模块代码，打成了jar包后给本应用模块依赖进来的，这些可能都是敏感文件肯定也不能给暴露了。其他的jar包就不用去加密了，因为这些第三方包基本都是开源的，或者不是业务相关的工具jar没必要加密。</p>
+
+<p>综合下来就classes的class文件和lib包的我们自己敏感二方包要加密。</p>
+
+<p>确定了要处理的文件后我们要确认一下行不行的通，我加密这些代码后会不会启动都启动不了了，我们启动jar包这些class怎么还原回来？</p>
+
+<p>我搜索了一下氪金产品，jar包加固都是提供一个加密软硬把包丢进去生成一个新的加密包，在提供一个javaagent包配合启动时解密，因为启动jar包时，javaagent是第一道关卡，从这个关卡中把class还原回来给class loader重定义后主程序就能用解密还原回来的class。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">Instrumentation</span><span class="o">.</span><span class="na">addTransformer</span><span class="o">()</span>
+<span class="c1">//方法允许我们在类加载之前，重新定义Class，先看一下方法的定义：</span>
+<span class="kt">void</span> <span class="nf">addTransformer</span><span class="o">(</span><span class="nc">ClassFileTransformer</span> <span class="n">transformer</span><span class="o">);</span>
+<span class="c1">//ClassFileTransformer是一个接口，只有一个transform方法，它在主程序的main方法执行前，装载的每个类都要经过transform执行一次，可以将它称为转换器。</span>
+</code></pre></div></div>
+
+<p>Javaagent这点特性很重要，它恰好解决了我们要类加载之前把class还原回来。用javaagent的话需要在启动时加启动参数配置，可以在启动sh包内加-D等参数判断，如果不是做过jar包加密的应用就不用加javaagent的参数，写在部署脚本里面这样也挺通用的。</p>
+
+<p>不过生成jar包不能用一个文件人工执行，我们要自己做这个实现，那我们得用到加解密的工具类如RSA、AES这类的非对称加解密文件，打包的工具我们要配合Jenkins那我们可以用脚本去运行Main方法进行jar加密后生成一个新的，或者在打包时用maven插件直接把打包后的包进行jar加密输出成另外一个包，但是要配合插件的参数判断是否要启用jar加密还是不用加密，这里可能会麻烦一点，那直接就用Main方法加密吧，写在Jenkins自定义脚本去执行。</p>
+
+<p>如果我们需要指定只能在某台机器上解密的话也得要支持，比如用mac地址，只能在这个mac地址的机器才能执行启动加解密，那也挺保险的，但是这个配置可能会导致一些问题不太灵活。比如扩容机器、机器坏了换机器那你得重新打包，紧急扩容的时候就很难受了。除非这些配置你在javaagent启动的时候先去远程调用配置中心的配置来做，但是这个配置存放在哪可能会有一些问题，比如你这个公有云是不能访问其他云网络的，你只能在你的公有云里面部署一下配置管理系统来做这个接口，这样确实有些启动依赖在里面的。</p>
+
+<p>是否要做这个第三方配置或许取决于小组讨论，主要就是还得考虑一下如果获取配置接口挂了的情况就无法启动了。</p>
+
+<p>我们规划一下这个jar包加固的手脚架</p>
+
+<ul>
+  <li><strong>jarx-core:</strong> Jarx的核心模块，对jar包解压、包下class加密功能，重新压缩成jar包；</li>
+  <li><strong>jarx-crypto:</strong> Jarx的加密模块，用什么方式加密、解密；</li>
+  <li><strong>jarx-agent:</strong> Jarx的agent启动依赖解密模块；</li>
+  <li><strong>jarx-fatjar:</strong> Jarx的打包工具模块，从控制台中获取一系列参数调用core包加密jar（Jenkins自定义脚本就是要调用这个jar，需要提前打包好这个工具放到一个挂载盘中给Jenkins下载执行）；</li>
+  <li><strong>jarx-maven-plugin:</strong> Jarx的maven打包插件；</li>
+</ul>
+
+<p>fatjar和maven-plugin都是做加密打包用，就看用那种方便吧。</p>
+
+<p>我们要定义一些Main方法打包的参数，因为我想做的是classes包可以像aop已经切面去指定要加密的class，指定lib下哪些jar要加密，这些加的aop包也要说明，哪些类可以不加密。</p>
+
+<h3 id="参数说明">参数说明</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>参数名</th>
+      <th>说明</th>
+      <th>是否必填</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>-filePath</td>
+      <td>加密的jar/war完整路径</td>
+      <td>必填</td>
+    </tr>
+    <tr>
+      <td>-packages</td>
+      <td>加密的包名，该包下所有class都会加密，多个用","分割</td>
+      <td>必填</td>
+    </tr>
+    <tr>
+      <td>-publicPassword</td>
+      <td>公钥</td>
+      <td>必填</td>
+    </tr>
+    <tr>
+      <td>-password</td>
+      <td>原始密码，不填则随机生成</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>-excludeClasses</td>
+      <td>排除的全类名，多个用","分割</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>-includeJars</td>
+      <td>jar包lib下要加密jar文件名，多个用","分割</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>-macCodes</td>
+      <td>Mac地址，在绑定的机器生成，加密后只可在此机器上运行</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<p>执行命令，配置用等于号进行配置，用空格隔开下一个配置</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>java <span class="nt">-jar</span> jarx-fatjar.jar <span class="nt">-filePath</span><span class="o">=</span>xxx-app.jar <span class="nt">-includeJars</span><span class="o">=</span>a.jar,b.jar <span class="nt">-packages</span><span class="o">=</span>com.qihoo.finance.应用a.modules,com.qihoo.finance.应用b.modules <span class="nt">-excludeClasses</span><span class="o">=</span>com.xxx.Application <span class="nt">-publicPassword</span><span class="o">=</span>xxx <span class="nt">-password</span><span class="o">=</span>123456 <span class="nt">-macCodes</span><span class="o">=</span>90-9C-4A-CB-BC-FF
+</code></pre></div></div>
+
+<p>结果: 生成 xxx-app-encrypted.jar，这个就是加密后的jar文件；加密后的文件不可直接执行，需要配合javaagent启动。</p>
+
+<h3 id="整体架构图如下">整体架构图如下</h3>
+
+<p><img src="/images/2022-04-06-jarx/流程.png" alt="流程" /></p>
+
+:ET

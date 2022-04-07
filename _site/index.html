@@ -118,7 +118,6 @@ document.addEventListener('DOMContentLoaded', function(event) {
     display: none;
   }
 </style>
-<script>MathJax={"tex":{"inlineMath":[["$","$"],["\\(","\\)"]],"displayMath":[["$$","$$"],["\\[","\\]"]]},"svg":{"fontCache":"global"}}</script><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 
@@ -721,6 +720,653 @@ function googleTranslateElementInit() {
   <div class="pagination">
   <!-- Post list links -->
   <ul class="post-list">
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/java/2022/04/07/jarx.html">
+          Jar包加固《二、jar包处理流程》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Apr 07, 2022</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
+      </div>
+      <a class="post-excerpt" href="/java/2022/04/07/jarx.html">
+        <p>
+        前言
+
+我们知道我们要实现的脉络后并生成了手脚架模块代码，接下来的事情就一路把功能代码填补上。
+
+整体流程图
+
+
+
+Jar包处理
+
+-filePath
+
+按我们定义的参数第一个是待加密的jar包路径，先判断文件是否存在，是否是jar类型的扩展名。
+
+-publicPassword
+
+接下来是公钥，为什么是公钥，这里的加密设计是用RSA对一个原始密码加密，存放到一个文件内，如果有指定Mac地址，也用RSA加密放到另外一个文件内，这里多出两个文件，那就一起定义加密后的文件存放到哪里好了，从jar的目录结果来看，BOOT-INF是原始文件夹，还有一个是META-INF文件夹，我选择放META-INF文件夹里面用点号开头命名隐藏文件夹如：.xxxClasses。
+
+类uninx操作系统，以“.... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#java">#java</a></div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/java/2022/04/06/jarx.html">
+          Jar包加固《一、预研与方向》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Apr 06, 2022</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
+      </div>
+      <a class="post-excerpt" href="/java/2022/04/06/jarx.html">
+        <p>
+        背景
+
+我们在公司内网写代码、打包、部署都是在内网专有机器和专有网络上访问，所以基本不会考虑代码加密等问题。
+
+如果我们的代码要部署到公有云等外部机器上，或者与其他公司共建等共享机房内部署，那么就要考虑我们部署的代码要进行加密后上传到公有云机器上部署，从而避免别的公司会下载我们的部署包反编译查看我们的代码。
+
+如果我们的代码不进行加密等处理，那我们的业务极有可能
+
+1：被破解，内部数据隐私等泄露的风险。
+
+2：也很有可能被恶意通过字节码植入破坏性代码。
+
+3：被破解者绕过关键逻辑造成经济损失。
+
+正是要解决此类问题，我们不得不对代码进行加固处理。
+
+预研
+
+我们正常的jar包里面的内容是什么样的呢？我们要怎么对现有的jar包进行加固呢？所以怎么下手是一个必须要面对的难题。我们以Spri... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#java">#java</a></div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/java/2022/04/05/jarx.html">
+          Jar包加固产品对比
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Apr 05, 2022</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
+      </div>
+      <a class="post-excerpt" href="/java/2022/04/05/jarx.html">
+        <p>
+        背景
+
+Jar包的加密在正常场景中运用较少，基本不会考虑此类加密处理，一般是在加密数据等领域居多，还有Android的SDK包等发布加密居多，一般简单的使用代码混淆proguard插件就能满足一些需求，但是该工具使用范围极其有限，简单模式的java模块还是可以满足的。
+
+市面的收费产品都是自研的整体加密方式，配合agent启动解密(该方向是java方向主流的Spring包应用)，在实现上确实有方便和独到之处。
+
+对比
+
+下面的表格是我居于两种产品的对比列表
+
+
+  
+    
+      –
+      代码混淆
+      Class文件加密
+    
+  
+  
+    
+      原理
+      将项目代码中包名、类名、方法名、参数名皆可混淆的工具打包插件，打包后的代码很难看... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#java">#java</a></div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/cloud/2022/02/15/what-is-cloud-native.html">
+          什么是云原生？
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Feb 15, 2022</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
+      </div>
+      <a class="post-excerpt" href="/cloud/2022/02/15/what-is-cloud-native.html">
+        <p>
+        前言
+
+想必在IT的工作中云原生(CloudNative)这个词会在工作或学习中出现无数次，其实我也很不理解什么是云原生，和我现在的码字工作沾到了哪些边？很多开源应用都是声称自己是云原生或向云原生靠拢的趋势。还有云计算、云服务器，这些是不是就是云原生？出于焦虑原因，我就不停的去翻找资料查Wiki，试图真正的理解这个概念，至少吹牛的时候自己还能搭上话。
+
+大多资料读完会感觉云绕雾罩，一知半解，让我更焦虑了；为了让我避免陷入自我怀疑的负面情绪，这些文章一概认为作者文字功底不行（如果别人看不懂我写的，那也可以认为我文字功底不行，但请不要怀疑自己）。
+
+历史
+
+
+
+看一下这个历史发展图，这个概念是2013年提出2015年推广，2013年Docker就出现了。
+
+我之前以为Docker就是云原生... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#cloud">#cloud</a></div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/spring/2022/01/29/spring-auto-configuration.html">
+          Spring Boot自动装配流程
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jan 29, 2022</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 3 mins</span>
+      </div>
+      <a class="post-excerpt" href="/spring/2022/01/29/spring-auto-configuration.html">
+        <p>
+        前言
+
+Spring Boot自动装配了解一下，所谓自动装配那自然是要关注@Configuration这个注解啦。
+
+追溯到源码发现有点像SPI技术，了解SPI技术的朋友看起来就没花什么力气了。SPI说白一点就是在某个规定的路径下存放的特定的配置文件（这就是技术规范），里面的内容就是需要应用启动的时候去加载类、初始化类的功能。如果各位朋友看SpringBoot源码到最后，其实也就是在特定的文件路径下特定的文件名，其内容是要初始化的全类路径，就是告诉Spring你要帮我搞定这些自定义类帮我变成你管理的Bean。
+
+这类的实现目的是什么呢？扩展性非常高了，Spring是一个Bean对象管理的高手，不单单是它自己的一些Bean，我们很多类自己实现的，那么你这种第三方的代码也可以给Spring... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#spring">#spring</a></div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/spring/2022/01/28/spring-dependence.html">
+          Spring是如何解决循环依赖
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jan 28, 2022</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 6 mins</span>
+      </div>
+      <a class="post-excerpt" href="/spring/2022/01/28/spring-dependence.html">
+        <p>
+        前言
+
+Spring循环依赖，也就是说类A依赖了类B，类B又依赖类A，那么在项目启动的时候，由于系统不知道先加载A还是B，就会出现循环依赖的错误。
+
+Error creating bean with name 'AServiceImpl': Bean with name 'AServiceImpl' has been injected into other beans [BServiceImpl,CServiceImpl,EServiceImpl]
+
+
+最好的是重构代码抽取公用部分被大家一起依赖。
+
+或者用@lazy-init属性。在你注入bean时，在互相依赖的两个bean上加上@Lazy注解也可以。
+
+Spring是如何解决循环依赖问题的呢？下面我们从代码的角度的看看它是如何设计的... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#spring">#spring</a></div>
+    </li>
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/spring/2022/01/28/spring-bean-init.html">
+          Spring Bean初始化流程
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Jan 28, 2022</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
+      </div>
+      <a class="post-excerpt" href="/spring/2022/01/28/spring-bean-init.html">
+        <p>
+        前言
+
+对于Bean的初始化流程，我觉得无需太专注去了解的，因为里面的东西太多了，对我们有啥帮助吗？没有，因为你只是应付将来可能面试时别人会问而已，拿到Offer了基本就扔掉了，如果是我的话我就直接说忘了或没怎么关注，我反而觉得里面的一些设计模式需要去探索一下的，远比应付面试要好千倍万倍。
+
+我这里也随便简单过一下，想到哪就聊到哪吧。我想鼓励你的是：没关注就是没关注，如果很重要我们就去补习，不是每一个人都有过目不忘的本领，我们时刻保持一颗学习的心态去面对工作和生活就好了。
+
+源码
+
+下面我把关键的类方法贴出来大概说说它的流程是干嘛的，如果不感兴趣就瞎过一遍就行，重要的是里面的具体实现是值得我们去学习和深究的，我也是看了几遍源码去理解和找一些设计模式思想方法学习的，反正我也记不住，我就记... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#spring">#spring</a></div>
+    </li>
 <li>
       
 
@@ -2525,1246 +3171,6 @@ MSF单元测规约
 <a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
 </div>
     </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/jekyll/2018/12/07/welcome-to-jekyll.html">
-          Welcome to Jekyll!
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Dec 07, 2018</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
-      </div>
-      <a class="post-excerpt" href="/jekyll/2018/12/07/welcome-to-jekyll.html">
-        <p>
-        You’ll find this post in your _posts directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run jekyll serve, which launches a web server and auto-regenerates your site when a file is updated.
-
-To add new posts, simply add a file in the _posts dire... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags">
-<a class="post-tag" href="/tags.html#jekyll">#jekyll</a><a class="post-tag" href="/tags.html#theme">#theme</a><a class="post-tag" href="/tags.html#yat">#yat</a>
-</div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/markdown/2018/12/05/an-exhibit-of-markdown.html">
-          An exhibit of Markdown
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Dec 05, 2018</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 2 mins</span>
-      </div>
-      <a class="post-excerpt" href="/markdown/2018/12/05/an-exhibit-of-markdown.html">
-        <p>
-        This note demonstrates some of what Markdown is capable of doing.
-
-An exhibit of Markdown
-
-Note: Feel free to play with this page. Unlike regular notes, this doesn’t automatically save itself.
-
-Basic formatting
-
-Paragraphs can be written like so. A paragraph is the basic block of Markdown. A paragraph is what text will turn into when there is no... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags">
-<a class="post-tag" href="/tags.html#example">#example</a><a class="post-tag" href="/tags.html#markdown">#markdown</a>
-</div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/markdown/2018/05/26/mathjax-test.html">
-          Mathjax Test
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> May 26, 2018</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
-      </div>
-      <a class="post-excerpt" href="/markdown/2018/05/26/mathjax-test.html">
-        <p>
-        
-  A safe integer is an integer that
-    
-      can be exactly represented as an IEEE-754 double precision number, and
-      whose IEEE-75 representation cannot be the result of rounding any other integer to fit the IEEE-754 representation
-    
-  
-  For example, $ 2 ^ {53} - 1 $ is a safe integer,
-    
-      it can be exactly represented
-    
-  
-
- <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"><a class="post-tag" href="/tags.html#test">#test</a></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/example/2017/12/18/video-example.html">
-          Video example
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Dec 18, 2017</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 3 mins</span>
-      </div>
-      <a class="post-excerpt" href="/example/2017/12/18/video-example.html">
-        <p>
-        Canon in D (Pachelbel’s Canon) - Cello &amp; Piano [BEST WEDDING VERSION]
-Some of you know that we occasionally play for weddings. As you can imagine, we get a LOT of requests for Canon in D, and we discovered that there were no good arrangements available anywhere for piano and cello! Hard to believe given its popularity. So we decided to make ... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"><a class="post-tag" href="/tags.html#video">#video</a></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/example/2017/12/15/table-example.html">
-          Table example
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Dec 15, 2017</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 4 mins</span>
-      </div>
-      <a class="post-excerpt" href="/example/2017/12/15/table-example.html">
-        <p>
-        Table example as below
-
-For now, these extended features are provided:
-
-
-  Cells spanning multiple columns
-  Cells spanning multiple rows
-  Cells text align separately
-  Table header not required
-  Grouped table header rows or data rows
-
-
-Rowspan and Colspan
-^^ in a cell indicates it should be merged with the cell above.
-This feature is contribu... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"><a class="post-tag" href="/tags.html#table">#table</a></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/example/2017/12/08/mermaid-example.html">
-          Mermaid example
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Dec 08, 2017</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
-      </div>
-      <a class="post-excerpt" href="/example/2017/12/08/mermaid-example.html">
-        <p>
-        1. Pie chart
-
-
-
-2. sequence diagram
-
-
-
-
-
-3. Class diagram
-
-
-4. State diagram
-
- <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"><a class="post-tag" href="/tags.html#mermaid">#mermaid</a></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/example/2017/12/04/plantuml-example.html">
-          Plantuml example
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Dec 04, 2017</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
-      </div>
-      <a class="post-excerpt" href="/example/2017/12/04/plantuml-example.html">
-        <p>
-        My First PlantUML
-
-PlantUML Block-1
-
-
-PlantUML Block-2
-
-
-PlantUML Block-3
-
-
-PlantUML Block-4
-
-
- <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"><a class="post-tag" href="/tags.html#plantuml">#plantuml</a></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/markdown/2017/06/10/quick-mardown-example.html">
-          Quick markdown example
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Jun 10, 2017</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 3 mins</span>
-      </div>
-      <a class="post-excerpt" href="/markdown/2017/06/10/quick-mardown-example.html">
-        <p>
-        Paragraphs are separated by a blank line.
-
-2nd paragraph. Italic, bold, and monospace. Itemized lists
-look like:
-
-
-  this one
-  that one
-  the other one
-
-
-Note that — not considering the asterisk — the actual text
-content starts at 4-columns in.
-
-
-  Block quotes are
-written like so.
-
-  They can span multiple paragraphs,
-if you like.
-
-
-Use 3 dash... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"><a class="post-tag" href="/tags.html#example">#example</a></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/junk/2017/05/20/this-post-demonstrates-post-content-styles.html">
-          This post demonstrates post content styles
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> May 20, 2017</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 4 mins</span>
-      </div>
-      <a class="post-excerpt" href="/junk/2017/05/20/this-post-demonstrates-post-content-styles.html">
-        <p>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce bibendum neque eget nunc mattis eu sollicitudin enim tincidunt. Vestibulum lacus tortor, ultricies id dignissim ac, bibendum in velit.
-
-Some great heading (h2)
-
-Proin convallis mi ac felis pharetra aliquam. Curabitur dignissim accumsan rutrum. In arcu magna, aliquet vel pretium et, m... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/junk/2016/08/12/my-example-post.html">
-          My Example Post
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Aug 12, 2016</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
-      </div>
-      <a class="post-excerpt" href="/junk/2016/08/12/my-example-post.html">
-        <p>
-        Eos eu docendi tractatos sapientem, brute option menandri in vix, quando vivendo accommodare te ius. Nec melius fastidii constituam id, viderer theophrastus ad sit, hinc semper periculis cum id. Noluisse postulant assentior est in, no choro sadipscing repudiandae vix. Vis in euismod delenit dignissim. Ex quod nostrum sit, suas decore animal id i... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/misc/2016/05/20/super-long-article.html">
-          Some articles are just so long they deserve a really long title to see if things will break well
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> May 20, 2016</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
-      </div>
-      <a class="post-excerpt" href="/misc/2016/05/20/super-long-article.html">
-        <p>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce bibendum neque eget nunc mattis eu sollicitudin enim tincidunt. Vestibulum lacus tortor, ultricies id dignissim ac, bibendum in velit. Proin convallis mi ac felis pharetra aliquam. Curabitur dignissim accumsan rutrum. In arcu magna, aliquet vel pretium et, molestie et arcu. Mauris lo... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/misc/2016/05/19/super-short-article.html">
-          Some articles are just so short that we have to make the footer stick
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> May 19, 2016</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
-      </div>
-      <a class="post-excerpt" href="/misc/2016/05/19/super-short-article.html">
-        <p>
-        Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur s... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/markdown/2016/01/01/another-test-markdown.html">
-          Another test markdown
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Jan 01, 2016</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 9 mins</span>
-      </div>
-      <a class="post-excerpt" href="/markdown/2016/01/01/another-test-markdown.html">
-        <p>
-        Put the math expression within $…$:
-
-\(\LaTeX{}\)
-
-$\Pi$
-
-$ a * b = c ^ b $
-
-$ 2^{\frac{n-1}{3}} $
-
-$ \int_a^b f(x)\,dx. $
-
-\( \int_a^b f(x)\,dx. \)
-
-
-  
-    
-      $ \rho {\rm{FOD}} = \sum\limits{\sigma ,i} {(\delta _1 - \delta _2 n_i^\sigma )
-      \phi _i^\sigma ({\bf{r}})
-      ^2} $
-    
-  
-
-
-
-  
-    
-      $$ \rho {\rm{FOD}} = \sum\limits{... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"><a class="post-tag" href="/tags.html#test">#test</a></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/markdown/2015/02/28/test-markdown.html">
-          Test markdown
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Feb 28, 2015</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
-      </div>
-      <a class="post-excerpt" href="/markdown/2015/02/28/test-markdown.html">
-        <p>
-        You can write regular markdown here and Jekyll will automatically convert it to a nice webpage.  I strongly encourage you to take 5 minutes to learn how to write in markdown - it’ll teach you how to transform regular text into bold/italics/headings/tables/etc.
-
-Here is some bold text
-
-Here is a secondary heading
-
-Here’s a useless table:
-
-
-  
-   ... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"><a class="post-tag" href="/tags.html#test">#test</a></div>
-    </li>
 </ul>
 
   <!-- Pagination links -->
@@ -3799,10 +3205,16 @@ Here’s a useless table:
   <ul>
     <li>
       <a href="/index.html">
-        All<span>33</span>
+        All<span>26</span>
       </a>
     </li>
 
+    
+      <li>
+        <a href="/categories.html#h-Cloud">
+          Cloud <span>1</span>
+        </a>
+      </li>
     
       <li>
         <a href="/categories.html#h-Http">
@@ -3812,7 +3224,7 @@ Here’s a useless table:
     
       <li>
         <a href="/categories.html#h-Java">
-          Java <span>1</span>
+          Java <span>4</span>
         </a>
       </li>
     
@@ -3830,7 +3242,7 @@ Here’s a useless table:
     
       <li>
         <a href="/categories.html#h-Spring">
-          Spring <span>1</span>
+          Spring <span>4</span>
         </a>
       </li>
     
@@ -3843,36 +3255,6 @@ Here’s a useless table:
       <li>
         <a href="/categories.html#h-Unit">
           Unit <span>10</span>
-        </a>
-      </li>
-    
-      <li>
-        <a href="/categories.html#h-example">
-          example <span>4</span>
-        </a>
-      </li>
-    
-      <li>
-        <a href="/categories.html#h-jekyll">
-          jekyll <span>1</span>
-        </a>
-      </li>
-    
-      <li>
-        <a href="/categories.html#h-junk">
-          junk <span>2</span>
-        </a>
-      </li>
-    
-      <li>
-        <a href="/categories.html#h-markdown">
-          markdown <span>5</span>
-        </a>
-      </li>
-    
-      <li>
-        <a href="/categories.html#h-misc">
-          misc <span>2</span>
         </a>
       </li>
     

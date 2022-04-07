@@ -1,0 +1,195 @@
+I"R<h3 id="前言"><strong>前言</strong></h3>
+
+<p>Spring循环依赖，也就是说类A依赖了类B，类B又依赖类A，那么在项目启动的时候，由于系统不知道先加载A还是B，就会出现循环依赖的错误。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Error creating bean with name <span class="s1">'AServiceImpl'</span>: Bean with name <span class="s1">'AServiceImpl'</span> has been injected into other beans <span class="o">[</span>BServiceImpl,CServiceImpl,EServiceImpl]
+</code></pre></div></div>
+
+<p>最好的是重构代码抽取公用部分被大家一起依赖。</p>
+
+<p>或者用@lazy-init属性。在你注入bean时，在互相依赖的两个bean上加上@Lazy注解也可以。</p>
+
+<p>Spring是如何解决循环依赖问题的呢？下面我们从代码的角度的看看它是如何设计的。</p>
+
+<h3 id="解析">解析</h3>
+
+<p>Spring能够轻松的解决属性的循环依赖正式用到了三级缓存，在AbstractBeanFactory中有注释：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/**
+ * Abstract base class for {@link org.springframework.beans.factory.BeanFactory}
+ * implementations, providing the full capabilities of the
+ * {@link org.springframework.beans.factory.config.ConfigurableBeanFactory} SPI.
+ * Does &lt;i&gt;not&lt;/i&gt; assume a listable bean factory: can therefore also be used
+ * as base class for bean factory implementations which obtain bean definitions
+ * from some backend resource (where bean definition access is an expensive operation).
+ 
+ * ## 这里给了链接让我们去看这个DefaultSingletonBeanRegistry类的实现。
+ 
+ * &lt;p&gt;This class provides a singleton cache (through its base class
+ * {@link org.springframework.beans.factory.support.DefaultSingletonBeanRegistry},
+ * singleton/prototype determination, {@link org.springframework.beans.factory.FactoryBean}
+ * handling, aliases, bean definition merging for child bean definitions,
+ * and bean destruction ({@link org.springframework.beans.factory.DisposableBean}
+ * interface, custom destroy methods). Furthermore, it can manage a bean factory
+ * hierarchy (delegating to the parent in case of an unknown bean), through implementing
+ * the {@link org.springframework.beans.factory.HierarchicalBeanFactory} interface.
+ *
+ * &lt;p&gt;The main template methods to be implemented by subclasses are
+ * {@link #getBeanDefinition} and {@link #createBean}, retrieving a bean definition
+ * for a given bean name and creating a bean instance for a given bean definition,
+ * respectively. Default implementations of those operations can be found in
+ * {@link DefaultListableBeanFactory} and {@link AbstractAutowireCapableBeanFactory}.
+ *
+ * @author Rod Johnson
+ * @author Juergen Hoeller
+ * @author Costin Leau
+ * @author Chris Beams
+ * @since 15 April 2001
+ * @see #getBeanDefinition
+ * @see #createBean
+ * @see AbstractAutowireCapableBeanFactory#createBean
+ * @see DefaultListableBeanFactory#getBeanDefinition
+ */</span>
+<span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">AbstractBeanFactory</span> <span class="kd">extends</span> <span class="nc">FactoryBeanRegistrySupport</span> <span class="kd">implements</span> <span class="nc">ConfigurableBeanFactory</span> <span class="o">{</span>
+  <span class="o">...</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<p>其实我也只能看懂其中一句话并猜测它的意思：是在未知bean的情况下委托给父级。然后通过看源码进行理解，所以就看DefaultSingletonBeanRegistry类是如何实现。</p>
+
+<h4 id="三级缓存">三级缓存</h4>
+
+<p>Spring是巧妙的用了三级缓存来存储创建Bean过程中的依赖问题，有点像是发号码牌的意味：卖菜小明的去饭店吃饭，饭店说先点菜点完后给小明一个号码牌坐着等一会叫号，饭店这时发现今天的菜这会11点半了都没准时送达，刚好眼下的小明就是这家饭店进货商，让这小明的赶紧回家拉一车菜来饭店。最后菜也到了，下锅炒了，小明也正常吃到饭了。</p>
+
+<p>我分成四类事件来理解：</p>
+
+<ul>
+  <li>小明去吃饭</li>
+  <li>点菜</li>
+  <li>号码牌</li>
+  <li>原材料是小明的</li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">DefaultSingletonBeanRegistry</span> <span class="kd">extends</span> <span class="nc">SimpleAliasRegistry</span> <span class="kd">implements</span> <span class="nc">SingletonBeanRegistry</span> <span class="o">{</span>
+
+	<span class="c1">//一级缓存：singletonObjects，存放完全实例化属性赋值完成的Bean，直接可以使用</span>
+	<span class="kd">private</span> <span class="kd">final</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="n">singletonObjects</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ConcurrentHashMap</span><span class="o">&lt;&gt;(</span><span class="mi">256</span><span class="o">);</span>
+
+	<span class="c1">//二级缓存：earlySingletonObjects，存放早期Bean的引用，尚未属性装配的Bean</span>
+	<span class="kd">private</span> <span class="kd">final</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="n">earlySingletonObjects</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">&lt;&gt;(</span><span class="mi">16</span><span class="o">);</span>
+  
+	<span class="c1">//三级缓存：singletonFactories，三级缓存，存放实例化完成的Bean工厂</span>
+	<span class="kd">private</span> <span class="kd">final</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">ObjectFactory</span><span class="o">&lt;?&gt;&gt;</span> <span class="n">singletonFactories</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">&lt;&gt;(</span><span class="mi">16</span><span class="o">);</span>
+	<span class="o">...</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p><em>如果要看懂这个示例，可能需要再了解一下Bean的初始化流程是怎么样的，后续我看要不要写一个文章也填补一下。</em></p>
+
+<p>1、我们看一下我们获取Bean的方法它做了什么：AbstractAutowireCapableBeanFactory#<strong>doGetBean</strong> 和 DefaultSingletonBeanRegistry#<strong>getSingleton</strong>。</p>
+
+<p>白话一下：对公司而言就只关心获取Bean(程序员)来干活(996)。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kd">protected</span> <span class="nc">Object</span> <span class="nf">getSingleton</span><span class="o">(</span><span class="nc">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+  	<span class="c1">//一级人间投胎了没有？</span>
+		<span class="nc">Object</span> <span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+		<span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">isSingletonCurrentlyInCreation</span><span class="o">(</span><span class="n">beanName</span><span class="o">))</span> <span class="o">{</span>
+      <span class="c1">//没有就去二级地狱生死簿找有没有？</span>
+			<span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+				<span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+				<span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+					<span class="nc">ObjectFactory</span><span class="o">&lt;?&gt;</span> <span class="n">singletonFactory</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+          <span class="c1">//没有就到三级混沌看有没有精元在重聚</span>
+					<span class="k">if</span> <span class="o">(</span><span class="n">singletonFactory</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="c1">//有就收集三级混沌精元全部上升到二级地狱登记到生死簿中记录原神，清理三级混沌世界存在记录。</span>
+						<span class="n">singletonObject</span> <span class="o">=</span> <span class="n">singletonFactory</span><span class="o">.</span><span class="na">getObject</span><span class="o">();</span>
+						<span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonObject</span><span class="o">);</span>
+						<span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+					<span class="o">}</span>
+				<span class="o">}</span>
+			<span class="o">}</span>
+		<span class="o">}</span>
+		<span class="k">return</span> <span class="n">singletonObject</span><span class="o">;</span>
+	<span class="o">}</span>
+</code></pre></div></div>
+
+<p>2、那Bean的创建它做了些什么呢？AbstractAutowireCapableBeanFactory#<strong>doCreateBean</strong> 和 DefaultSingletonBeanRegistry#<strong>addSingletonFactory</strong>。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	<span class="kd">protected</span> <span class="nc">Object</span> <span class="nf">doCreateBean</span><span class="o">(</span><span class="kd">final</span> <span class="nc">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">RootBeanDefinition</span> <span class="n">mbd</span><span class="o">,</span> <span class="kd">final</span> <span class="nd">@Nullable</span> <span class="nc">Object</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span>
+			<span class="kd">throws</span> <span class="nc">BeanCreationException</span> <span class="o">{</span>
+    <span class="o">...</span>
+    <span class="c1">//是否是单例模式(请各位思考一下为啥是单例模式才能用这种3级缓存)，且允许未创建就暴露Bean</span>
+    <span class="kt">boolean</span> <span class="n">earlySingletonExposure</span> <span class="o">=</span> <span class="o">(</span><span class="n">mbd</span><span class="o">.</span><span class="na">isSingleton</span><span class="o">()</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="o">.</span><span class="na">allowCircularReferences</span> <span class="o">&amp;&amp;</span>
+				<span class="n">isSingletonCurrentlyInCreation</span><span class="o">(</span><span class="n">beanName</span><span class="o">));</span>
+		<span class="k">if</span> <span class="o">(</span><span class="n">earlySingletonExposure</span><span class="o">)</span> <span class="o">{</span>
+			<span class="k">if</span> <span class="o">(</span><span class="n">logger</span><span class="o">.</span><span class="na">isTraceEnabled</span><span class="o">())</span> <span class="o">{</span>
+				<span class="n">logger</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">"Eagerly caching bean '"</span> <span class="o">+</span> <span class="n">beanName</span> <span class="o">+</span>
+						<span class="s">"' to allow for resolving potential circular references"</span><span class="o">);</span>
+			<span class="o">}</span>
+      <span class="c1">//这时候加的是什么 -&gt; 是二级生死簿的引用，就是记个名知道有这么东西</span>
+			<span class="n">addSingletonFactory</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="o">()</span> <span class="o">-&gt;</span> <span class="n">getEarlyBeanReference</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">,</span> <span class="n">bean</span><span class="o">));</span>
+		<span class="o">}</span>
+    <span class="c1">//初始化Bean</span>
+		<span class="nc">Object</span> <span class="n">exposedObject</span> <span class="o">=</span> <span class="n">bean</span><span class="o">;</span>
+		<span class="k">try</span> <span class="o">{</span>
+			<span class="n">populateBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">,</span> <span class="n">instanceWrapper</span><span class="o">);</span>
+			<span class="n">exposedObject</span> <span class="o">=</span> <span class="n">initializeBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">exposedObject</span><span class="o">,</span> <span class="n">mbd</span><span class="o">);</span>
+		<span class="o">}</span>
+    <span class="o">...</span>
+  <span class="o">}</span>
+
+<span class="o">--------------------------------------------------------------------------------------------</span>
+  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">addSingletonFactory</span><span class="o">(</span><span class="nc">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="nc">ObjectFactory</span><span class="o">&lt;?&gt;</span> <span class="n">singletonFactory</span><span class="o">)</span> <span class="o">{</span>
+		<span class="nc">Assert</span><span class="o">.</span><span class="na">notNull</span><span class="o">(</span><span class="n">singletonFactory</span><span class="o">,</span> <span class="s">"Singleton factory must not be null"</span><span class="o">);</span>
+		<span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">//一级人间投胎完成没有？第一次加载肯定没有</span>
+			<span class="k">if</span> <span class="o">(!</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">containsKey</span><span class="o">(</span><span class="n">beanName</span><span class="o">))</span> <span class="o">{</span>
+        <span class="c1">//没有放入三级混沌做种子预备队</span>
+				<span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonFactory</span><span class="o">);</span>
+        <span class="c1">//清理干净二级地狱生死簿</span>
+				<span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+        <span class="c1">//告知造物主有这么个东西要打算投生程序员并996一生</span>
+				<span class="k">this</span><span class="o">.</span><span class="na">registeredSingletons</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+			<span class="o">}</span>
+		<span class="o">}</span>
+	<span class="o">}</span>
+</code></pre></div></div>
+
+<p>3、Bean初始化缓存升级到一级过程。DefaultSingletonBeanRegistry#<strong>addSingleton</strong>，这里可以理解为给人间种下因果，无论如何都是要投胎的，所以不管是人是妖是灵都被虚拟化了一个位置在人间，等待真正实化的那一刻（变成^(*￣(oo)￣)^）。三个环节一环套一环。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	<span class="c1">//当上面的doCreateBean做完后才会到这里把Bean上升到可用状态</span>
+  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">addSingleton</span><span class="o">(</span><span class="nc">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="nc">Object</span> <span class="n">singletonObject</span><span class="o">)</span> <span class="o">{</span>
+		<span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">//升级到人间值得（投胎了）</span>
+			<span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonObject</span><span class="o">);</span>
+      <span class="c1">//混沌和生死簿全部清理干净</span>
+			<span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+			<span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+			<span class="k">this</span><span class="o">.</span><span class="na">registeredSingletons</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+		<span class="o">}</span>
+	<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="总结">总结</h3>
+
+<p><strong>总的过程是先看投胎在人间了没有，没有就通知造物主在三级混沌世界修炼一下，发现三级混沌在苦逼修炼就大发慈悲上升到二级生死簿记载，一切罪孽都消除后就上升一级人间投胎，整个过程需要结合代码来不停的去验证才知道其中奥妙。</strong></p>
+
+<p>我们搞个例子加图来过一遍吧，加深印象。</p>
+
+<p>假设有A、B、C 三个类依赖，A类有一个属性依赖B，B类有个属性依赖C，C类有个属性依赖A，这个就是循环依赖的示例。</p>
+
+<p>=&gt; 1. A 创建 -&gt; A 构造完成，开始注入属性，发现依赖 B，启动 B 的实例化</p>
+
+<p>=&gt; 2. B 创建 -&gt; B 构造完成，开始注入属性，发现依赖 C，启动 C 的实例化</p>
+
+<p>=&gt; 3. C 创建 -&gt; C 构造完成，开始注入属性，发现依赖 A</p>
+
+<p><img src="/images/2022-01-28-spring-dependence/image-20220128175616891.png" alt="image-20220128175616891" /></p>
+
+<ul>
+  <li>为什么构造器注入无法解决循环依赖？从中看出来，在Bean调用构造器实例化之前，一二三级缓存并没有Bean的任何相关信息，在实例化之后才放入一级缓存中，因此当getBean的时候缓存并没有命中，这样就抛出了循环依赖的异常了。</li>
+  <li>上面提到多实例Bean为什么无法支持循环依赖(@Scope = prototype)？多实例Bean是每次创建都会调用doGetBean方法，根本没有使用一二三级缓存，肯定不能解决循环依赖。</li>
+</ul>
+
+:ET

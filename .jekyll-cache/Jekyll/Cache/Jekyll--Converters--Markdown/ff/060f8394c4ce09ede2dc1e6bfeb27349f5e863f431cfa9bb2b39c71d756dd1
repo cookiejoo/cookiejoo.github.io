@@ -1,0 +1,2 @@
+I"<p>必须利用javaagent在启动时将class内容解密还原再给ClassLoad加载，所以需依赖一个-javaagent</p>
+:ET

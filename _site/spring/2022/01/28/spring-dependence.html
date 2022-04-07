@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-translate-customization" content="108d9124921d80c3-80e20d618ff053c8-g4f02ec6f3dba68b7-c">
+<!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Spring是如何解决循环依赖 | Cookie.Joo Blog</title>
+<meta name="generator" content="Jekyll v4.2.0">
+<meta property="og:title" content="Spring是如何解决循环依赖">
+<meta name="author" content="曹德高">
+<meta property="og:locale" content="en_US">
+<meta name="description" content="前言">
+<meta property="og:description" content="前言">
+<link rel="canonical" href="/spring/2022/01/28/spring-dependence.html">
+<meta property="og:url" content="/spring/2022/01/28/spring-dependence.html">
+<meta property="og:site_name" content="Cookie.Joo Blog">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2022-01-28T00:00:00+08:00">
+<meta name="twitter:card" content="summary">
+<meta property="twitter:title" content="Spring是如何解决循环依赖">
+<script type="application/ld+json">
+{"headline":"Spring是如何解决循环依赖","dateModified":"2022-01-28T00:00:00+08:00","datePublished":"2022-01-28T00:00:00+08:00","@type":"BlogPosting","author":{"@type":"Person","name":"曹德高"},"mainEntityOfPage":{"@type":"WebPage","@id":"/spring/2022/01/28/spring-dependence.html"},"description":"前言","url":"/spring/2022/01/28/spring-dependence.html","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="shortcut icon" href="favicon.ico">
+  <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/assets/css/index.min.css">
+  <link rel="stylesheet" href="/assets/css/main.css">
+  <script src="/assets/js/main.js"></script><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Cookie.Joo Blog">
+<link rel="stylesheet" href="/assets/css/default.min.css">
+<script src="/assets/js/highlight.min.js"></script>
+<!-- and it's easy to individually load additional languages -->
+<script charset="UTF-8" src="/assets/js/go.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// Init highlight js
+document.addEventListener('DOMContentLoaded', function(event) {
+  var els = document.querySelectorAll('pre code')
+
+  function addLangData(block) {
+    var outer = block.parentElement.parentElement.parentElement;
+    var lang = block.getAttribute('data-lang');
+    for (var i = 0; i < outer.classList.length; i++) {
+      var cls = outer.classList[i];
+      if (cls.startsWith('language-')) {
+        lang = cls;
+        break;
+      }
+    }
+    if (!lang) {
+      cls = block.getAttribute('class');
+      lang = cls ? cls.replace('hljs ', '') : '';
+    }
+    if (lang.startsWith('language-')) {
+      lang = lang.substr(9);
+    }
+    block.setAttribute('class', 'hljs ' + lang);
+    block.parentNode.setAttribute('data-lang', lang);
+  }
+
+  function addBadge(block) {
+    var enabled = ('true' || 'true').toLowerCase();
+    if (enabled == 'true') {
+      var pre = block.parentElement;
+      pre.classList.add('badge');
+    }
+  }
+
+  function handle(block) {
+    addLangData(block);
+    addBadge(block)
+    hljs.highlightBlock(block);
+  }
+
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    handle(el);
+  }
+});
+</script>
+
+<style>
+  /* code language badge */
+  pre.badge::before {
+    content: attr(data-lang);
+    color: #fff;
+    background-color: #ff4e00;
+    padding: 0 .5em;
+    border-radius: 0 2px;
+    text-transform: uppercase;
+    text-align: center;
+    min-width: 32px;
+    display: inline-block;
+    position: absolute;
+    right: 0;
+  }
+
+  /* fix wrong badge display for firefox browser */
+  code > table pre::before {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<header class="site-header " role="banner">
+
+  <div class="wrapper">
+    <div class="site-header-inner">
+<span class="site-brand"><a class="site-brand-inner" rel="author" href="/">
+  <img class="site-favicon" title="Cookie.Joo Blog" src="favicon.ico" onerror="this.style.display='none'">
+  Cookie.Joo Blog
+</a>
+</span><nav class="site-nav">
+          <input type="checkbox" id="nav-trigger" class="nav-trigger">
+          <label for="nav-trigger">
+            <span class="menu-icon">
+              <svg viewbox="0 0 18 15" width="18px" height="15px">
+                <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"></path>
+              </svg>
+            </span>
+          </label>
+
+          <div class="trigger">
+<a class="page-link" href="/about.html">ABOUT</a><a class="page-link" href="/archives.html">ARCHIVES</a><a class="page-link" href="/categories.html">CATEGORIES</a><a class="page-link" href="/">HOME</a><a class="page-link" href="/tags.html">TAGS</a>
+
+
+
+
+<span class="page-link">
+
+<div id="google_translate_element" style="display: none;">
+</div>
+
+<span class="ct-language">
+  <ul class="list-unstyled ct-language-dropdown">
+    
+      <li>
+        <a href="#" class="lang-select" data-lang="zh-CN">
+          
+          <img src="https://cookiejoo.gitee.io/favicon.ico" title="Chinese(Simple)">
+          
+        </a>
+      </li>
+    
+  </ul>
+</span>
+
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: '',
+    autoDisplay: false,
+    layout: google.translate.TranslateElement.InlineLayout.VERTICAL
+  }, 'google_translate_element');
+
+  function restoreLang() {
+    var iframe = document.getElementsByClassName('goog-te-banner-frame')[0];
+    if (!iframe) return;
+
+    var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+    var restore_el = innerDoc.getElementsByTagName("button");
+
+    for (var i = 0; i < restore_el.length; i++) {
+      if (restore_el[i].id.indexOf("restore") >= 0) {
+        restore_el[i].click();
+        var close_el = innerDoc.getElementsByClassName("goog-close-link");
+        close_el[0].click();
+        return;
+      }
+    }
+  }
+
+  function triggerHtmlEvent(element, eventName) {
+    var event;
+    if (document.createEvent) {
+      event = document.createEvent('HTMLEvents');
+      event.initEvent(eventName, true, true);
+      element.dispatchEvent(event);
+    } else {
+      event = document.createEventObject();
+      event.eventType = eventName;
+      element.fireEvent('on' + event.eventType, event);
+    }
+  }
+
+  var googleCombo = document.querySelector("select.goog-te-combo");
+  var langSelect = document.querySelector('.ct-language');
+  langSelect.addEventListener('click', function(event) {
+    if (!event.target) {
+      return;
+    }
+
+    var selected = document.querySelector('.ct-language .ct-language-selected');
+    if (selected) {
+      selected.classList.remove('ct-language-selected');
+    }
+
+    var target = event.target;
+    while (target && target !== langSelect ) {
+      if (target.matches('.lang-select')) {
+        break;
+      }
+      target = target.parentElement;
+    }
+
+    if (target && target.matches('.lang-select')) {
+      var lang = target.getAttribute('data-lang');
+      if (googleCombo.value == lang) {
+        restoreLang();
+      } else {
+        target.parentElement.classList.add('ct-language-selected');
+        googleCombo.value = lang;
+        triggerHtmlEvent(googleCombo, 'change');
+      }
+    }
+
+    event.preventDefault();
+  });
+}
+</script>
+
+<script type="text/javascript" src="/assets/js/element.js?cb=googleTranslateElementInit"></script>
+</span>
+</div>
+        </nav>
+</div>
+  </div>
+</header>
+
+<script>
+  (function() {
+    var lastScrollY = getScrollPos().y;
+    var documentElement = document.documentElement;
+
+    function storeScrollData() {
+      var y = getScrollPos().y;var scrollStatus = "";
+
+      if (y <= 0) {
+        scrollStatus = "top";
+      } else if ((window.innerHeight + y) >= document.body.offsetHeight) {
+        scrollStatus = "bottom";
+      } else {
+        var isScrollDown = (y - lastScrollY > 0) ? true : false;
+        scrollStatus = isScrollDown ? "down" : "up";
+      }
+
+      lastScrollY = y;
+      documentElement.setAttribute("data-scroll-status", scrollStatus);
+    }
+
+    window.addEventListener('scroll', function(e) {
+      storeScrollData();
+    });
+
+    storeScrollData();
+  })();
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+  function hashLocate(hashValue) {
+    hashValue = hashValue.replace(/^.*#h-/, '');
+    hashValue = decodeURIComponent(hashValue);
+    var element = document.getElementById(hashValue);
+
+    if (!element) {
+      return;
+    }
+
+    var header = document.querySelector('header.site-header');
+    var headerRect = header.getBoundingClientRect();
+    var headerTop = Math.floor(headerRect.top);
+    var headerHeight = Math.floor(headerRect.height);
+    var scrollPos = getScrollPos();
+    var offsetY = element.offsetTop - (headerTop + headerHeight + 20);
+
+    if (offsetY == scrollPos.y) {
+      return;
+    }
+
+    if (headerTop == 0  && offsetY > scrollPos.y) {
+      offsetY += headerHeight + 2;
+    } else if (headerTop < 0  && offsetY < scrollPos.y) {
+      offsetY -= headerHeight - 2;
+    }
+
+    smoothScrollTo(offsetY);
+  }
+
+  // The first event occurred
+  window.addEventListener('load', function(event) {
+    if (window.location.hash) {
+      hashLocate(window.location.hash);
+    }
+  });
+
+  // The first event occurred
+  window.addEventListener('click', function(event) {
+    if (event.target.tagName.toLowerCase() == 'a') {
+      hashLocate(event.target.getAttribute('href'));
+    }
+  });
+</script>
+<div class="theme-toggle">
+  <input type="checkbox" id="theme-switch">
+  <label for="theme-switch">
+    <div class="toggle"></div>
+    <div class="names">
+      <p class="light">Light</p>
+      <p class="dark">Dark</p>
+    </div>
+  </label>
+</div>
+
+
+
+
+<script>
+  (function() {
+    var sw = document.getElementById('theme-switch');
+    var html = document.getElementsByTagName('html')[0];
+    var nightModeOption = ('auto' || 'auto').toLowerCase();
+    var storage = nightModeOption === 'manual'
+        ? localStorage
+        : sessionStorage;
+    var themeData = loadThemeData();
+
+    function saveThemeData(data) {
+      storage.setItem('theme', JSON.stringify(data));
+    }
+
+    function loadThemeData() {
+      var data = storage.getItem('theme');
+      try {
+        data = JSON.parse(data ? data : '');
+      } catch(e) {
+        data = { nightShift: undefined, autoToggleAt: 0 };
+        saveThemeData(data);
+      }
+      return data;
+    }
+
+    function handleThemeToggle(nightShift) {
+      themeData.nightShift = nightShift;
+      saveThemeData(themeData);
+      html.dataset.theme = nightShift ? 'dark' : 'light';
+      setTimeout(function() {
+        sw.checked = nightShift ? true : false;
+      }, 50);
+    }
+
+    function autoThemeToggle() {
+      // Next time point of theme toggle
+      var now = new Date();
+      var toggleAt = new Date();
+      var hours = now.getHours();
+      var nightShift = hours >= 19 || hours <=7;
+
+      if (nightShift) {
+        if (hours > 7) {
+          toggleAt.setDate(toggleAt.getDate() + 1);
+        }
+        toggleAt.setHours(7);
+      } else {
+        toggleAt.setHours(19);
+      }
+
+      toggleAt.setMinutes(0);
+      toggleAt.setSeconds(0);
+      toggleAt.setMilliseconds(0)
+
+      var delay = toggleAt.getTime() - now.getTime();
+
+      // auto toggle theme mode
+      setTimeout(function() {
+        handleThemeToggle(!nightShift);
+      }, delay);
+
+      return {
+        nightShift: nightShift,
+        toggleAt: toggleAt.getTime()
+      };
+    }
+
+    // Listen the theme toggle event
+    sw.addEventListener('change', function(event) {
+      handleThemeToggle(event.target.checked);
+    });
+
+    if (nightModeOption == 'auto') {
+      var data = autoThemeToggle();
+
+      // Toggle theme by local setting
+      if (data.toggleAt > themeData.autoToggleAt) {
+        themeData.autoToggleAt = data.toggleAt;
+        handleThemeToggle(data.nightShift);
+      } else {
+        handleThemeToggle(themeData.nightShift);
+      }
+    } else if (nightModeOption == 'manual') {
+      handleThemeToggle(themeData.nightShift);
+    } else {
+      var nightShift = themeData.nightShift;
+      if (nightShift === undefined) {
+        nightShift = nightModeOption === 'on';
+      }
+      handleThemeToggle(nightShift);
+    }
+  })();
+</script>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <div class="framework">
+  <section class="main">
+
+     <div class="post">
+  <section>
+
+
+
+
+
+
+
+
+
+<header class="post-header">
+  <h1 class="post-title p-name" itemprop="name headline">Spring是如何解决循环依赖</h1>
+  <h2 class="post-subtitle"></h2>
+
+  <p class="post-meta">
+    <time class="dt-published" datetime="2022-01-28T00:00:00+08:00" itemprop="datePublished"><i class="fa fa-calendar"></i> Jan 28, 2022
+    </time>
+
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 6 mins</span>
+  </p>
+<div class="post-tags"><a class="post-tag" href="/tags.html#spring">#spring</a></div></header>
+<article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+    <div class="post-content e-content" itemprop="articleBody">
+
+      <h3 id="前言"><strong>前言</strong></h3>
+
+<p>Spring循环依赖，也就是说类A依赖了类B，类B又依赖类A，那么在项目启动的时候，由于系统不知道先加载A还是B，就会出现循环依赖的错误。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Error creating bean with name <span class="s1">'AServiceImpl'</span>: Bean with name <span class="s1">'AServiceImpl'</span> has been injected into other beans <span class="o">[</span>BServiceImpl,CServiceImpl,EServiceImpl]
+</code></pre></div></div>
+
+<p>最好的是重构代码抽取公用部分被大家一起依赖。</p>
+
+<p>或者用@lazy-init属性。在你注入bean时，在互相依赖的两个bean上加上@Lazy注解也可以。</p>
+
+<p>Spring是如何解决循环依赖问题的呢？下面我们从代码的角度的看看它是如何设计的。</p>
+
+<h3 id="解析">解析</h3>
+
+<p>Spring能够轻松的解决属性的循环依赖正式用到了三级缓存，在AbstractBeanFactory中有注释：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/**
+ * Abstract base class for {@link org.springframework.beans.factory.BeanFactory}
+ * implementations, providing the full capabilities of the
+ * {@link org.springframework.beans.factory.config.ConfigurableBeanFactory} SPI.
+ * Does &lt;i&gt;not&lt;/i&gt; assume a listable bean factory: can therefore also be used
+ * as base class for bean factory implementations which obtain bean definitions
+ * from some backend resource (where bean definition access is an expensive operation).
+ 
+ * ## 这里给了链接让我们去看这个DefaultSingletonBeanRegistry类的实现。
+ 
+ * &lt;p&gt;This class provides a singleton cache (through its base class
+ * {@link org.springframework.beans.factory.support.DefaultSingletonBeanRegistry},
+ * singleton/prototype determination, {@link org.springframework.beans.factory.FactoryBean}
+ * handling, aliases, bean definition merging for child bean definitions,
+ * and bean destruction ({@link org.springframework.beans.factory.DisposableBean}
+ * interface, custom destroy methods). Furthermore, it can manage a bean factory
+ * hierarchy (delegating to the parent in case of an unknown bean), through implementing
+ * the {@link org.springframework.beans.factory.HierarchicalBeanFactory} interface.
+ *
+ * &lt;p&gt;The main template methods to be implemented by subclasses are
+ * {@link #getBeanDefinition} and {@link #createBean}, retrieving a bean definition
+ * for a given bean name and creating a bean instance for a given bean definition,
+ * respectively. Default implementations of those operations can be found in
+ * {@link DefaultListableBeanFactory} and {@link AbstractAutowireCapableBeanFactory}.
+ *
+ * @author Rod Johnson
+ * @author Juergen Hoeller
+ * @author Costin Leau
+ * @author Chris Beams
+ * @since 15 April 2001
+ * @see #getBeanDefinition
+ * @see #createBean
+ * @see AbstractAutowireCapableBeanFactory#createBean
+ * @see DefaultListableBeanFactory#getBeanDefinition
+ */</span>
+<span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">AbstractBeanFactory</span> <span class="kd">extends</span> <span class="nc">FactoryBeanRegistrySupport</span> <span class="kd">implements</span> <span class="nc">ConfigurableBeanFactory</span> <span class="o">{</span>
+  <span class="o">...</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<p>其实我也只能看懂其中一句话并猜测它的意思：是在未知bean的情况下委托给父级。然后通过看源码进行理解，所以就看DefaultSingletonBeanRegistry类是如何实现。</p>
+
+<h4 id="三级缓存">三级缓存</h4>
+
+<p>Spring是巧妙的用了三级缓存来存储创建Bean过程中的依赖问题，有点像是发号码牌的意味：卖菜小明的去饭店吃饭，饭店说先点菜点完后给小明一个号码牌坐着等一会叫号，饭店这时发现今天的菜这会11点半了都没准时送达，刚好眼下的小明就是这家饭店进货商，让这小明的赶紧回家拉一车菜来饭店。最后菜也到了，下锅炒了，小明也正常吃到饭了。</p>
+
+<p>我分成四类事件来理解：</p>
+
+<ul>
+  <li>小明去吃饭</li>
+  <li>点菜</li>
+  <li>号码牌</li>
+  <li>原材料是小明的</li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">class</span> <span class="nc">DefaultSingletonBeanRegistry</span> <span class="kd">extends</span> <span class="nc">SimpleAliasRegistry</span> <span class="kd">implements</span> <span class="nc">SingletonBeanRegistry</span> <span class="o">{</span>
+
+	<span class="c1">//一级缓存：singletonObjects，存放完全实例化属性赋值完成的Bean，直接可以使用</span>
+	<span class="kd">private</span> <span class="kd">final</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="n">singletonObjects</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ConcurrentHashMap</span><span class="o">&lt;&gt;(</span><span class="mi">256</span><span class="o">);</span>
+
+	<span class="c1">//二级缓存：earlySingletonObjects，存放早期Bean的引用，尚未属性装配的Bean</span>
+	<span class="kd">private</span> <span class="kd">final</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="n">earlySingletonObjects</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">&lt;&gt;(</span><span class="mi">16</span><span class="o">);</span>
+  
+	<span class="c1">//三级缓存：singletonFactories，三级缓存，存放实例化完成的Bean工厂</span>
+	<span class="kd">private</span> <span class="kd">final</span> <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">ObjectFactory</span><span class="o">&lt;?&gt;&gt;</span> <span class="n">singletonFactories</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HashMap</span><span class="o">&lt;&gt;(</span><span class="mi">16</span><span class="o">);</span>
+	<span class="o">...</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p><em>如果要看懂这个示例，可能需要再了解一下Bean的初始化流程是怎么样的，后续我看要不要写一个文章也填补一下。</em></p>
+
+<p>1、我们看一下我们获取Bean的方法它做了什么：AbstractAutowireCapableBeanFactory#<strong>doGetBean</strong> 和 DefaultSingletonBeanRegistry#<strong>getSingleton</strong>。</p>
+
+<p>白话一下：对公司而言就只关心获取Bean(程序员)来干活(996)。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kd">protected</span> <span class="nc">Object</span> <span class="nf">getSingleton</span><span class="o">(</span><span class="nc">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+  	<span class="c1">//一级人间投胎了没有？</span>
+		<span class="nc">Object</span> <span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+		<span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">isSingletonCurrentlyInCreation</span><span class="o">(</span><span class="n">beanName</span><span class="o">))</span> <span class="o">{</span>
+      <span class="c1">//没有就去二级地狱生死簿找有没有？</span>
+			<span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+				<span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+				<span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+					<span class="nc">ObjectFactory</span><span class="o">&lt;?&gt;</span> <span class="n">singletonFactory</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+          <span class="c1">//没有就到三级混沌看有没有精元在重聚</span>
+					<span class="k">if</span> <span class="o">(</span><span class="n">singletonFactory</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="c1">//有就收集三级混沌精元全部上升到二级地狱登记到生死簿中记录原神，清理三级混沌世界存在记录。</span>
+						<span class="n">singletonObject</span> <span class="o">=</span> <span class="n">singletonFactory</span><span class="o">.</span><span class="na">getObject</span><span class="o">();</span>
+						<span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonObject</span><span class="o">);</span>
+						<span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+					<span class="o">}</span>
+				<span class="o">}</span>
+			<span class="o">}</span>
+		<span class="o">}</span>
+		<span class="k">return</span> <span class="n">singletonObject</span><span class="o">;</span>
+	<span class="o">}</span>
+</code></pre></div></div>
+
+<p>2、那Bean的创建它做了些什么呢？AbstractAutowireCapableBeanFactory#<strong>doCreateBean</strong> 和 DefaultSingletonBeanRegistry#<strong>addSingletonFactory</strong>。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	<span class="kd">protected</span> <span class="nc">Object</span> <span class="nf">doCreateBean</span><span class="o">(</span><span class="kd">final</span> <span class="nc">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="kd">final</span> <span class="nc">RootBeanDefinition</span> <span class="n">mbd</span><span class="o">,</span> <span class="kd">final</span> <span class="nd">@Nullable</span> <span class="nc">Object</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span>
+			<span class="kd">throws</span> <span class="nc">BeanCreationException</span> <span class="o">{</span>
+    <span class="o">...</span>
+    <span class="c1">//是否是单例模式(请各位思考一下为啥是单例模式才能用这种3级缓存)，且允许未创建就暴露Bean</span>
+    <span class="kt">boolean</span> <span class="n">earlySingletonExposure</span> <span class="o">=</span> <span class="o">(</span><span class="n">mbd</span><span class="o">.</span><span class="na">isSingleton</span><span class="o">()</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="o">.</span><span class="na">allowCircularReferences</span> <span class="o">&amp;&amp;</span>
+				<span class="n">isSingletonCurrentlyInCreation</span><span class="o">(</span><span class="n">beanName</span><span class="o">));</span>
+		<span class="k">if</span> <span class="o">(</span><span class="n">earlySingletonExposure</span><span class="o">)</span> <span class="o">{</span>
+			<span class="k">if</span> <span class="o">(</span><span class="n">logger</span><span class="o">.</span><span class="na">isTraceEnabled</span><span class="o">())</span> <span class="o">{</span>
+				<span class="n">logger</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">"Eagerly caching bean '"</span> <span class="o">+</span> <span class="n">beanName</span> <span class="o">+</span>
+						<span class="s">"' to allow for resolving potential circular references"</span><span class="o">);</span>
+			<span class="o">}</span>
+      <span class="c1">//这时候加的是什么 -&gt; 是二级生死簿的引用，就是记个名知道有这么东西</span>
+			<span class="n">addSingletonFactory</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="o">()</span> <span class="o">-&gt;</span> <span class="n">getEarlyBeanReference</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">,</span> <span class="n">bean</span><span class="o">));</span>
+		<span class="o">}</span>
+    <span class="c1">//初始化Bean</span>
+		<span class="nc">Object</span> <span class="n">exposedObject</span> <span class="o">=</span> <span class="n">bean</span><span class="o">;</span>
+		<span class="k">try</span> <span class="o">{</span>
+			<span class="n">populateBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">,</span> <span class="n">instanceWrapper</span><span class="o">);</span>
+			<span class="n">exposedObject</span> <span class="o">=</span> <span class="n">initializeBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">exposedObject</span><span class="o">,</span> <span class="n">mbd</span><span class="o">);</span>
+		<span class="o">}</span>
+    <span class="o">...</span>
+  <span class="o">}</span>
+
+<span class="o">--------------------------------------------------------------------------------------------</span>
+  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">addSingletonFactory</span><span class="o">(</span><span class="nc">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="nc">ObjectFactory</span><span class="o">&lt;?&gt;</span> <span class="n">singletonFactory</span><span class="o">)</span> <span class="o">{</span>
+		<span class="nc">Assert</span><span class="o">.</span><span class="na">notNull</span><span class="o">(</span><span class="n">singletonFactory</span><span class="o">,</span> <span class="s">"Singleton factory must not be null"</span><span class="o">);</span>
+		<span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">//一级人间投胎完成没有？第一次加载肯定没有</span>
+			<span class="k">if</span> <span class="o">(!</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">containsKey</span><span class="o">(</span><span class="n">beanName</span><span class="o">))</span> <span class="o">{</span>
+        <span class="c1">//没有放入三级混沌做种子预备队</span>
+				<span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonFactory</span><span class="o">);</span>
+        <span class="c1">//清理干净二级地狱生死簿</span>
+				<span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+        <span class="c1">//告知造物主有这么个东西要打算投生程序员并996一生</span>
+				<span class="k">this</span><span class="o">.</span><span class="na">registeredSingletons</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+			<span class="o">}</span>
+		<span class="o">}</span>
+	<span class="o">}</span>
+</code></pre></div></div>
+
+<p>3、Bean初始化缓存升级到一级过程。DefaultSingletonBeanRegistry#<strong>addSingleton</strong>，这里可以理解为给人间种下因果，无论如何都是要投胎的，所以不管是人是妖是灵都被虚拟化了一个位置在人间，等待真正实化的那一刻（变成^(*￣(oo)￣)^）。三个环节一环套一环。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	<span class="c1">//当上面的doCreateBean做完后才会到这里把Bean上升到可用状态</span>
+  <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">addSingleton</span><span class="o">(</span><span class="nc">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="nc">Object</span> <span class="n">singletonObject</span><span class="o">)</span> <span class="o">{</span>
+		<span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">//升级到人间值得（投胎了）</span>
+			<span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonObject</span><span class="o">);</span>
+      <span class="c1">//混沌和生死簿全部清理干净</span>
+			<span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+			<span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+			<span class="k">this</span><span class="o">.</span><span class="na">registeredSingletons</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">beanName</span><span class="o">);</span>
+		<span class="o">}</span>
+	<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="总结">总结</h3>
+
+<p><strong>总的过程是先看投胎在人间了没有，没有就通知造物主在三级混沌世界修炼一下，发现三级混沌在苦逼修炼就大发慈悲上升到二级生死簿记载，一切罪孽都消除后就上升一级人间投胎，整个过程需要结合代码来不停的去验证才知道其中奥妙。</strong></p>
+
+<p>我们搞个例子加图来过一遍吧，加深印象。</p>
+
+<p>假设有A、B、C 三个类依赖，A类有一个属性依赖B，B类有个属性依赖C，C类有个属性依赖A，这个就是循环依赖的示例。</p>
+
+<p>=&gt; 1. A 创建 -&gt; A 构造完成，开始注入属性，发现依赖 B，启动 B 的实例化</p>
+
+<p>=&gt; 2. B 创建 -&gt; B 构造完成，开始注入属性，发现依赖 C，启动 C 的实例化</p>
+
+<p>=&gt; 3. C 创建 -&gt; C 构造完成，开始注入属性，发现依赖 A</p>
+
+<p><img src="/images/2022-01-28-spring-dependence/image-20220128175616891.png" alt="image-20220128175616891"></p>
+
+<ul>
+  <li>为什么构造器注入无法解决循环依赖？从中看出来，在Bean调用构造器实例化之前，一二三级缓存并没有Bean的任何相关信息，在实例化之后才放入一级缓存中，因此当getBean的时候缓存并没有命中，这样就抛出了循环依赖的异常了。</li>
+  <li>上面提到多实例Bean为什么无法支持循环依赖(@Scope = prototype)？多实例Bean是每次创建都会调用doGetBean方法，根本没有使用一二三级缓存，肯定不能解决循环依赖。</li>
+</ul>
+
+
+
+    </div>
+
+</article>
+<div class="post-nav">
+<a class="previous" href="/spring/2022/01/28/spring-bean-init.html" title="Spring Bean初始化流程">Spring Bean初始化流程</a><a class="next" href="/spring/2022/01/29/spring-auto-configuration.html" title="Spring Boot自动装配流程">Spring Boot自动装配流程</a>
+</div>
+<div class="post-related">
+      <div>Related Articles</div>
+      <ul>
+        <li><a class="post-link" href="/java/2022/04/07/jarx.html" title="Spring Boot自动装配流程">Jar包加固《二、jar包处理流程》</a></li>
+<li><a class="post-link" href="/java/2022/04/05/jarx.html" title="Spring Boot自动装配流程">Jar包加固产品对比</a></li>
+<li><a class="post-link" href="/unit/test/2021/07/18/mockito-normal-skill.html" title="Spring Boot自动装配流程">Mockito 正常场景测试技巧《第六章》</a></li>
+<li><a class="post-link" href="/self-cultivation/2021/10/21/self-cultivation.html" title="Spring Boot自动装配流程">精神交锋</a></li>
+</ul>
+    </div>
+<div class="post-comments"></div></section>
+</div>
+
+
+  </section>
+  <section class="sidebar" style="margin-left: 15px;">
+    <!-- Get sidebar items --><style type="text/css" media="screen">
+.post-menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+</style>
+
+<div class="post-menu">
+  <div class="post-menu-title">TOC</div>
+  <div class="post-menu-content"></div>
+</div>
+
+<script>
+  function generateContent() {
+    var menu = document.querySelector(".post-menu");
+    var menuContent =  menu.querySelector(".post-menu-content");
+    var headings = document.querySelector(".post-content").querySelectorAll("h2, h3, h4, h5, h6");
+
+    // Hide menu when no headings
+    if (headings.length === 0) {
+      return menu.style.display = "none";
+    }
+
+    // Generate post menu
+    var menuHTML = '';
+    for (var i = 0; i < headings.length; i++) {
+      var h = headings[i];
+      menuHTML += (
+        '<li class="h-' + h.tagName.toLowerCase() + '">'
+        + '<a href="#h-' + h.getAttribute('id') + '">' + h.textContent + '</a></li>');
+    }
+
+    menuContent.innerHTML = '<ul>' + menuHTML + '</ul>';
+
+    // The header element
+    var header = document.querySelector('header.site-header');
+
+    function doMenuCollapse(index, over_items) {
+      var items = menuContent.firstChild.children;
+
+      if (over_items == undefined) {
+        over_items = 20;
+      }
+
+      if (items.length < over_items) {
+        return;
+      }
+
+      var activeItem = items[index];
+      var beginItem = activeItem
+      var endItem = activeItem
+      var beginIndex = index;
+      var endIndex = index + 1;
+      while (beginIndex >= 0
+        && !items[beginIndex].classList.contains('h-h2')) {
+        beginIndex -= 1;
+      }
+      while (endIndex < items.length
+        && !items[endIndex].classList.contains('h-h2')) {
+        endIndex += 1;
+      }
+      for (var i = 0; i < beginIndex; i++) {
+        item = items[i]
+        if (!item.classList.contains('h-h2')) {
+          item.style.display = 'none';
+        }
+      }
+      for (var i = beginIndex + 1; i < endIndex; i++) {
+        item = items[i]
+        // if (!item.classList.contains('h-h2')) {
+          item.style.display = '';
+        // }
+      }
+      for (var i = endIndex; i < items.length; i++) {
+        item = items[i]
+        if (!item.classList.contains('h-h2')) {
+          item.style.display = 'none';
+        }
+      }
+    }
+
+    // Init menu collapsed
+    doMenuCollapse(-1);
+
+    // Active the menu item
+    window.addEventListener('scroll', function (event) {
+      var lastActive = menuContent.querySelector('.active');
+      var changed = true;
+      var activeIndex = -1;
+      for (var i = headings.length - 1; i >= 0; i--) {
+        var h = headings[i];
+        var headingRect = h.getBoundingClientRect();
+        var headerRect = header.getBoundingClientRect();
+        var headerTop = Math.floor(headerRect.top);
+        var headerHeight = Math.floor(headerRect.height);
+        var headerHeight = headerTop + headerHeight + 20;
+        if (headingRect.top <= headerHeight) {
+          var id = 'h-' + h.getAttribute('id');
+          var a = menuContent.querySelector('a[href="#' + id  + '"]');
+          var curActive = a.parentNode;
+          if (curActive) {
+            curActive.classList.add('active');
+            activeIndex = i;
+          }
+          if (lastActive == curActive) {
+            changed = false;
+          }
+          break;
+        }
+      }
+      if (changed) {
+        if (lastActive) {
+          lastActive.classList.remove('active');
+        }
+        doMenuCollapse(activeIndex);
+      }
+      event.preventDefault();
+    });
+  }
+  generateContent();
+</script>
+</section>
+</div>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+    <div class="site-footer-inner">
+      <div>Copyright © 1970-2010 @GitHub User</div>
+      <div>Powered by <a title="Jekyll is a simple, blog-aware, static site
+      generator." href="http://jekyllrb.com/">Jekyll</a> &amp; <a title="Yat, yet
+      another theme." href="https://github.com/jeffreytse/jekyll-theme-yat">Yat Theme</a>.</div>
+      <div class="footer-col rss-subscribe">Subscribe <a href="/feed.xml">via RSS</a>
+</div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
