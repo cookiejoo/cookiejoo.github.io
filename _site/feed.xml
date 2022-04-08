@@ -1,4 +1,84 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2022-04-07T21:23:14+08:00</updated><id>/feed.xml</id><title type="html">Cookie.Joo Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><author><name>GitHub User</name></author><entry><title type="html">Jar包加固《二、jar包处理流程》</title><link href="/java/2022/04/07/jarx.html" rel="alternate" type="text/html" title="Jar包加固《二、jar包处理流程》" /><published>2022-04-07T00:00:00+08:00</published><updated>2022-04-07T00:00:00+08:00</updated><id>/java/2022/04/07/jarx</id><content type="html" xml:base="/java/2022/04/07/jarx.html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2022-04-08T09:59:03+08:00</updated><id>/feed.xml</id><title type="html">Cookie.Joo Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><author><name>GitHub User</name></author><entry><title type="html">Jar包加固《三、Agent开发》</title><link href="/java/2022/04/08/jarx.html" rel="alternate" type="text/html" title="Jar包加固《三、Agent开发》" /><published>2022-04-08T00:00:00+08:00</published><updated>2022-04-08T00:00:00+08:00</updated><id>/java/2022/04/08/jarx</id><content type="html" xml:base="/java/2022/04/08/jarx.html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
+
+&lt;p&gt;Jar包的加密已经完毕了，现在开始做Jar包的解密开发，javaagent的开发工作量不多，只有是解密文件还原给应用使用。&lt;/p&gt;
+
+&lt;h3 id=&quot;agent加载问题注意&quot;&gt;agent加载问题注意&lt;/h3&gt;
+
+&lt;p&gt;开发加密Jar包的时候我的规划是文件操作的代码规划到core包里面，可以依赖一些方便的工具如：Apache common-land、io。guava等，而crypto包只用jdk提供的类提供加密的方法，RSE和AES都能满足了，文件操作也可以用io包解决，因为agent解密只要依赖crypto的包，不会依赖core包。&lt;/p&gt;
+
+&lt;p&gt;agent最好不要依赖第三方包，除非你全部重写过第三方包和包名，否则容易出现传递依赖包冲突问题，比如你在agent包中用了guava的3.x版本，但是应用的包依赖的是guava的2.x版本，3.x版本删除过某个2.x版本的class，那么别人应用中用了这个类就会报错，因为传递依赖的时候agent是把2.x的代码打到他的class下面的，发现在agent有的情况下会优先用agent包内加载的代码，这点在写agent jar的时候是需要很谨慎的。&lt;/p&gt;
+
+&lt;p&gt;大家有兴趣可以了解一下skywalking源码，它的agent虽然有用第三方包但是打包的pom都排除掉了，仅利用应用里面懒加载的jar依赖传递，就是避免用了它的agent启动不会因为全类名一致导致代码冲突，并且skywalking中你用了什么功能它才会被激活，一旦被激活，你的jar包肯定是有该依赖，这也是它的厉害之处。&lt;/p&gt;
+
+&lt;p&gt;如果你的agent要用尽量都用&lt;scope&gt;provided&lt;/scope&gt;来声明依赖，agent都去使用应用加载的第三方包。&lt;strong&gt;但注意，如果应用里面都没依赖过这个包，那启动的时候一用到这个包的类就异常了。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;javaagent流程&quot;&gt;javaagent流程&lt;/h3&gt;
+
+&lt;p&gt;我们加密的时候是把原始密码和Mac地址群分别放在Pass和Code文件里面，那么我们解密的时候是需要用到RSA私钥，那这个私钥存哪里也是个问题，目前暂定存放到环境变量中，如果觉得不稳妥，那就必须要在agent里面开发一个http去第三方配置中心取私钥了。&lt;/p&gt;
+
+&lt;p&gt;http接口是&lt;可选&gt;逻辑。&lt;/可选&gt;&lt;/p&gt;
+
+&lt;p&gt;得到私钥后到META-INF下面找Pass和Code解密得到原始密码和判断是否有Mac地址授权判断。&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;public static void premain(String args, Instrumentation inst) {
+  。。。。。。
+  //解密后重新定义Class：
+  AgentTransformer tran = new AgentTransformer(password);
+  inst.addTransformer(tran);
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Transformer类中根据className到META-INF/xxxClasses文件夹下寻找对应的类，如果存在就进行解密返回新的byte[]，如果没有就返回原始byte[]。这里有个特殊的校验，即如何知道解密回来的文件是正常的class文件，如果你的文件被破坏了，可能就不是class文件，或者你的文件加密的时候是用txt格式内容，这里可能会转换错误的风险，我找了一些资料发现文件类型是有一个值可以区分的，就比如java文件有一个魔数，每个class文件前4个字节是CAFEBABE，Java语言的创始人设置的，爱喝咖啡的人有故事。&lt;/p&gt;
+
+&lt;p&gt;所以我只要判断是否为正常的class文件则解密正确，也保证的还原了文件，毕竟加密有问题就会导致整个包都不可用风险系数极高。&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;@Override
+public byte[] transform(ClassLoader loader, String className, Class&amp;lt;?&amp;gt; classBeingRedefined,
+                        ProtectionDomain domain, byte[] classBuffer) {
+  if (className == null || domain == null || loader == null) {
+    return classBuffer;
+  }
+
+  byte[] bytes = DECRYPT_UTILS.decode(projectPath, className, this.password);
+  if (bytes == null) {
+    return classBuffer;
+  }
+  if (isJavaMagicNumber(bytes)) {
+    return bytes;
+  } else {
+    LOG.warn(&quot;解密到的文件格式非JAVA格式 :&quot; + className);
+  }
+  return classBuffer;
+}
+
+private static final byte CA = -54;
+private static final byte FE = -2;
+private static final byte BA = -70;
+private static final byte BE = -66;
+
+/**
+ * 魔数占四个字节
+ */
+private boolean isJavaMagicNumber(byte[] bytes) {
+  return bytes[0] == CA &amp;amp;&amp;amp; bytes[1] == FE &amp;amp;&amp;amp; bytes[2] == BA &amp;amp;&amp;amp; bytes[3] == BE;
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;禁用attach&quot;&gt;禁用Attach&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;-XX:+DisableAttachMechanism&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;深度使用java的人基本都会用诊断功能如arthas工具，如何禁用其他工具attach到本进程呢？启动时加这个参数即可。&lt;/p&gt;
+
+&lt;p&gt;但是加这个参数意味这你放弃使用jcmd、jstack、jmap和jinfo等命令，因为该命令不允许工具与JVM连接。&lt;/p&gt;
+
+&lt;h3 id=&quot;启动效果&quot;&gt;启动效果&lt;/h3&gt;
+
+&lt;p&gt;无论是懒加载或非懒加载，类被加载时都会先经过agent，agent作为应用的门卫角色，class被应用使用之前都会被优先校验或替换过。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407164650754.png&quot; alt=&quot;image-20220407164650754&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407164737747.png&quot; alt=&quot;image-20220407164737747&quot; /&gt;&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Java" /><category term="java" /><summary type="html">前言</summary></entry><entry><title type="html">Jar包加固《二、jar包处理流程》</title><link href="/java/2022/04/07/jarx.html" rel="alternate" type="text/html" title="Jar包加固《二、jar包处理流程》" /><published>2022-04-07T00:00:00+08:00</published><updated>2022-04-07T00:00:00+08:00</updated><id>/java/2022/04/07/jarx</id><content type="html" xml:base="/java/2022/04/07/jarx.html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
 
 &lt;p&gt;我们知道我们要实现的脉络后并生成了手脚架模块代码，接下来的事情就一路把功能代码填补上。&lt;/p&gt;
 
@@ -27,9 +107,9 @@
 
 &lt;p&gt;&lt;strong&gt;-macCodes&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;Code和Pass文件都是RSA加密后的字符串，多个Mac地址就用逗号隔开即可。这里再次说明一下Mac地址校验问题，为什么要用逗号隔开这样设计而不是一个Mac地址打一个包。考虑到打制品包只能用一个最终制品，避免多制品不一致问题，打多个Mac地址包确实更安全，一个包传一个机器去，但是Jenkins打完后传到哪里这一步骤你在哪做都非常麻烦，要映射Mac和ip所在的机器连接关系，明显不显示损失非常大，而且每打一个包要标明这个包对应的是那个ip用的，所以把Mac地址群放到一个Code文件里面是比较省事的方法。&lt;/p&gt;
+&lt;p&gt;Code和Pass文件都是RSA加密后的字符串，多个Mac地址就用逗号隔开即可。这里再次说明一下Mac地址校验问题，为什么要用逗号隔开这样设计而不是一个Mac地址打一个包。考虑到打制品包只能用一个最终制品，避免多制品不一致问题，打多个Mac地址包确实更安全，一个包传一个机器去，但是Jenkins打完后传到哪里这一步骤你在哪做都非常麻烦，要映射Mac和ip所在的机器连接关系，明显不现实且损失非常大，而且每打一个包要标明这个包对应的是那个ip用的，所以把Mac地址群放到一个Code文件里面是比较省事的方法。&lt;/p&gt;
 
-&lt;p&gt;所以这里公钥参数的用法表达玩了，也在代码里面约定了加密后的文件存储到META-INF/.xxxClasses文件夹下。&lt;/p&gt;
+&lt;p&gt;所以这里公钥参数的用法表达完了，也在代码里面约定了加密后的文件存储到META-INF/.xxxClasses文件夹下。&lt;/p&gt;
 
 &lt;p&gt;&lt;strong&gt;-includeJars&lt;/strong&gt;&lt;/p&gt;
 
@@ -39,7 +119,7 @@
 
 &lt;p&gt;&lt;strong&gt;-packages&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;待加密的文件代码我们按aop的切面方式进行配置，这种方式非常有利于我们对BOOT-INF下的源文件进行IO操作，因为包名就是文件夹的名称。我们只要解压得到文件夹，就可以把改文件夹下的所有文件变量去加密即可，最后在xxxClasses文件夹内用java包名方式存储加密后的文件即可。&lt;/p&gt;
+&lt;p&gt;待加密的文件代码我们按aop的切面方式进行配置，这种方式非常有利于我们对BOOT-INF下的源文件进行IO操作，因为包名就是文件夹的名称。我们只要解压得到文件夹，就可以把该文件夹下的所有文件变量去加密即可，最后在xxxClasses文件夹内用java包名方式存储加密后的文件即可。&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407144401281.png&quot; alt=&quot;image-20220407144401281&quot; /&gt;&lt;/p&gt;
 
@@ -47,7 +127,7 @@
 
 &lt;p&gt;&lt;strong&gt;-excludeClasses&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;是否有排除掉不需要加密的class类，这里可以指定。&lt;/p&gt;
+&lt;p&gt;是否有排除掉不需要加密的class类，这里可以按需指定。&lt;/p&gt;
 
 &lt;h3 id=&quot;重写原始class&quot;&gt;重写原始class&lt;/h3&gt;
 
@@ -61,7 +141,7 @@
 
 &lt;p&gt;如果我们把BOOT-INF代码删了，或者变成一段不可运行的文本会导致怎么样？&lt;/p&gt;
 
-&lt;p&gt;1：API无法生成，因为API是去加载代码和扫描注释生成的，这里可能代码都无法被加载就报错了，可能会影响到别人的一些文档工作。&lt;/p&gt;
+&lt;p&gt;1：API文档无法支持，因为API是去加载代码和扫描注释生成的，这里可能代码都无法被加载就报错了，间接会影响到别人的一些文档工作。&lt;/p&gt;
 
 &lt;p&gt;2：类加载问题，我们做个实验，把Application.class删掉会影响什么，启动时立马报错。&lt;/p&gt;
 
@@ -77,25 +157,27 @@
 
 &lt;p&gt;4：那我能不能把代码都加密替换内容到里面？那我就不用把加密后的代码放META-INF了？省了一个空间。&lt;/p&gt;
 
-&lt;p&gt;也不行，还是类加载问题，因为第一手类加载不是你加载的，你加密后的文件第一次被类加载是顶层的Loader，你只能等它加载过一遍，传递到agent的时你赶紧把加密后的文件还原回来且ClassLoader重定义后再传递给应用去用。如果你的第一手文件Byte都是错的，那启动的时候就直接报错了。&lt;/p&gt;
+&lt;p&gt;也不行，还是类加载问题，因为第一手类加载不是你加载的，你加密后的文件第一次被类加载是顶层的Loader，你只能等它加载过一遍，传递到agent的时你赶紧把加密后的文件还原回来且ClassLoader重加载后再传递给应用去用。如果你的第一手文件Byte都是错的，那启动的时候就直接报错了。&lt;/p&gt;
 
 &lt;p&gt;所以，我们要想办法把原始class的方法体给清除掉，并且又能正常被加载，也就是还能作为一个正常的类来用。这也确保了如果别人拿到我们的包这个架子可以给你看，但是里面啥都没有，你看也看不出来是啥东西。看下图的效果：&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407153717845.png&quot; alt=&quot;image-20220407153717845&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;实现这个目标我们用了javassist工具，他提供了很方便的工具方法重写原本的类，又能保证我这个类还能用。&lt;/p&gt;
+&lt;p&gt;实现这个目标我们用了javassist工具，它提供了很方便的工具方法重写原本的类，重编译后又能保证我这个类还能用。&lt;/p&gt;
 
 &lt;h3 id=&quot;生成新jar包&quot;&gt;生成新jar包&lt;/h3&gt;
 
-&lt;p&gt;最后就是把打包成新jar包，先打包lib下的jar，记得删掉_temp_结尾的临时目录。&lt;/p&gt;
+&lt;p&gt;最后就是把整个文件夹打包成新jar包&lt;/p&gt;
 
-&lt;p&gt;还有：把META-INF/maven文件夹给删掉，为啥？&lt;/p&gt;
+&lt;p&gt;1：先打包lib下的jar，记得删掉_temp_结尾的临时目录。&lt;/p&gt;
+
+&lt;p&gt;2：把META-INF/maven文件夹给删掉，为啥？&lt;/p&gt;
 
 &lt;p&gt;因为这个文件夹存储了pom信息，如果用了maven插件方式来加密的话，你的秘钥或密码都会暴露有安全风险，我们的依赖信息和私服地址都在里面，然而这个文件删除也不会影响启动，删！&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407154425224.png&quot; alt=&quot;image-20220407154425224&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;再整体把_temp_打成fatjar就是最后的完整可交付的jar包了，最后删除_temp_目录完毕。&lt;/p&gt;
+&lt;p&gt;3：再整体把_temp_打成fatjar就是最后的完整可交付的jar包了，最后删除_temp_目录完毕。&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407154848009.png&quot; alt=&quot;image-20220407154848009&quot; /&gt;&lt;/p&gt;
 
@@ -1031,200 +1113,4 @@ org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,\
 
 &lt;p&gt;&lt;strong&gt;1：应用进程的内存都是操作虚拟地址空间，并不是实际操作物理内存。&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;2：避免操作系统反复把进程的虚拟地址页复映射物理内存页（缺页中断异常）操作，导致频繁的用户态和内核态切换造成的性能耗损。&lt;/strong&gt;&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Jvm" /><category term="jvm" /><summary type="html">前言</summary></entry><entry><title type="html">iframe跨域解决方案</title><link href="/http/2021/12/29/iframe-cors.html" rel="alternate" type="text/html" title="iframe跨域解决方案" /><published>2021-12-29T00:00:00+08:00</published><updated>2021-12-29T00:00:00+08:00</updated><id>/http/2021/12/29/iframe-cors</id><content type="html" xml:base="/http/2021/12/29/iframe-cors.html">&lt;h2 id=&quot;1原因现象&quot;&gt;1.原因现象&lt;/h2&gt;
-
-&lt;p&gt;应用中如果需要用iframe嵌套某个应用的页面，该应用也是用了相同的CAS-SSO登录，但在iframe中出现无限循环登录。&lt;/p&gt;
-
-&lt;p&gt;该现象是在谷歌浏览器中出现，原因是谷歌浏览器限制了嵌入的网页不可设置cookie，导致无法访问。仔细检查，在浏览Set-cookie的响应头出发现提示：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-txt&quot;&gt;This Set-Cookie didn't specify a &quot;SameSite&quot; attribute and was defaulted to &quot;SameSite=lax&quot;, and was blocked because it came from a cross-site response which was not the response to a top-level navigation. ....
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;原因：谷歌最新版的浏览器默认SameSite=Lax （该设置从2020 年7月14全面展开，具体见： &lt;a href=&quot;https://www.chromestatus.com/feature/5088147346030592&quot;&gt;https://www.chromestatus.com/feature/5088147346030592&lt;/a&gt;），如果设置SameSite=Lax , 并且嵌入Iframe的地址和iframe外的地址不是SameSite,那么嵌入iframe的地址将无法设置设置cookie。关于什么是SameSite，首先应该理解site，所谓Site就是域名后缀和其前面的第一部分，比如web.dev可以是一个Site，从而 www.web.dev 和 static.web.dev 可以看成相同的Site。具体可以参考SameSite解释 或 &lt;a href=&quot;https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00&quot;&gt;https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00&lt;/a&gt; 。&lt;/p&gt;
-
-&lt;p&gt;如此图：由于主页登录过后，iframe的第三方页面无法设置已登录的信息在cookie中导致第三方页面无法获取到登录信息总是显示登录页&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/iframe_cors/image-20211230102458015.png&quot; alt=&quot;image-20211230102458015&quot; /&gt;&lt;/p&gt;
-
-&lt;h2 id=&quot;2samesite-属性&quot;&gt;2.SameSite 属性&lt;/h2&gt;
-
-&lt;p&gt;Cookie 的&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SameSite&lt;/code&gt;属性用来限制第三方 Cookie，从而减少安全风险。&lt;/p&gt;
-
-&lt;p&gt;它可以设置三个值。&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;ul&gt;
-    &lt;li&gt;Strict&lt;/li&gt;
-    &lt;li&gt;Lax&lt;/li&gt;
-    &lt;li&gt;None&lt;/li&gt;
-  &lt;/ul&gt;
-&lt;/blockquote&gt;
-
-&lt;h3 id=&quot;21-strict&quot;&gt;2.1 Strict&lt;/h3&gt;
-
-&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Strict&lt;/code&gt;最为严格，完全禁止第三方 Cookie，跨站点时，任何情况下都不会发送 Cookie。换言之，只有当前网页的 URL 与请求目标一致，才会带上 Cookie。&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Set-Cookie: &lt;span class=&quot;nv&quot;&gt;CookieName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;CookieValue&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;SameSite&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;Strict&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;  &lt;/div&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;这个规则过于严格，可能造成非常不好的用户体验。比如，当前网页有一个 GitHub 链接，用户点击跳转就不会带有 GitHub 的 Cookie，跳转过去总是未登陆状态。&lt;/p&gt;
-
-&lt;h3 id=&quot;22-lax&quot;&gt;2.2 Lax&lt;/h3&gt;
-
-&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Lax&lt;/code&gt;规则稍稍放宽，大多数情况也是不发送第三方 Cookie，但是导航到目标网址的 Get 请求除外。&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;pre&gt;&lt;code class=&quot;language-markup&quot;&gt;Set-Cookie: CookieName=CookieValue; SameSite=Lax;
-&lt;/code&gt;&lt;/pre&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;导航到目标网址的 GET 请求，只包括三种情况：链接，预加载请求，GET 表单。&lt;/p&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th style=&quot;text-align: left&quot;&gt;请求类型&lt;/th&gt;
-      &lt;th style=&quot;text-align: left&quot;&gt;示例&lt;/th&gt;
-      &lt;th style=&quot;text-align: left&quot;&gt;正常情况&lt;/th&gt;
-      &lt;th style=&quot;text-align: left&quot;&gt;Lax&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;链接&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;a href=&quot;...&quot;&amp;gt;&amp;lt;/a&amp;gt;&lt;/code&gt;&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;预加载&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;link rel=&quot;prerender&quot; href=&quot;...&quot;/&amp;gt;&lt;/code&gt;&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;GET 表单&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;form method=&quot;GET&quot; action=&quot;...&quot;&amp;gt;&lt;/code&gt;&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;POST 表单&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;form method=&quot;POST&quot; action=&quot;...&quot;&amp;gt;&lt;/code&gt;&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;不发送&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;iframe&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;iframe src=&quot;...&quot;&amp;gt;&amp;lt;/iframe&amp;gt;&lt;/code&gt;&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;不发送&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;AJAX&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;$.get(&quot;...&quot;)&lt;/code&gt;&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;不发送&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;Image&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;img src=&quot;...&quot;&amp;gt;&lt;/code&gt;&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
-      &lt;td style=&quot;text-align: left&quot;&gt;不发送&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;h3 id=&quot;23-none&quot;&gt;2.3 None&lt;/h3&gt;
-
-&lt;p&gt;Chrome 计划将&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Lax&lt;/code&gt;变为默认设置。这时，网站可以选择显式关闭&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SameSite&lt;/code&gt;属性，将其设为&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;None&lt;/code&gt;。不过，前提是必须同时设置&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Secure&lt;/code&gt;属性（Cookie 只能通过 HTTPS 协议发送），否则无效。&lt;/p&gt;
-
-&lt;h2 id=&quot;3解决方案&quot;&gt;3.解决方案&lt;/h2&gt;
-
-&lt;h3 id=&quot;31解决方案一不推荐&quot;&gt;3.1解决方案一（不推荐）&lt;/h3&gt;
-
-&lt;p&gt;低版本的谷歌浏览器(80一下)在地址栏输入：Chrome://flags回车搜索cookies，设置两个值为Disabled，主要是Same-Site这个值是允许第三方设置Cookies属性。（此方法只能让用户去设置浏览器属性并不友好）&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/iframe_cors/image-20211230102641324.png&quot; alt=&quot;image-20211230102641324&quot; /&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;32解决方案二不推荐&quot;&gt;3.2解决方案二（不推荐）&lt;/h3&gt;
-
-&lt;p&gt;在设置Cookie的响应头中添加 SameSite=None；Secure ，在Cookie响应头设置SameSite=None就可以替换谷歌浏览器的默认配置，而SameSite=None可以允许跨Site设置Cookie。一个完整的cookie响应头可以像这样： Set-Cookie: JSESSIONID=ACD341E8840C03003E4532921C21C035;Path=/begin01; SameSite=None; Secure ，至于怎么加响应头SameSite=None；Secure，可以考虑在nginx里设置，参考：&lt;/p&gt;
-
-&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# 只支持 proxy 模式下设置，SameSite 不需要可删除(默认不设置则：Lax)，如果想更安全可以把 SameSite 设置为 Strict，我们需要Cookie则是None&lt;/span&gt;
-proxy_cookie_path / &lt;span class=&quot;s2&quot;&gt;&quot;/; httponly; secure; SameSite=None&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-
-&lt;span class=&quot;c&quot;&gt;# 示例&lt;/span&gt;
-server &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-    listen 443 ssl http2&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-    server_name www.cat73.org&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-
-    ssl_certificate /etc/letsencrypt/live/cat73.org/fullchain.pem&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-    ssl_certificate_key /etc/letsencrypt/live/cat73.org/privkey.pem&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-
-    ssl_trusted_certificate /etc/letsencrypt/live/cat73.org/chain.pem&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-
-    add_header X-XSS-Protection &lt;span class=&quot;s2&quot;&gt;&quot;1; mode=block&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-    add_header X-Frame-Options SAMEORIGIN&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-    add_header Strict-Transport-Security &lt;span class=&quot;s2&quot;&gt;&quot;max-age=15768000&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-
-    location / &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-        root /var/www/html&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-
-    location /api &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
-        proxy_pass http://localhost:8080&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-        proxy_set_header Host &lt;span class=&quot;nv&quot;&gt;$host&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-        proxy_set_header X-Real-IP &lt;span class=&quot;nv&quot;&gt;$remote_addr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-        proxy_set_header X-Forwarded-For &lt;span class=&quot;nv&quot;&gt;$proxy_add_x_forwarded_for&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-        &lt;span class=&quot;c&quot;&gt;# 在这里设置&lt;/span&gt;
-        proxy_cookie_path / &lt;span class=&quot;s2&quot;&gt;&quot;/; httponly; secure; SameSite=None&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;也可以在后台代码里设置，推荐nginx吧。这里注意一点 Secure 属性，这个属性说明设置的该cookie只能在https下传输，所以要求你使用https，不使用行吗，不行，因为SameSite=None 要求必须要和Secure=true一起使用。所以采用这个方法解决，你嵌入iframe的页面必须使用https。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;（我们在本次解决方案中只设置了Cas的登录这边的Ng重启后就有效了，iframe的第三方没有改任何配置。这里为何不推荐使用此方式，是因为如果允许跨域传输cookie会让自身暴露在不安全的环境中，容易遭受CSRF漏洞工具或跨域追踪）&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/iframe_cors/20200904161952679.png&quot; alt=&quot;20200904161952679&quot; /&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;33解决方案三&quot;&gt;3.3解决方案三&lt;/h3&gt;
-
-&lt;p&gt;改造该模式不再使用ifram方式嵌入页面，可用跳转子系统tab页展示第三方应用页面，由于已经全部集成了CAS登录，所以一次登录可多次流量SSO页面，从而避免跨域攻击。&lt;/p&gt;
-
-&lt;h3 id=&quot;34解决方案四&quot;&gt;3.4解决方案四&lt;/h3&gt;
-
-&lt;p&gt;页面UI的开发独立到一个应用中如xxx-ui(前后端分离)，请求可以用网关转发即可，此方式缺点在于发布UI要统一版本发布，集中式管理，如果是要用到其他第三方非本公司的系统页面还是无法解决(尽量避免)。优势是后端不受集中式发布影响，可避免嵌入Iframe。&lt;/p&gt;
-
-&lt;h2 id=&quot;4-跨域攻击csrf和跨域追踪&quot;&gt;4. 跨域攻击CSRF和跨域追踪&lt;/h2&gt;
-
-&lt;h3 id=&quot;41-跨域攻击&quot;&gt;4.1 跨域攻击&lt;/h3&gt;
-
-&lt;p&gt;可伪造你的身份去访问受信任的网站，以你名义发送邮件，发消息，盗取你的账号，甚至于购买商品，虚拟货币转账……造成的问题包括：个人隐私泄露以及财产安全。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/iframe_cors/WX20211230-114247.png&quot; alt=&quot;WX20211230-114247&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;示例：&lt;/p&gt;
-
-&lt;p&gt;银行网站A，它以GET/POST请求来完成银行转账的操作，如： http://www.mybank.com/loan.do?toBankId=cdg&amp;amp;money=1000&lt;/p&gt;
-
-&lt;p&gt;危险网站B，它里面有一段HTML的代码如下：&lt;/p&gt;
-
-&lt;p&gt;&amp;lt;img src= http://www.mybank.com/loan.do?toBankId=hack&amp;amp;money=1000 &amp;gt;&lt;/p&gt;
-
-&lt;p&gt;首先，你登录了银行网站A，然后访问危险网站B，噢，这时你会发现你的银行账户少了1000块……&lt;/p&gt;
-
-&lt;p&gt;为什么会这样呢？原因是在访问危险网站B的之前，你已经登录了银行网站A，而B中的&lt;img /&gt;以GET的方式请求第三方资源（这里的第三方就是指银行网站了，原本这是一个合法的请求，但这里被不法分子利用了），所以你的浏览器会带上你的银行网站A的Cookie发出Get/POST请求，去获取资源“ http://www.mybank.com/loan.do?toBankId=hack&amp;amp;money=1000”，结果银行网站服务器收到请求后，认为这是一个更新资源操作（转账操作），所以就立刻进行转账操作……&lt;/p&gt;
-
-&lt;h3 id=&quot;42-跨域追踪&quot;&gt;4.2 跨域追踪&lt;/h3&gt;
-
-&lt;p&gt;第三方网站引导发出的 Cookie，就称为第三方 Cookie。它除了用于 CSRF 攻击，还可以用于用户追踪。&lt;/p&gt;
-
-&lt;p&gt;比如，Facebook 在第三方网站插入一张看不见的图片。&lt;/p&gt;
-
-&lt;p&gt;&amp;lt;img src= facebook.com?d=xx style= visibility:hidden &amp;gt;&lt;/p&gt;
-
-&lt;p&gt;浏览器加载上面代码时，就会向 Facebook 发出带有 Cookie 的请求，从而 Facebook 就会知道你是谁，访问了什么网站。&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Http" /><category term="http" /><summary type="html">1.原因现象</summary></entry></feed>
+&lt;p&gt;&lt;strong&gt;2：避免操作系统反复把进程的虚拟地址页复映射物理内存页（缺页中断异常）操作，导致频繁的用户态和内核态切换造成的性能耗损。&lt;/strong&gt;&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Jvm" /><category term="jvm" /><summary type="html">前言</summary></entry></feed>

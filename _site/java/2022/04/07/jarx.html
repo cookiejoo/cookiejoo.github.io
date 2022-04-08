@@ -22,7 +22,7 @@
 <meta name="twitter:card" content="summary">
 <meta property="twitter:title" content="Jar包加固《二、jar包处理流程》">
 <script type="application/ld+json">
-{"headline":"Jar包加固《二、jar包处理流程》","dateModified":"2022-04-07T00:00:00+08:00","datePublished":"2022-04-07T00:00:00+08:00","@type":"BlogPosting","author":{"@type":"Person","name":"曹德高"},"mainEntityOfPage":{"@type":"WebPage","@id":"/java/2022/04/07/jarx.html"},"description":"前言","url":"/java/2022/04/07/jarx.html","@context":"https://schema.org"}</script>
+{"author":{"@type":"Person","name":"曹德高"},"@type":"BlogPosting","headline":"Jar包加固《二、jar包处理流程》","description":"前言","datePublished":"2022-04-07T00:00:00+08:00","dateModified":"2022-04-07T00:00:00+08:00","url":"/java/2022/04/07/jarx.html","mainEntityOfPage":{"@type":"WebPage","@id":"/java/2022/04/07/jarx.html"},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="shortcut icon" href="favicon.ico">
   <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
@@ -787,9 +787,9 @@ function googleTranslateElementInit() {
 
 <p><strong>-macCodes</strong></p>
 
-<p>Code和Pass文件都是RSA加密后的字符串，多个Mac地址就用逗号隔开即可。这里再次说明一下Mac地址校验问题，为什么要用逗号隔开这样设计而不是一个Mac地址打一个包。考虑到打制品包只能用一个最终制品，避免多制品不一致问题，打多个Mac地址包确实更安全，一个包传一个机器去，但是Jenkins打完后传到哪里这一步骤你在哪做都非常麻烦，要映射Mac和ip所在的机器连接关系，明显不显示损失非常大，而且每打一个包要标明这个包对应的是那个ip用的，所以把Mac地址群放到一个Code文件里面是比较省事的方法。</p>
+<p>Code和Pass文件都是RSA加密后的字符串，多个Mac地址就用逗号隔开即可。这里再次说明一下Mac地址校验问题，为什么要用逗号隔开这样设计而不是一个Mac地址打一个包。考虑到打制品包只能用一个最终制品，避免多制品不一致问题，打多个Mac地址包确实更安全，一个包传一个机器去，但是Jenkins打完后传到哪里这一步骤你在哪做都非常麻烦，要映射Mac和ip所在的机器连接关系，明显不现实且损失非常大，而且每打一个包要标明这个包对应的是那个ip用的，所以把Mac地址群放到一个Code文件里面是比较省事的方法。</p>
 
-<p>所以这里公钥参数的用法表达玩了，也在代码里面约定了加密后的文件存储到META-INF/.xxxClasses文件夹下。</p>
+<p>所以这里公钥参数的用法表达完了，也在代码里面约定了加密后的文件存储到META-INF/.xxxClasses文件夹下。</p>
 
 <p><strong>-includeJars</strong></p>
 
@@ -799,7 +799,7 @@ function googleTranslateElementInit() {
 
 <p><strong>-packages</strong></p>
 
-<p>待加密的文件代码我们按aop的切面方式进行配置，这种方式非常有利于我们对BOOT-INF下的源文件进行IO操作，因为包名就是文件夹的名称。我们只要解压得到文件夹，就可以把改文件夹下的所有文件变量去加密即可，最后在xxxClasses文件夹内用java包名方式存储加密后的文件即可。</p>
+<p>待加密的文件代码我们按aop的切面方式进行配置，这种方式非常有利于我们对BOOT-INF下的源文件进行IO操作，因为包名就是文件夹的名称。我们只要解压得到文件夹，就可以把该文件夹下的所有文件变量去加密即可，最后在xxxClasses文件夹内用java包名方式存储加密后的文件即可。</p>
 
 <p><img src="/images/2022-04-08-jarx/image-20220407144401281.png" alt="image-20220407144401281"></p>
 
@@ -807,7 +807,7 @@ function googleTranslateElementInit() {
 
 <p><strong>-excludeClasses</strong></p>
 
-<p>是否有排除掉不需要加密的class类，这里可以指定。</p>
+<p>是否有排除掉不需要加密的class类，这里可以按需指定。</p>
 
 <h3 id="重写原始class">重写原始class</h3>
 
@@ -821,7 +821,7 @@ function googleTranslateElementInit() {
 
 <p>如果我们把BOOT-INF代码删了，或者变成一段不可运行的文本会导致怎么样？</p>
 
-<p>1：API无法生成，因为API是去加载代码和扫描注释生成的，这里可能代码都无法被加载就报错了，可能会影响到别人的一些文档工作。</p>
+<p>1：API文档无法支持，因为API是去加载代码和扫描注释生成的，这里可能代码都无法被加载就报错了，间接会影响到别人的一些文档工作。</p>
 
 <p>2：类加载问题，我们做个实验，把Application.class删掉会影响什么，启动时立马报错。</p>
 
@@ -837,25 +837,27 @@ function googleTranslateElementInit() {
 
 <p>4：那我能不能把代码都加密替换内容到里面？那我就不用把加密后的代码放META-INF了？省了一个空间。</p>
 
-<p>也不行，还是类加载问题，因为第一手类加载不是你加载的，你加密后的文件第一次被类加载是顶层的Loader，你只能等它加载过一遍，传递到agent的时你赶紧把加密后的文件还原回来且ClassLoader重定义后再传递给应用去用。如果你的第一手文件Byte都是错的，那启动的时候就直接报错了。</p>
+<p>也不行，还是类加载问题，因为第一手类加载不是你加载的，你加密后的文件第一次被类加载是顶层的Loader，你只能等它加载过一遍，传递到agent的时你赶紧把加密后的文件还原回来且ClassLoader重加载后再传递给应用去用。如果你的第一手文件Byte都是错的，那启动的时候就直接报错了。</p>
 
 <p>所以，我们要想办法把原始class的方法体给清除掉，并且又能正常被加载，也就是还能作为一个正常的类来用。这也确保了如果别人拿到我们的包这个架子可以给你看，但是里面啥都没有，你看也看不出来是啥东西。看下图的效果：</p>
 
 <p><img src="/images/2022-04-08-jarx/image-20220407153717845.png" alt="image-20220407153717845"></p>
 
-<p>实现这个目标我们用了javassist工具，他提供了很方便的工具方法重写原本的类，又能保证我这个类还能用。</p>
+<p>实现这个目标我们用了javassist工具，它提供了很方便的工具方法重写原本的类，重编译后又能保证我这个类还能用。</p>
 
 <h3 id="生成新jar包">生成新jar包</h3>
 
-<p>最后就是把打包成新jar包，先打包lib下的jar，记得删掉_temp_结尾的临时目录。</p>
+<p>最后就是把整个文件夹打包成新jar包</p>
 
-<p>还有：把META-INF/maven文件夹给删掉，为啥？</p>
+<p>1：先打包lib下的jar，记得删掉_temp_结尾的临时目录。</p>
+
+<p>2：把META-INF/maven文件夹给删掉，为啥？</p>
 
 <p>因为这个文件夹存储了pom信息，如果用了maven插件方式来加密的话，你的秘钥或密码都会暴露有安全风险，我们的依赖信息和私服地址都在里面，然而这个文件删除也不会影响启动，删！</p>
 
 <p><img src="/images/2022-04-08-jarx/image-20220407154425224.png" alt="image-20220407154425224"></p>
 
-<p>再整体把_temp_打成fatjar就是最后的完整可交付的jar包了，最后删除_temp_目录完毕。</p>
+<p>3：再整体把_temp_打成fatjar就是最后的完整可交付的jar包了，最后删除_temp_目录完毕。</p>
 
 <p><img src="/images/2022-04-08-jarx/image-20220407154848009.png" alt="image-20220407154848009"></p>
 
@@ -868,15 +870,15 @@ function googleTranslateElementInit() {
 
 </article>
 <div class="post-nav">
-<a class="previous" href="/java/2022/04/06/jarx.html" title="Jar包加固《一、预研与方向》">Jar包加固《一、预研与方向》</a><span></span>
+<a class="previous" href="/java/2022/04/06/jarx.html" title="Jar包加固《一、预研与方向》">Jar包加固《一、预研与方向》</a><a class="next" href="/java/2022/04/08/jarx.html" title="Jar包加固《三、Agent开发》">Jar包加固《三、Agent开发》</a>
 </div>
 <div class="post-related">
       <div>Related Articles</div>
       <ul>
-        <li><a class="post-link" href="/cloud/2022/02/15/what-is-cloud-native.html" title="">什么是云原生？</a></li>
-<li><a class="post-link" href="/java/2022/04/07/jarx.html" title="">Jar包加固《二、jar包处理流程》</a></li>
-<li><a class="post-link" href="/unit/test/2021/07/01/mockito-test-mongo.html" title="">Mockito MongoDB测试《第三章》</a></li>
-<li><a class="post-link" href="/unit/test/2021/06/30/mockito-test-redis.html" title="">Mockito Redis测试《第二章》</a></li>
+        <li><a class="post-link" href="/java/2022/04/06/jarx.html" title="Jar包加固《三、Agent开发》">Jar包加固《一、预研与方向》</a></li>
+<li><a class="post-link" href="/java/2022/01/26/java-thread.html" title="Jar包加固《三、Agent开发》">Java线程池工作流程</a></li>
+<li><a class="post-link" href="/self-cultivation/2021/12/16/self-cultivation.html" title="Jar包加固《三、Agent开发》">提问的艺术</a></li>
+<li><a class="post-link" href="/java/2022/04/08/jarx.html" title="Jar包加固《三、Agent开发》">Jar包加固《三、Agent开发》</a></li>
 </ul>
     </div>
 <div class="post-comments"></div></section>

@@ -20,7 +20,7 @@
 <meta name="twitter:card" content="summary">
 <meta property="twitter:title" content="Home">
 <script type="application/ld+json">
-{"headline":"Home","@type":"WebSite","author":{"@type":"Person","name":"GitHub User"},"description":"Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.","name":"Cookie.Joo Blog","url":"/","@context":"https://schema.org"}</script>
+{"author":{"@type":"Person","name":"GitHub User"},"@type":"WebSite","headline":"Home","description":"Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.","name":"Cookie.Joo Blog","url":"/","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="shortcut icon" href="favicon.ico">
   <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
@@ -720,6 +720,93 @@ function googleTranslateElementInit() {
   <div class="pagination">
   <!-- Post list links -->
   <ul class="post-list">
+<li>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 class="post-title">
+        <a class="post-link" href="/java/2022/04/08/jarx.html">
+          Jar包加固《三、Agent开发》
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date"><i class="fa fa-calendar"></i> Apr 08, 2022</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
+      </div>
+      <a class="post-excerpt" href="/java/2022/04/08/jarx.html">
+        <p>
+        前言
+
+Jar包的加密已经完毕了，现在开始做Jar包的解密开发，javaagent的开发工作量不多，只有是解密文件还原给应用使用。
+
+agent加载问题注意
+
+开发加密Jar包的时候我的规划是文件操作的代码规划到core包里面，可以依赖一些方便的工具如：Apache common-land、io。guava等，而crypto包只用jdk提供的类提供加密的方法，RSE和AES都能满足了，文件操作也可以用io包解决，因为agent解密只要依赖crypto的包，不会依赖core包。
+
+agent最好不要依赖第三方包，除非你全部重写过第三方包和包名，否则容易出现传递依赖包冲突问题，比如你在agent包中用了guava的3.x版本，但是应用的包依赖的是guava的2.x版本，3.x版本删除过某个... <span class="read_more">Read More</span>
+        </p>
+      </a>
+      <div class="post-tags"><a class="post-tag" href="/tags.html#java">#java</a></div>
+    </li>
 <li>
       
 
@@ -3205,7 +3292,7 @@ MSF单元测规约
   <ul>
     <li>
       <a href="/index.html">
-        All<span>26</span>
+        All<span>27</span>
       </a>
     </li>
 
@@ -3224,7 +3311,7 @@ MSF单元测规约
     
       <li>
         <a href="/categories.html#h-Java">
-          Java <span>4</span>
+          Java <span>5</span>
         </a>
       </li>
     

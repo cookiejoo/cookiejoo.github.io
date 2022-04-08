@@ -7,22 +7,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google-translate-customization" content="108d9124921d80c3-80e20d618ff053c8-g4f02ec6f3dba68b7-c">
 <!-- Begin Jekyll SEO tag v2.7.1 -->
-<title>Mockito EventBus RocketMQ 消费者测试《第四章》 | Cookie.Joo Blog</title>
+<title>Jar包加固《三、Agent开发》 | Cookie.Joo Blog</title>
 <meta name="generator" content="Jekyll v4.2.0">
-<meta property="og:title" content="Mockito EventBus RocketMQ 消费者测试《第四章》">
-<meta name="author" content="GitHub User">
+<meta property="og:title" content="Jar包加固《三、Agent开发》">
+<meta name="author" content="曹德高">
 <meta property="og:locale" content="en_US">
 <meta name="description" content="前言">
 <meta property="og:description" content="前言">
-<link rel="canonical" href="/unit/test/2021/07/02/mockito-test-rocketmq-consumer.html">
-<meta property="og:url" content="/unit/test/2021/07/02/mockito-test-rocketmq-consumer.html">
+<link rel="canonical" href="/java/2022/04/08/jarx.html">
+<meta property="og:url" content="/java/2022/04/08/jarx.html">
 <meta property="og:site_name" content="Cookie.Joo Blog">
 <meta property="og:type" content="article">
-<meta property="article:published_time" content="2021-07-02T00:00:00+08:00">
+<meta property="article:published_time" content="2022-04-08T00:00:00+08:00">
 <meta name="twitter:card" content="summary">
-<meta property="twitter:title" content="Mockito EventBus RocketMQ 消费者测试《第四章》">
+<meta property="twitter:title" content="Jar包加固《三、Agent开发》">
 <script type="application/ld+json">
-{"author":{"@type":"Person","name":"GitHub User"},"@type":"BlogPosting","headline":"Mockito EventBus RocketMQ 消费者测试《第四章》","description":"前言","datePublished":"2021-07-02T00:00:00+08:00","dateModified":"2021-07-02T00:00:00+08:00","url":"/unit/test/2021/07/02/mockito-test-rocketmq-consumer.html","mainEntityOfPage":{"@type":"WebPage","@id":"/unit/test/2021/07/02/mockito-test-rocketmq-consumer.html"},"@context":"https://schema.org"}</script>
+{"author":{"@type":"Person","name":"曹德高"},"@type":"BlogPosting","headline":"Jar包加固《三、Agent开发》","description":"前言","datePublished":"2022-04-08T00:00:00+08:00","dateModified":"2022-04-08T00:00:00+08:00","url":"/java/2022/04/08/jarx.html","mainEntityOfPage":{"@type":"WebPage","@id":"/java/2022/04/08/jarx.html"},"@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="shortcut icon" href="favicon.ico">
   <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
@@ -710,11 +710,11 @@ function googleTranslateElementInit() {
 
 
 <header class="post-header">
-  <h1 class="post-title p-name" itemprop="name headline">Mockito EventBus RocketMQ 消费者测试《第四章》</h1>
+  <h1 class="post-title p-name" itemprop="name headline">Jar包加固《三、Agent开发》</h1>
   <h2 class="post-subtitle"></h2>
 
   <p class="post-meta">
-    <time class="dt-published" datetime="2021-07-02T00:00:00+08:00" itemprop="datePublished"><i class="fa fa-calendar"></i> Jul 02, 2021
+    <time class="dt-published" datetime="2022-04-08T00:00:00+08:00" itemprop="datePublished"><i class="fa fa-calendar"></i> Apr 08, 2022
     </time>
 
     
@@ -751,151 +751,110 @@ function googleTranslateElementInit() {
 
 
 
-    <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 3 mins</span>
+    <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
   </p>
-<div class="post-tags">
-<a class="post-tag" href="/tags.html#test">#test</a><a class="post-tag" href="/tags.html#mockito">#mockito</a>
-</div></header>
+<div class="post-tags"><a class="post-tag" href="/tags.html#java">#java</a></div></header>
 <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
     <div class="post-content e-content" itemprop="articleBody">
 
       <h3 id="前言">前言</h3>
 
-<p>在消息中间件中我们要模拟的是收发信息的动作，MQ这类的是依赖第三方消息中间件的，除去启动消息中间件去消费消息这一动作外，其实我们最关心的是我们接受到消息后怎么处理的问题，那么收消息是MQ中多线程去拉取数据的，也是官方jar提供工具类帮我们做的，所以我们需要入手的就是模拟有人给我们发消息，这个接收类是我们重点Mock的对象。本章主要讲如何在单元测试中模拟收RocketMQ服务器消息操作。</p>
+<p>Jar包的加密已经完毕了，现在开始做Jar包的解密开发，javaagent的开发工作量不多，只有是解密文件还原给应用使用。</p>
 
-<p>还是一如既往的不使用真正的服务器，直接用mock挡板。</p>
+<h3 id="agent加载问题注意">agent加载问题注意</h3>
 
-<h3 id="eventbus-消费者模拟测试">EventBus 消费者模拟测试</h3>
+<p>开发加密Jar包的时候我的规划是文件操作的代码规划到core包里面，可以依赖一些方便的工具如：Apache common-land、io。guava等，而crypto包只用jdk提供的类提供加密的方法，RSE和AES都能满足了，文件操作也可以用io包解决，因为agent解密只要依赖crypto的包，不会依赖core包。</p>
 
-<p>MSF框架中提供了抽象类，用户只要继承该类去实现handle方法即可，请看下面实例：</p>
+<p>agent最好不要依赖第三方包，除非你全部重写过第三方包和包名，否则容易出现传递依赖包冲突问题，比如你在agent包中用了guava的3.x版本，但是应用的包依赖的是guava的2.x版本，3.x版本删除过某个2.x版本的class，那么别人应用中用了这个类就会报错，因为传递依赖的时候agent是把2.x的代码打到他的class下面的，发现在agent有的情况下会优先用agent包内加载的代码，这点在写agent jar的时候是需要很谨慎的。</p>
 
-<p>首先需要建一个子类的实现类，并且实现父类的handle方法</p>
+<p>大家有兴趣可以了解一下skywalking源码，它的agent虽然有用第三方包但是打包的pom都排除掉了，仅利用应用里面懒加载的jar依赖传递，就是避免用了它的agent启动不会因为全类名一致导致代码冲突，并且skywalking中你用了什么功能它才会被激活，一旦被激活，你的jar包肯定是有该依赖，这也是它的厉害之处。</p>
 
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">com.cdg.msf.event.bus.base.EventBus</span><span class="o">;</span>
+<p>如果你的agent要用尽量都用<scope>provided</scope>来声明依赖，agent都去使用应用加载的第三方包。<strong>但注意，如果应用里面都没依赖过这个包，那启动的时候一用到这个包的类就异常了。</strong></p>
 
-<span class="cm">/**
- * @author: Cookie.Joo
- * @create: 2020/12/02
- */</span>
-<span class="kd">public</span> <span class="kd">class</span> <span class="nc">ProbeMsfEventBusConsumer</span> <span class="kd">extends</span> <span class="nc">MsfEventBusConsumer</span> <span class="o">{</span>
-    <span class="nd">@Override</span>
-    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">handle</span><span class="o">(</span><span class="nc">EventBus</span> <span class="n">eventBus</span><span class="o">)</span> <span class="o">{</span>
-        <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"处理eventBus:"</span> <span class="o">+</span> <span class="n">eventBus</span><span class="o">);</span>
-        <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
-    <span class="o">}</span>
+<h3 id="javaagent流程">javaagent流程</h3>
 
-    <span class="nd">@Override</span>
-    <span class="kd">public</span> <span class="nc">String</span> <span class="nf">getTopic</span><span class="o">()</span> <span class="o">{</span>
-        <span class="k">return</span> <span class="s">"msfEventBusDefaultTopic"</span><span class="o">;</span>
-    <span class="o">}</span>
+<p>我们加密的时候是把原始密码和Mac地址群分别放在Pass和Code文件里面，那么我们解密的时候是需要用到RSA私钥，那这个私钥存哪里也是个问题，目前暂定存放到环境变量中，如果觉得不稳妥，那就必须要在agent里面开发一个http去第三方配置中心取私钥了。</p>
 
-    <span class="nd">@Override</span>
-    <span class="kd">public</span> <span class="nc">String</span> <span class="nf">getEventTag</span><span class="o">()</span> <span class="o">{</span>
-        <span class="k">return</span> <span class="s">"*"</span><span class="o">;</span>
-    <span class="o">}</span>
-<span class="o">}</span>
+<p>http接口是逻辑。可选&gt;</p>
+
+<p>得到私钥后到META-INF下面找Pass和Code解密得到原始密码和判断是否有Mac地址授权判断。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>public static void premain(String args, Instrumentation inst) {
+  。。。。。。
+  //解密后重新定义Class：
+  AgentTransformer tran = new AgentTransformer(password);
+  inst.addTransformer(tran);
+}
 </code></pre></div></div>
 
-<p>简单打印EventBus即可，下面是Mock Test的实例</p>
+<p>Transformer类中根据className到META-INF/xxxClasses文件夹下寻找对应的类，如果存在就进行解密返回新的byte[]，如果没有就返回原始byte[]。这里有个特殊的校验，即如何知道解密回来的文件是正常的class文件，如果你的文件被破坏了，可能就不是class文件，或者你的文件加密的时候是用txt格式内容，这里可能会转换错误的风险，我找了一些资料发现文件类型是有一个值可以区分的，就比如java文件有一个魔数，每个class文件前4个字节是CAFEBABE，Java语言的创始人设置的，爱喝咖啡的人有故事。</p>
 
-<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">com.google.common.collect.Lists</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">com.cdg.msf.event.bus.base.EventBus</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">org.apache.rocketmq.client.exception.MQClientException</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">org.apache.rocketmq.common.consumer.ConsumeFromWhere</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">org.apache.rocketmq.common.message.MessageExt</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">org.apache.rocketmq.common.protocol.heartbeat.MessageModel</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">org.junit.Before</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">org.junit.Test</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">org.powermock.api.mockito.PowerMockito</span><span class="o">;</span>
+<p>所以我只要判断是否为正常的class文件则解密正确，也保证的还原了文件，毕竟加密有问题就会导致整个包都不可用风险系数极高。</p>
 
-<span class="kn">import</span> <span class="nn">java.lang.reflect.Method</span><span class="o">;</span>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>@Override
+public byte[] transform(ClassLoader loader, String className, Class&lt;?&gt; classBeingRedefined,
+                        ProtectionDomain domain, byte[] classBuffer) {
+  if (className == null || domain == null || loader == null) {
+    return classBuffer;
+  }
 
-<span class="kn">import</span> <span class="nn">static</span> <span class="n">org</span><span class="o">.</span><span class="na">assertj</span><span class="o">.</span><span class="na">core</span><span class="o">.</span><span class="na">api</span><span class="o">.</span><span class="na">Assertions</span><span class="o">.</span><span class="na">assertThat</span><span class="o">;</span>
-<span class="kn">import</span> <span class="nn">static</span> <span class="n">org</span><span class="o">.</span><span class="na">mockito</span><span class="o">.</span><span class="na">Mockito</span><span class="o">.*;</span>
+  byte[] bytes = DECRYPT_UTILS.decode(projectPath, className, this.password);
+  if (bytes == null) {
+    return classBuffer;
+  }
+  if (isJavaMagicNumber(bytes)) {
+    return bytes;
+  } else {
+    LOG.warn("解密到的文件格式非JAVA格式 :" + className);
+  }
+  return classBuffer;
+}
 
-<span class="cm">/**
- * RocketMQ 消费者单元测试
- *
- * @author: Cookie.Joo
- * @create: 2020/12/01
- */</span>
-<span class="kd">public</span> <span class="kd">class</span> <span class="nc">MsfEventBusConsumerTest</span> <span class="o">{</span>
-    <span class="c1">// 消费者线程</span>
-    <span class="nc">ProbeMsfEventBusConsumer</span> <span class="n">consumer</span><span class="o">;</span>
-    <span class="c1">// 监听执行类</span>
-    <span class="nc">ProbeMsfEventBusConsumer</span><span class="o">.</span><span class="na">DefaultMessageListenerConcurrently</span> <span class="n">concurrently</span><span class="o">;</span>
+private static final byte CA = -54;
+private static final byte FE = -2;
+private static final byte BA = -70;
+private static final byte BE = -66;
 
-    <span class="nd">@Before</span>
-    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setUp</span><span class="o">()</span> <span class="o">{</span>
-        <span class="n">consumer</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="nc">ProbeMsfEventBusConsumer</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
-        <span class="n">concurrently</span> <span class="o">=</span> <span class="n">consumer</span><span class="o">.</span><span class="na">new</span> <span class="nf">DefaultMessageListenerConcurrently</span><span class="o">();</span>
-        <span class="n">when</span><span class="o">(</span><span class="n">consumer</span><span class="o">.</span><span class="na">getConsumerGroupName</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="s">"com-app_event-bus_msfEventBusConsumerGroup"</span><span class="o">);</span>
-        <span class="n">when</span><span class="o">(</span><span class="n">consumer</span><span class="o">.</span><span class="na">getPullBatchSize</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="mi">32</span><span class="o">);</span>
-        <span class="n">when</span><span class="o">(</span><span class="n">consumer</span><span class="o">.</span><span class="na">getTopic</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="s">"msfEventBusDefaultTopic"</span><span class="o">);</span>
-        <span class="n">when</span><span class="o">(</span><span class="n">consumer</span><span class="o">.</span><span class="na">getEventTag</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="s">"*"</span><span class="o">);</span>
-        <span class="n">when</span><span class="o">(</span><span class="n">consumer</span><span class="o">.</span><span class="na">getMessageModel</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="nc">MessageModel</span><span class="o">.</span><span class="na">CLUSTERING</span><span class="o">);</span>
-        <span class="n">when</span><span class="o">(</span><span class="n">consumer</span><span class="o">.</span><span class="na">getConsumeFromWhere</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="nc">ConsumeFromWhere</span><span class="o">.</span><span class="na">CONSUME_FROM_LAST_OFFSET</span><span class="o">);</span>
-
-        <span class="n">when</span><span class="o">(</span><span class="n">consumer</span><span class="o">.</span><span class="na">getConsumeThreadMin</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="mi">20</span><span class="o">);</span>
-        <span class="n">when</span><span class="o">(</span><span class="n">consumer</span><span class="o">.</span><span class="na">getConsumeThreadMax</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="mi">64</span><span class="o">);</span>
-
-        <span class="c1">// 注意：由于抽象类里面要模拟调用子类方法，这里调用子类handle的时候要去调用真实的子类实现，所以要配置这一句才能达到目标</span>
-        <span class="n">when</span><span class="o">(</span><span class="n">consumer</span><span class="o">.</span><span class="na">handle</span><span class="o">(</span><span class="n">any</span><span class="o">(</span><span class="nc">EventBus</span><span class="o">.</span><span class="na">class</span><span class="o">))).</span><span class="na">thenCallRealMethod</span><span class="o">();</span>
-    <span class="o">}</span>
-
-    <span class="nd">@Test</span>
-    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">mqStartTest</span><span class="o">()</span> <span class="o">{</span>
-        <span class="k">try</span> <span class="o">{</span>
-            <span class="c1">// 测试mq启动</span>
-            <span class="nc">Method</span> <span class="n">postConstruct</span> <span class="o">=</span> <span class="nc">PowerMockito</span><span class="o">.</span><span class="na">method</span><span class="o">(</span><span class="nc">ProbeMsfEventBusConsumer</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="s">"startRocketMQPushConsumer"</span><span class="o">);</span>
-            <span class="n">postConstruct</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">consumer</span><span class="o">);</span>
-        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
-            <span class="c1">//解密失败</span>
-            <span class="n">assertThat</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">fillInStackTrace</span><span class="o">()).</span>
-                    <span class="n">isInstanceOfAny</span><span class="o">(</span><span class="nc">MQClientException</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
-        <span class="o">}</span>
-    <span class="o">}</span>
-
-    <span class="nd">@Test</span>
-    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">consumerTest</span><span class="o">()</span> <span class="o">{</span>
-        <span class="c1">// 测试消费消息逻辑</span>
-        <span class="nc">MessageExt</span> <span class="n">msg</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">MessageExt</span><span class="o">();</span>
-        <span class="n">msg</span><span class="o">.</span><span class="na">setMsgId</span><span class="o">(</span><span class="s">"123"</span><span class="o">);</span>
-        <span class="n">msg</span><span class="o">.</span><span class="na">setBody</span><span class="o">(</span><span class="s">"{}"</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
-        <span class="n">concurrently</span><span class="o">.</span><span class="na">consumeMessage</span><span class="o">(</span><span class="nc">Lists</span><span class="o">.</span><span class="na">newArrayList</span><span class="o">(</span><span class="n">msg</span><span class="o">),</span> <span class="kc">null</span><span class="o">);</span>
-    <span class="o">}</span>
-<span class="o">}</span>
+/**
+ * 魔数占四个字节
+ */
+private boolean isJavaMagicNumber(byte[] bytes) {
+  return bytes[0] == CA &amp;&amp; bytes[1] == FE &amp;&amp; bytes[2] == BA &amp;&amp; bytes[3] == BE;
+}
 </code></pre></div></div>
 
-<p>请看执行的打印结果，启动MQ start的时候打印了开始消费日志；消费逻辑我用了多线程每5秒钟模拟收到一条日志，本例子已经去掉，这里用多线程并无意义，应该直接关注handle的实现逻辑。</p>
+<h3 id="禁用attach">禁用Attach</h3>
 
-<p><img src="/images/mockito-test-rocketmq-consumer/image-20201202142744053.png" alt="image-20201202142744053"></p>
+<p><strong>-XX:+DisableAttachMechanism</strong></p>
 
-<h3 id="总结">总结</h3>
+<p>深度使用java的人基本都会用诊断功能如arthas工具，如何禁用其他工具attach到本进程呢？启动时加这个参数即可。</p>
 
-<ol>
-  <li>如多线程在@Test单元测试需要额外加CountDownLatch.await()守护线程，否则主线程执行完了，会立即System.exit(0)退出。</li>
-  <li>Mock父类抽象方法需要在执行实现子类的预备里面加thenCallRealMethod回调到真实实现方法。</li>
-  <li>模拟MQ接收到处理这一环节是类中套public子类的语法，如concurrently = consumer.new DefaultMessageListenerConcurrently();这中new的方式使用上比较少，应当额外注意。</li>
-</ol>
+<p>但是加这个参数意味这你放弃使用jcmd、jstack、jmap和jinfo等命令，因为该命令不允许工具与JVM连接。</p>
 
-<p>本章分享结束。</p>
+<h3 id="启动效果">启动效果</h3>
+
+<p>无论是懒加载或非懒加载，类被加载时都会先经过agent，agent作为应用的门卫角色，class被应用使用之前都会被优先校验或替换过。</p>
+
+<p><img src="/images/2022-04-08-jarx/image-20220407164650754.png" alt="image-20220407164650754"></p>
+
+<p><img src="/images/2022-04-08-jarx/image-20220407164737747.png" alt="image-20220407164737747"></p>
+
 
 
     </div>
 
 </article>
 <div class="post-nav">
-<a class="previous" href="/unit/test/2021/07/01/mockito-test-mongo.html" title="Mockito MongoDB测试《第三章》">Mockito MongoDB测试《第三章》</a><a class="next" href="/unit/test/2021/07/03/mockito-test-rocketmq-producer.html" title="Mockito EventBus RocketMQ 生产者测试《第五章》">Mockito EventBus RocketMQ 生产者测试《第五章》</a>
+<a class="previous" href="/java/2022/04/07/jarx.html" title="Jar包加固《二、jar包处理流程》">Jar包加固《二、jar包处理流程》</a><span></span>
 </div>
 <div class="post-related">
       <div>Related Articles</div>
       <ul>
-        <li><a class="post-link" href="/unit/test/2021/07/18/mockito-normal-skill.html" title="Mockito EventBus RocketMQ 生产者测试《第五章》">Mockito 正常场景测试技巧《第六章》</a></li>
-<li><a class="post-link" href="/unit/test/2021/06/30/mockito-test-redis.html" title="Mockito EventBus RocketMQ 生产者测试《第五章》">Mockito Redis测试《第二章》</a></li>
-<li><a class="post-link" href="/self-cultivation/2021/10/21/self-cultivation.html" title="Mockito EventBus RocketMQ 生产者测试《第五章》">精神交锋</a></li>
-<li><a class="post-link" href="/java/2022/04/08/jarx.html" title="Mockito EventBus RocketMQ 生产者测试《第五章》">Jar包加固《三、Agent开发》</a></li>
+        <li><a class="post-link" href="/netty/2021/09/02/netty-http-server.html" title="">netty-http-server</a></li>
+<li><a class="post-link" href="/unit/test/2021/07/18/mockito-exception-skill.html" title="">Mockito 异常场景测试技巧《第七章》</a></li>
+<li><a class="post-link" href="/self-cultivation/2021/10/21/self-cultivation.html" title="">精神交锋</a></li>
+<li><a class="post-link" href="/java/2022/04/07/jarx.html" title="">Jar包加固《二、jar包处理流程》</a></li>
 </ul>
     </div>
 <div class="post-comments"></div></section>
