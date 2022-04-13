@@ -784,199 +784,15 @@ function googleTranslateElementInit() {
 
 
 <h2 class="post-title">
-        <a class="post-link" href="/java/2022/04/08/jarx.html">
-          Jar包加固《三、Agent开发》
+        <a class="post-link" href="/java/2022/04/13/jarx.html">
+          Jar包加固
         </a>
       </h2>
       <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Apr 08, 2022</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
+        <span class="post-date"><i class="fa fa-calendar"></i> Apr 13, 2022</span>
+        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 7 mins</span>
       </div>
-      <a class="post-excerpt" href="/java/2022/04/08/jarx.html">
-        <p>
-        前言
-
-Jar包的加密已经完毕了，现在开始做Jar包的解密开发，javaagent的开发工作量不多，只有是解密文件还原给应用使用。
-
-agent加载问题注意
-
-开发加密Jar包的时候我的规划是文件操作的代码规划到core包里面，可以依赖一些方便的工具如：Apache common-land、io。guava等，而crypto包只用jdk提供的类提供加密的方法，RSE和AES都能满足了，文件操作也可以用io包解决，因为agent解密只要依赖crypto的包，不会依赖core包。
-
-agent最好不要依赖第三方包，除非你全部重写过第三方包和包名，否则容易出现传递依赖包冲突问题，比如你在agent包中用了guava的3.x版本，但是应用的包依赖的是guava的2.x版本，3.x版本删除过某个... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"><a class="post-tag" href="/tags.html#java">#java</a></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/java/2022/04/07/jarx.html">
-          Jar包加固《二、jar包处理流程》
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Apr 07, 2022</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
-      </div>
-      <a class="post-excerpt" href="/java/2022/04/07/jarx.html">
-        <p>
-        前言
-
-我们知道我们要实现的脉络后并生成了手脚架模块代码，接下来的事情就一路把功能代码填补上。
-
-整体流程图
-
-
-
-Jar包处理
-
--filePath
-
-按我们定义的参数第一个是待加密的jar包路径，先判断文件是否存在，是否是jar类型的扩展名。
-
--publicPassword
-
-接下来是公钥，为什么是公钥，这里的加密设计是用RSA对一个原始密码加密，存放到一个文件内，如果有指定Mac地址，也用RSA加密放到另外一个文件内，这里多出两个文件，那就一起定义加密后的文件存放到哪里好了，从jar的目录结果来看，BOOT-INF是原始文件夹，还有一个是META-INF文件夹，我选择放META-INF文件夹里面用点号开头命名隐藏文件夹如：.xxxClasses。
-
-类uninx操作系统，以“.... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"><a class="post-tag" href="/tags.html#java">#java</a></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/java/2022/04/06/jarx.html">
-          Jar包加固《一、预研与方向》
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Apr 06, 2022</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
-      </div>
-      <a class="post-excerpt" href="/java/2022/04/06/jarx.html">
+      <a class="post-excerpt" href="/java/2022/04/13/jarx.html">
         <p>
         背景
 
@@ -995,108 +811,7 @@ Jar包处理
 正是要解决此类问题，我们不得不对代码进行加固处理。
 
 预研
-
-我们正常的jar包里面的内容是什么样的呢？我们要怎么对现有的jar包进行加固呢？所以怎么下手是一个必须要面对的难题。我们以Spri... <span class="read_more">Read More</span>
-        </p>
-      </a>
-      <div class="post-tags"><a class="post-tag" href="/tags.html#java">#java</a></div>
-    </li>
-<li>
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h2 class="post-title">
-        <a class="post-link" href="/java/2022/04/05/jarx.html">
-          Jar包加固产品对比
-        </a>
-      </h2>
-      <div class="post-meta">
-        <span class="post-date"><i class="fa fa-calendar"></i> Apr 05, 2022</span>
-        <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 1 min</span>
-      </div>
-      <a class="post-excerpt" href="/java/2022/04/05/jarx.html">
-        <p>
-        背景
-
-Jar包的加密在正常场景中运用较少，基本不会考虑此类加密处理，一般是在加密数据等领域居多，还有Android的SDK包等发布加密居多，一般简单的使用代码混淆proguard插件就能满足一些需求，但是该工具使用范围极其有限，简单模式的java模块还是可以满足的。
-
-市面的收费产品都是自研的整体加密方式，配合agent启动解密(该方向是java方向主流的Spring包应用)，在实现上确实有方便和独到之处。
-
-对比
-
-下面的表格是我居于两种产品的对比列表
-
-
-  
-    
-      –
-      代码混淆
-      Class文件加密
-    
-  
-  
-    
-      原理
-      将项目代码中包名、类名、方法名、参数名皆可混淆的工具打包插件，打包后的代码很难看... <span class="read_more">Read More</span>
+Jar包的加密在正常场景中运用较少，基本不会考虑此类加密处理，一般是在加密数据等领域居多，和Android的SDK包等发布加密居多，... <span class="read_more">Read More</span>
         </p>
       </a>
       <div class="post-tags"><a class="post-tag" href="/tags.html#java">#java</a></div>
@@ -3292,7 +3007,7 @@ MSF单元测规约
   <ul>
     <li>
       <a href="/index.html">
-        All<span>27</span>
+        All<span>24</span>
       </a>
     </li>
 
@@ -3311,7 +3026,7 @@ MSF单元测规约
     
       <li>
         <a href="/categories.html#h-Java">
-          Java <span>5</span>
+          Java <span>2</span>
         </a>
       </li>
     

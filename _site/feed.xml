@@ -1,189 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2022-04-08T09:59:03+08:00</updated><id>/feed.xml</id><title type="html">Cookie.Joo Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><author><name>GitHub User</name></author><entry><title type="html">Jar包加固《三、Agent开发》</title><link href="/java/2022/04/08/jarx.html" rel="alternate" type="text/html" title="Jar包加固《三、Agent开发》" /><published>2022-04-08T00:00:00+08:00</published><updated>2022-04-08T00:00:00+08:00</updated><id>/java/2022/04/08/jarx</id><content type="html" xml:base="/java/2022/04/08/jarx.html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
-
-&lt;p&gt;Jar包的加密已经完毕了，现在开始做Jar包的解密开发，javaagent的开发工作量不多，只有是解密文件还原给应用使用。&lt;/p&gt;
-
-&lt;h3 id=&quot;agent加载问题注意&quot;&gt;agent加载问题注意&lt;/h3&gt;
-
-&lt;p&gt;开发加密Jar包的时候我的规划是文件操作的代码规划到core包里面，可以依赖一些方便的工具如：Apache common-land、io。guava等，而crypto包只用jdk提供的类提供加密的方法，RSE和AES都能满足了，文件操作也可以用io包解决，因为agent解密只要依赖crypto的包，不会依赖core包。&lt;/p&gt;
-
-&lt;p&gt;agent最好不要依赖第三方包，除非你全部重写过第三方包和包名，否则容易出现传递依赖包冲突问题，比如你在agent包中用了guava的3.x版本，但是应用的包依赖的是guava的2.x版本，3.x版本删除过某个2.x版本的class，那么别人应用中用了这个类就会报错，因为传递依赖的时候agent是把2.x的代码打到他的class下面的，发现在agent有的情况下会优先用agent包内加载的代码，这点在写agent jar的时候是需要很谨慎的。&lt;/p&gt;
-
-&lt;p&gt;大家有兴趣可以了解一下skywalking源码，它的agent虽然有用第三方包但是打包的pom都排除掉了，仅利用应用里面懒加载的jar依赖传递，就是避免用了它的agent启动不会因为全类名一致导致代码冲突，并且skywalking中你用了什么功能它才会被激活，一旦被激活，你的jar包肯定是有该依赖，这也是它的厉害之处。&lt;/p&gt;
-
-&lt;p&gt;如果你的agent要用尽量都用&lt;scope&gt;provided&lt;/scope&gt;来声明依赖，agent都去使用应用加载的第三方包。&lt;strong&gt;但注意，如果应用里面都没依赖过这个包，那启动的时候一用到这个包的类就异常了。&lt;/strong&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;javaagent流程&quot;&gt;javaagent流程&lt;/h3&gt;
-
-&lt;p&gt;我们加密的时候是把原始密码和Mac地址群分别放在Pass和Code文件里面，那么我们解密的时候是需要用到RSA私钥，那这个私钥存哪里也是个问题，目前暂定存放到环境变量中，如果觉得不稳妥，那就必须要在agent里面开发一个http去第三方配置中心取私钥了。&lt;/p&gt;
-
-&lt;p&gt;http接口是&lt;可选&gt;逻辑。&lt;/可选&gt;&lt;/p&gt;
-
-&lt;p&gt;得到私钥后到META-INF下面找Pass和Code解密得到原始密码和判断是否有Mac地址授权判断。&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;public static void premain(String args, Instrumentation inst) {
-  。。。。。。
-  //解密后重新定义Class：
-  AgentTransformer tran = new AgentTransformer(password);
-  inst.addTransformer(tran);
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Transformer类中根据className到META-INF/xxxClasses文件夹下寻找对应的类，如果存在就进行解密返回新的byte[]，如果没有就返回原始byte[]。这里有个特殊的校验，即如何知道解密回来的文件是正常的class文件，如果你的文件被破坏了，可能就不是class文件，或者你的文件加密的时候是用txt格式内容，这里可能会转换错误的风险，我找了一些资料发现文件类型是有一个值可以区分的，就比如java文件有一个魔数，每个class文件前4个字节是CAFEBABE，Java语言的创始人设置的，爱喝咖啡的人有故事。&lt;/p&gt;
-
-&lt;p&gt;所以我只要判断是否为正常的class文件则解密正确，也保证的还原了文件，毕竟加密有问题就会导致整个包都不可用风险系数极高。&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;@Override
-public byte[] transform(ClassLoader loader, String className, Class&amp;lt;?&amp;gt; classBeingRedefined,
-                        ProtectionDomain domain, byte[] classBuffer) {
-  if (className == null || domain == null || loader == null) {
-    return classBuffer;
-  }
-
-  byte[] bytes = DECRYPT_UTILS.decode(projectPath, className, this.password);
-  if (bytes == null) {
-    return classBuffer;
-  }
-  if (isJavaMagicNumber(bytes)) {
-    return bytes;
-  } else {
-    LOG.warn(&quot;解密到的文件格式非JAVA格式 :&quot; + className);
-  }
-  return classBuffer;
-}
-
-private static final byte CA = -54;
-private static final byte FE = -2;
-private static final byte BA = -70;
-private static final byte BE = -66;
-
-/**
- * 魔数占四个字节
- */
-private boolean isJavaMagicNumber(byte[] bytes) {
-  return bytes[0] == CA &amp;amp;&amp;amp; bytes[1] == FE &amp;amp;&amp;amp; bytes[2] == BA &amp;amp;&amp;amp; bytes[3] == BE;
-}
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;h3 id=&quot;禁用attach&quot;&gt;禁用Attach&lt;/h3&gt;
-
-&lt;p&gt;&lt;strong&gt;-XX:+DisableAttachMechanism&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;深度使用java的人基本都会用诊断功能如arthas工具，如何禁用其他工具attach到本进程呢？启动时加这个参数即可。&lt;/p&gt;
-
-&lt;p&gt;但是加这个参数意味这你放弃使用jcmd、jstack、jmap和jinfo等命令，因为该命令不允许工具与JVM连接。&lt;/p&gt;
-
-&lt;h3 id=&quot;启动效果&quot;&gt;启动效果&lt;/h3&gt;
-
-&lt;p&gt;无论是懒加载或非懒加载，类被加载时都会先经过agent，agent作为应用的门卫角色，class被应用使用之前都会被优先校验或替换过。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407164650754.png&quot; alt=&quot;image-20220407164650754&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407164737747.png&quot; alt=&quot;image-20220407164737747&quot; /&gt;&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Java" /><category term="java" /><summary type="html">前言</summary></entry><entry><title type="html">Jar包加固《二、jar包处理流程》</title><link href="/java/2022/04/07/jarx.html" rel="alternate" type="text/html" title="Jar包加固《二、jar包处理流程》" /><published>2022-04-07T00:00:00+08:00</published><updated>2022-04-07T00:00:00+08:00</updated><id>/java/2022/04/07/jarx</id><content type="html" xml:base="/java/2022/04/07/jarx.html">&lt;h3 id=&quot;前言&quot;&gt;前言&lt;/h3&gt;
-
-&lt;p&gt;我们知道我们要实现的脉络后并生成了手脚架模块代码，接下来的事情就一路把功能代码填补上。&lt;/p&gt;
-
-&lt;h3 id=&quot;整体流程图&quot;&gt;整体流程图&lt;/h3&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/1.png&quot; alt=&quot;流程&quot; /&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;jar包处理&quot;&gt;Jar包处理&lt;/h3&gt;
-
-&lt;p&gt;&lt;strong&gt;-filePath&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;按我们定义的参数第一个是待加密的jar包路径，先判断文件是否存在，是否是jar类型的扩展名。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;-publicPassword&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;接下来是公钥，为什么是公钥，这里的加密设计是用RSA对一个原始密码加密，存放到一个文件内，如果有指定Mac地址，也用RSA加密放到另外一个文件内，这里多出两个文件，那就一起定义加密后的文件存放到哪里好了，从jar的目录结果来看，BOOT-INF是原始文件夹，还有一个是META-INF文件夹，我选择放META-INF文件夹里面用点号开头命名隐藏文件夹如：.xxxClasses。&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;类uninx操作系统，以“.”开头的文件或文件夹，表示隐藏文件，ls，命令默认不显示
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407142756538.png&quot; alt=&quot;image-20220407142756538&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;这个浅颜色表示隐藏文件，如果没有设置显示隐藏文件很难看出来加密后的文件存于此。而加密后的密码和Mac地址群都在里面。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407144545022.png&quot; alt=&quot;image-20220407144545022&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;-macCodes&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;Code和Pass文件都是RSA加密后的字符串，多个Mac地址就用逗号隔开即可。这里再次说明一下Mac地址校验问题，为什么要用逗号隔开这样设计而不是一个Mac地址打一个包。考虑到打制品包只能用一个最终制品，避免多制品不一致问题，打多个Mac地址包确实更安全，一个包传一个机器去，但是Jenkins打完后传到哪里这一步骤你在哪做都非常麻烦，要映射Mac和ip所在的机器连接关系，明显不现实且损失非常大，而且每打一个包要标明这个包对应的是那个ip用的，所以把Mac地址群放到一个Code文件里面是比较省事的方法。&lt;/p&gt;
-
-&lt;p&gt;所以这里公钥参数的用法表达完了，也在代码里面约定了加密后的文件存储到META-INF/.xxxClasses文件夹下。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;-includeJars&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;是否有二方包的代码需要加密，有就把二方包的jar解压，解压的临时目录就在当前的lib下，我这里的逻辑是大jar包建立一个临时目录_temp_来存放，二方包的目录就建立和二方包名称在加_temp_来存储，二方包哪些文件夹下的文件要加密就配合-packages参数使用，目录解构如图所示：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/WX20220406-183741.png&quot; alt=&quot;WX20220406-183741&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;-packages&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;待加密的文件代码我们按aop的切面方式进行配置，这种方式非常有利于我们对BOOT-INF下的源文件进行IO操作，因为包名就是文件夹的名称。我们只要解压得到文件夹，就可以把该文件夹下的所有文件变量去加密即可，最后在xxxClasses文件夹内用java包名方式存储加密后的文件即可。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407144401281.png&quot; alt=&quot;image-20220407144401281&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;class文件的加密是用原始密码进行AES方式加密的，所以密码有两道关，如果要解密class文件要知道原始密码和加密方式，得到原始密码要知道密码文件Pass所在的路径，并用私钥解密后得到原始密码再AES解密class就能读出正常class内容。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;-excludeClasses&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;是否有排除掉不需要加密的class类，这里可以按需指定。&lt;/p&gt;
-
-&lt;h3 id=&quot;重写原始class&quot;&gt;重写原始class&lt;/h3&gt;
-
-&lt;p&gt;对原始的class文件进行重写，把原本的方法体全部清空，只保留注释、注解、方法正确返回值。&lt;/p&gt;
-
-&lt;p&gt;为什么要做这一步呢？能不能把class全部删掉，或者写一些乱七八糟的内容在里面？这里我们要知道：&lt;/p&gt;
-
-&lt;p&gt;1：类加载是由双亲委派模式的，全部交由父类加载器从上Bootstrap -&amp;gt; Ext -&amp;gt; App -&amp;gt; 自己的类加载。&lt;/p&gt;
-
-&lt;p&gt;2：我们有些API生成器是要从Jar包中直接解析得出的，或者运行启动时扫描BOOT-INF下的代码生成的。&lt;/p&gt;
-
-&lt;p&gt;如果我们把BOOT-INF代码删了，或者变成一段不可运行的文本会导致怎么样？&lt;/p&gt;
-
-&lt;p&gt;1：API文档无法支持，因为API是去加载代码和扫描注释生成的，这里可能代码都无法被加载就报错了，间接会影响到别人的一些文档工作。&lt;/p&gt;
-
-&lt;p&gt;2：类加载问题，我们做个实验，把Application.class删掉会影响什么，启动时立马报错。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/WX20220406-174737.png&quot; alt=&quot;WX20220406-174737&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;为啥呢？因为SpringBoot的启动类必须要加载这个Application，类加载就会到这个路径下找class转成byte[]给jvm。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/WX20220406-175557@2x.png&quot; alt=&quot;WX20220406-175557@2x&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;3：如果我保留这个类不删，我把其他的删了总行吧？&lt;/p&gt;
-
-&lt;p&gt;也不行，为啥？因为Spring的Aop就是要根据包路径扫描的，你把代码全部删了，那Spring就认为这个路径下没有代码，那么Controller的注解那些就没有加载过，前端Ajax就请求不到资源。&lt;/p&gt;
-
-&lt;p&gt;4：那我能不能把代码都加密替换内容到里面？那我就不用把加密后的代码放META-INF了？省了一个空间。&lt;/p&gt;
-
-&lt;p&gt;也不行，还是类加载问题，因为第一手类加载不是你加载的，你加密后的文件第一次被类加载是顶层的Loader，你只能等它加载过一遍，传递到agent的时你赶紧把加密后的文件还原回来且ClassLoader重加载后再传递给应用去用。如果你的第一手文件Byte都是错的，那启动的时候就直接报错了。&lt;/p&gt;
-
-&lt;p&gt;所以，我们要想办法把原始class的方法体给清除掉，并且又能正常被加载，也就是还能作为一个正常的类来用。这也确保了如果别人拿到我们的包这个架子可以给你看，但是里面啥都没有，你看也看不出来是啥东西。看下图的效果：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407153717845.png&quot; alt=&quot;image-20220407153717845&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;实现这个目标我们用了javassist工具，它提供了很方便的工具方法重写原本的类，重编译后又能保证我这个类还能用。&lt;/p&gt;
-
-&lt;h3 id=&quot;生成新jar包&quot;&gt;生成新jar包&lt;/h3&gt;
-
-&lt;p&gt;最后就是把整个文件夹打包成新jar包&lt;/p&gt;
-
-&lt;p&gt;1：先打包lib下的jar，记得删掉_temp_结尾的临时目录。&lt;/p&gt;
-
-&lt;p&gt;2：把META-INF/maven文件夹给删掉，为啥？&lt;/p&gt;
-
-&lt;p&gt;因为这个文件夹存储了pom信息，如果用了maven插件方式来加密的话，你的秘钥或密码都会暴露有安全风险，我们的依赖信息和私服地址都在里面，然而这个文件删除也不会影响启动，删！&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407154425224.png&quot; alt=&quot;image-20220407154425224&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;3：再整体把_temp_打成fatjar就是最后的完整可交付的jar包了，最后删除_temp_目录完毕。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407154848009.png&quot; alt=&quot;image-20220407154848009&quot; /&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;最后&quot;&gt;最后&lt;/h3&gt;
-
-&lt;p&gt;整个jar包的处理逻辑流程和技术疑虑基本解决了。&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Java" /><category term="java" /><summary type="html">前言</summary></entry><entry><title type="html">Jar包加固《一、预研与方向》</title><link href="/java/2022/04/06/jarx.html" rel="alternate" type="text/html" title="Jar包加固《一、预研与方向》" /><published>2022-04-06T00:00:00+08:00</published><updated>2022-04-06T00:00:00+08:00</updated><id>/java/2022/04/06/jarx</id><content type="html" xml:base="/java/2022/04/06/jarx.html">&lt;h3 id=&quot;背景&quot;&gt;背景&lt;/h3&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2022-04-13T11:08:41+08:00</updated><id>/feed.xml</id><title type="html">Cookie.Joo Blog</title><subtitle>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.</subtitle><author><name>GitHub User</name></author><entry><title type="html">Jar包加固</title><link href="/java/2022/04/13/jarx.html" rel="alternate" type="text/html" title="Jar包加固" /><published>2022-04-13T00:00:00+08:00</published><updated>2022-04-13T00:00:00+08:00</updated><id>/java/2022/04/13/jarx</id><content type="html" xml:base="/java/2022/04/13/jarx.html">&lt;h3 id=&quot;背景&quot;&gt;背景&lt;/h3&gt;
 
 &lt;p&gt;我们在公司内网写代码、打包、部署都是在内网专有机器和专有网络上访问，所以基本不会考虑代码加密等问题。&lt;/p&gt;
 
@@ -200,124 +15,7 @@ private boolean isJavaMagicNumber(byte[] bytes) {
 &lt;p&gt;正是要解决此类问题，我们不得不对代码进行加固处理。&lt;/p&gt;
 
 &lt;h3 id=&quot;预研&quot;&gt;预研&lt;/h3&gt;
-
-&lt;p&gt;我们正常的jar包里面的内容是什么样的呢？我们要怎么对现有的jar包进行加固呢？所以怎么下手是一个必须要面对的难题。我们以Spring-Boot的jar包为例，也是主流jar打包方式。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-06-jarx/WX20220406-175405@2x.png&quot; alt=&quot;WX20220406-175405@2x&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;正常Spring-Boot jar包解压后有3个文件夹&lt;/p&gt;
-
-&lt;p&gt;BOOT-INT：存放该应用的第一方代码(即非maven引入的jar，你在这个项目可直接编辑的代码)&lt;/p&gt;
-
-&lt;p&gt;META-INT：主要是配置文件，MAINFEST.MF是文件启动描述文件，Application.java全路径启动描述&lt;/p&gt;
-
-&lt;p&gt;org：Spring-Boot的启动依赖类，Spring-Boot自己的类加载用的依赖类&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-06-jarx/WX20220406-175557@2x.png&quot; alt=&quot;WX20220406-175557@2x&quot; /&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;确认方向&quot;&gt;确认方向&lt;/h3&gt;
-
-&lt;p&gt;从文件路径图中看，我们其实要处理的就一个文件夹「&lt;strong&gt;BOOT-INF&lt;/strong&gt;」，因为这里存放的是原始第一手class文件，和依赖的二方包、三方包jar文件，也就是要防止别人看的文件。&lt;/p&gt;
-
-&lt;p&gt;那BOOT-INF文件夹分四类，一类是java文件，一类是静态前端文件，一类是配置文件都在classes文件夹内，lib是maven引入的jar包文件。&lt;/p&gt;
-
-&lt;p&gt;我们观察一下classes的class必然要加密，静态前端文件基本都是vue用node编译后的文件，这种文件已经极其难看了就可以不用考虑加密处理了。配置文件呢我们一般是用第三方配置系统的，所以application.properties内存放的东西很少，也不会存放敏感信息的（如有敏感信息建议放第三方配置平台），所以也不用对这类文件做出来。lib下的第二方包我们得做加密，为啥呢？因为我们有很多api包、sdk包是自己写的模块代码，打成了jar包后给本应用模块依赖进来的，这些可能都是敏感文件肯定也不能给暴露了。其他的jar包就不用去加密了，因为这些第三方包基本都是开源的，或者不是业务相关的工具jar没必要加密。&lt;/p&gt;
-
-&lt;p&gt;综合下来就classes的class文件和lib包的我们自己敏感二方包要加密。&lt;/p&gt;
-
-&lt;p&gt;确定了要处理的文件后我们要确认一下行不行的通，我加密这些代码后会不会启动都启动不了了，我们启动jar包这些class怎么还原回来？&lt;/p&gt;
-
-&lt;p&gt;我搜索了一下氪金产品，jar包加固都是提供一个加密软硬把包丢进去生成一个新的加密包，在提供一个javaagent包配合启动时解密，因为启动jar包时，javaagent是第一道关卡，从这个关卡中把class还原回来给class loader重定义后主程序就能用解密还原回来的class。&lt;/p&gt;
-
-&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;Instrumentation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;addTransformer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
-&lt;span class=&quot;c1&quot;&gt;//方法允许我们在类加载之前，重新定义Class，先看一下方法的定义：&lt;/span&gt;
-&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;addTransformer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;ClassFileTransformer&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;transformer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
-&lt;span class=&quot;c1&quot;&gt;//ClassFileTransformer是一个接口，只有一个transform方法，它在主程序的main方法执行前，装载的每个类都要经过transform执行一次，可以将它称为转换器。&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;Javaagent这点特性很重要，它恰好解决了我们要类加载之前把class还原回来。用javaagent的话需要在启动时加启动参数配置，可以在启动sh包内加-D等参数判断，如果不是做过jar包加密的应用就不用加javaagent的参数，写在部署脚本里面这样也挺通用的。&lt;/p&gt;
-
-&lt;p&gt;不过生成jar包不能用一个文件人工执行，我们要自己做这个实现，那我们得用到加解密的工具类如RSA、AES这类的非对称加解密文件，打包的工具我们要配合Jenkins那我们可以用脚本去运行Main方法进行jar加密后生成一个新的，或者在打包时用maven插件直接把打包后的包进行jar加密输出成另外一个包，但是要配合插件的参数判断是否要启用jar加密还是不用加密，这里可能会麻烦一点，那直接就用Main方法加密吧，写在Jenkins自定义脚本去执行。&lt;/p&gt;
-
-&lt;p&gt;如果我们需要指定只能在某台机器上解密的话也得要支持，比如用mac地址，只能在这个mac地址的机器才能执行启动加解密，那也挺保险的，但是这个配置可能会导致一些问题不太灵活。比如扩容机器、机器坏了换机器那你得重新打包，紧急扩容的时候就很难受了。除非这些配置你在javaagent启动的时候先去远程调用配置中心的配置来做，但是这个配置存放在哪可能会有一些问题，比如你这个公有云是不能访问其他云网络的，你只能在你的公有云里面部署一下配置管理系统来做这个接口，这样确实有些启动依赖在里面的。&lt;/p&gt;
-
-&lt;p&gt;是否要做这个第三方配置或许取决于小组讨论，主要就是还得考虑一下如果获取配置接口挂了的情况就无法启动了。&lt;/p&gt;
-
-&lt;p&gt;我们规划一下这个jar包加固的手脚架&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;&lt;strong&gt;jarx-core:&lt;/strong&gt; Jarx的核心模块，对jar包解压、包下class加密功能，重新压缩成jar包；&lt;/li&gt;
-  &lt;li&gt;&lt;strong&gt;jarx-crypto:&lt;/strong&gt; Jarx的加密模块，用什么方式加密、解密；&lt;/li&gt;
-  &lt;li&gt;&lt;strong&gt;jarx-agent:&lt;/strong&gt; Jarx的agent启动依赖解密模块；&lt;/li&gt;
-  &lt;li&gt;&lt;strong&gt;jarx-fatjar:&lt;/strong&gt; Jarx的打包工具模块，从控制台中获取一系列参数调用core包加密jar（Jenkins自定义脚本就是要调用这个jar，需要提前打包好这个工具放到一个挂载盘中给Jenkins下载执行）；&lt;/li&gt;
-  &lt;li&gt;&lt;strong&gt;jarx-maven-plugin:&lt;/strong&gt; Jarx的maven打包插件；&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;fatjar和maven-plugin都是做加密打包用，就看用那种方便吧。&lt;/p&gt;
-
-&lt;p&gt;我们要定义一些Main方法打包的参数，因为我想做的是classes包可以像aop已经切面去指定要加密的class，指定lib下哪些jar要加密，这些加的aop包也要说明，哪些类可以不加密。&lt;/p&gt;
-
-&lt;h3 id=&quot;参数说明&quot;&gt;参数说明&lt;/h3&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;参数名&lt;/th&gt;
-      &lt;th&gt;说明&lt;/th&gt;
-      &lt;th&gt;是否必填&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-filePath&lt;/td&gt;
-      &lt;td&gt;加密的jar/war完整路径&lt;/td&gt;
-      &lt;td&gt;必填&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-packages&lt;/td&gt;
-      &lt;td&gt;加密的包名，该包下所有class都会加密，多个用&quot;,&quot;分割&lt;/td&gt;
-      &lt;td&gt;必填&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-publicPassword&lt;/td&gt;
-      &lt;td&gt;公钥&lt;/td&gt;
-      &lt;td&gt;必填&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-password&lt;/td&gt;
-      &lt;td&gt;原始密码，不填则随机生成&lt;/td&gt;
-      &lt;td&gt; &lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-excludeClasses&lt;/td&gt;
-      &lt;td&gt;排除的全类名，多个用&quot;,&quot;分割&lt;/td&gt;
-      &lt;td&gt; &lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-includeJars&lt;/td&gt;
-      &lt;td&gt;jar包lib下要加密jar文件名，多个用&quot;,&quot;分割&lt;/td&gt;
-      &lt;td&gt; &lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-macCodes&lt;/td&gt;
-      &lt;td&gt;Mac地址，在绑定的机器生成，加密后只可在此机器上运行&lt;/td&gt;
-      &lt;td&gt; &lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;p&gt;执行命令，配置用等于号进行配置，用空格隔开下一个配置&lt;/p&gt;
-
-&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;java &lt;span class=&quot;nt&quot;&gt;-jar&lt;/span&gt; jarx-fatjar.jar &lt;span class=&quot;nt&quot;&gt;-filePath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;xxx-app.jar &lt;span class=&quot;nt&quot;&gt;-includeJars&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;a.jar,b.jar &lt;span class=&quot;nt&quot;&gt;-packages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;com.qihoo.finance.应用a.modules,com.qihoo.finance.应用b.modules &lt;span class=&quot;nt&quot;&gt;-excludeClasses&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;com.xxx.Application &lt;span class=&quot;nt&quot;&gt;-publicPassword&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;xxx &lt;span class=&quot;nt&quot;&gt;-password&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;123456 &lt;span class=&quot;nt&quot;&gt;-macCodes&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;90-9C-4A-CB-BC-FF
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;结果: 生成 xxx-app-encrypted.jar，这个就是加密后的jar文件；加密后的文件不可直接执行，需要配合javaagent启动。&lt;/p&gt;
-
-&lt;h3 id=&quot;整体架构图如下&quot;&gt;整体架构图如下&lt;/h3&gt;
-
-&lt;p&gt;&lt;img src=&quot;/images/2022-04-06-jarx/流程.png&quot; alt=&quot;流程&quot; /&gt;&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Java" /><category term="java" /><summary type="html">背景</summary></entry><entry><title type="html">Jar包加固产品对比</title><link href="/java/2022/04/05/jarx.html" rel="alternate" type="text/html" title="Jar包加固产品对比" /><published>2022-04-05T00:00:00+08:00</published><updated>2022-04-05T00:00:00+08:00</updated><id>/java/2022/04/05/jarx</id><content type="html" xml:base="/java/2022/04/05/jarx.html">&lt;h3 id=&quot;背景&quot;&gt;背景&lt;/h3&gt;
-
-&lt;p&gt;Jar包的加密在正常场景中运用较少，基本不会考虑此类加密处理，一般是在加密数据等领域居多，还有Android的SDK包等发布加密居多，一般简单的使用代码混淆proguard插件就能满足一些需求，但是该工具使用范围极其有限，简单模式的java模块还是可以满足的。&lt;/p&gt;
+&lt;p&gt;Jar包的加密在正常场景中运用较少，基本不会考虑此类加密处理，一般是在加密数据等领域居多，和Android的SDK包等发布加密居多，一般简单的使用代码混淆proguard插件就能满足一些需求，但是该工具使用范围极其有限，简单模式的java模块还是可以满足的。&lt;/p&gt;
 
 &lt;p&gt;市面的收费产品都是自研的整体加密方式，配合agent启动解密(该方向是java方向主流的Spring包应用)，在实现上确实有方便和独到之处。&lt;/p&gt;
 
@@ -397,7 +95,451 @@ private boolean isJavaMagicNumber(byte[] bytes) {
   &lt;/tbody&gt;
 &lt;/table&gt;
 
-&lt;p&gt;最终还是选择自研的class文件加密方式，配合javaagent来运行。&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Java" /><category term="java" /><summary type="html">背景</summary></entry><entry><title type="html">什么是云原生？</title><link href="/cloud/2022/02/15/what-is-cloud-native.html" rel="alternate" type="text/html" title="什么是云原生？" /><published>2022-02-15T00:00:00+08:00</published><updated>2022-02-15T00:00:00+08:00</updated><id>/cloud/2022/02/15/what-is-cloud-native</id><content type="html" xml:base="/cloud/2022/02/15/what-is-cloud-native.html">&lt;h3 id=&quot;前言&quot;&gt;&lt;strong&gt;前言&lt;/strong&gt;&lt;/h3&gt;
+&lt;h3 id=&quot;混淆示例&quot;&gt;混淆示例&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-05-jarx/image-20220412170023522.png&quot; alt=&quot;image-20220412170023522&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;混淆后的代码是被一种特殊规则命名修改后的结果，最终还是选择自研的class文件加密方式，配合javaagent来运行。&lt;/p&gt;
+
+&lt;p&gt;我们正常的jar包里面的内容是什么样的呢？我们要怎么对现有的jar包进行加固呢？所以怎么下手是一个必须要面对的难题。我们以Spring-Boot的jar包为例，也是主流jar打包方式。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-06-jarx/WX20220406-175405@2x.png&quot; alt=&quot;WX20220406-175405@2x&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;正常Spring-Boot jar包解压后有3个文件夹&lt;/p&gt;
+
+&lt;p&gt;BOOT-INT：存放该应用的第一方代码(即非maven引入的jar，你在这个项目可直接编辑的代码)&lt;/p&gt;
+
+&lt;p&gt;META-INT：主要是配置文件，MAINFEST.MF是文件启动描述文件，Application.java全路径启动描述&lt;/p&gt;
+
+&lt;p&gt;org：Spring-Boot的启动依赖类，Spring-Boot自己的类加载用的依赖类&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-06-jarx/WX20220406-175557@2x.png&quot; alt=&quot;WX20220406-175557@2x&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;确认方向&quot;&gt;确认方向&lt;/h3&gt;
+
+&lt;p&gt;从文件路径图中看，我们其实要处理的就一个文件夹「&lt;strong&gt;BOOT-INF&lt;/strong&gt;」，因为这里存放的是原始第一手class文件，和依赖的二方包、三方包jar文件，也就是要防止别人看的文件。&lt;/p&gt;
+
+&lt;p&gt;那BOOT-INF文件夹分四类，一类是java文件，一类是静态前端文件，一类是配置文件都在classes文件夹内，lib是maven引入的jar包文件。&lt;/p&gt;
+
+&lt;p&gt;我们观察一下classes的class必然要加密，静态前端文件基本都是vue用node编译后的文件，这种文件已经极其难看了就可以不用考虑加密处理了。配置文件呢我们一般是用第三方配置系统的，所以application.properties内存放的东西很少，也不会存放敏感信息的（如有敏感信息建议放第三方配置平台），所以也不用对这类文件做出来。lib下的第二方包我们得做加密，为啥呢？因为我们有很多api包、sdk包是自己写的模块代码，打成了jar包后给本应用模块依赖进来的，这些可能都是敏感文件肯定也不能给暴露了。其他的jar包就不用去加密了，因为这些第三方包基本都是开源的，或者不是业务相关的工具jar没必要加密。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;综合下来就classes的class文件和lib包的我们自己敏感二方包要加密。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;确定了要处理的文件后我们要确认一下行不行的通，我加密这些代码后会不会启动都启动不了了，我们启动jar包这些class怎么还原回来？&lt;/p&gt;
+
+&lt;p&gt;我搜索了一下氪金产品，jar包加固都是提供一个加密软硬把包丢进去生成一个新的加密包，在提供一个javaagent包配合启动时解密，因为启动jar包时，javaagent是第一道关卡，从这个关卡中把class还原回来给class loader重定义后主程序就能用解密还原回来的class。&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nc&quot;&gt;Instrumentation&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;addTransformer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;//方法允许我们在类加载之前，重新定义Class，先看一下方法的定义：&lt;/span&gt;
+&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;addTransformer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;ClassFileTransformer&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;transformer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;//ClassFileTransformer是一个接口，只有一个transform方法，它在主程序的main方法执行前，装载的每个类都要经过transform执行一次，可以将它称为转换器。&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Javaagent这点特性很重要，它恰好解决了我们要类加载之前把class还原回来。用javaagent的话需要在启动时加启动参数配置，可以在启动sh包内加-D等参数判断，如果不是做过jar包加密的应用就不用加javaagent的参数，写在部署脚本里面这样也挺通用的。&lt;/p&gt;
+
+&lt;p&gt;不过生成jar包不能用一个文件人工执行，我们要自己做这个实现，那我们得用到加解密的工具类如RSA、AES这类的非对称加解密文件，打包的工具我们要配合Jenkins那我们可以用脚本去运行Main方法进行jar加密后生成一个新的，或者在打包时用maven插件直接把打包后的包进行jar加密输出成另外一个包，但是要配合插件的参数判断是否要启用jar加密还是不用加密，这里可能会麻烦一点，那直接就用Main方法加密吧，写在Jenkins自定义脚本去执行。&lt;/p&gt;
+
+&lt;p&gt;如果我们需要指定只能在某台机器上解密的话也得要支持，比如用mac地址，只能在这个mac地址的机器才能执行启动加解密，那也挺保险的，但是这个配置可能会导致一些问题不太灵活。比如扩容机器、机器坏了换机器那你得重新打包，紧急扩容的时候就很难受了。除非这些配置你在javaagent启动的时候先去远程调用配置中心的配置来做，但是这个配置存放在哪可能会有一些问题，比如你这个公有云是不能访问其他云网络的，你只能在你的公有云里面部署一下配置管理系统来做这个接口，这样确实有些启动依赖在里面的。&lt;/p&gt;
+
+&lt;p&gt;是否要做这个第三方配置或许取决于小组讨论，主要就是还得考虑一下如果获取配置接口挂了的情况就无法启动了。&lt;/p&gt;
+
+&lt;p&gt;我们规划一下这个jar包加固的脚手架&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;jarx-core:&lt;/strong&gt; Jarx的核心模块，对jar包解压、包下class加密功能，重新压缩成jar包；&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;jarx-crypto:&lt;/strong&gt; Jarx的加密模块，用什么方式加密、解密；&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;jarx-agent:&lt;/strong&gt; Jarx的agent启动依赖解密模块；&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;jarx-fatjar:&lt;/strong&gt; Jarx的打包工具模块，从控制台中获取一系列参数调用core包加密jar（Jenkins自定义脚本就是要调用这个jar，需要提前打包好这个工具放到一个挂载盘中给Jenkins下载执行）；&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;jarx-maven-plugin:&lt;/strong&gt; Jarx的maven打包插件；&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;fatjar和maven-plugin都是做加密打包用，就看用那种方便吧。&lt;/p&gt;
+
+&lt;p&gt;我们要定义一些Main方法打包的参数，因为我想做的是classes包可以像aop已经切面去指定要加密的class，指定lib下哪些jar要加密，这些加的aop包扫描也要说明，哪些类可以设置不加密。&lt;/p&gt;
+
+&lt;h3 id=&quot;参数说明&quot;&gt;参数说明&lt;/h3&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;参数名&lt;/th&gt;
+      &lt;th&gt;说明&lt;/th&gt;
+      &lt;th&gt;是否必填&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;-filePath&lt;/td&gt;
+      &lt;td&gt;加密的jar完整路径&lt;/td&gt;
+      &lt;td&gt;必填&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;-packages&lt;/td&gt;
+      &lt;td&gt;加密的包名，该包下所有class都会加密，多个用&quot;,&quot;分割&lt;/td&gt;
+      &lt;td&gt;必填&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;-publicPassword&lt;/td&gt;
+      &lt;td&gt;公钥&lt;/td&gt;
+      &lt;td&gt;必填&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;-password&lt;/td&gt;
+      &lt;td&gt;原始密码，不填则随机生成&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;-excludeClasses&lt;/td&gt;
+      &lt;td&gt;排除的全类名，多个用&quot;,&quot;分割&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;-includeJars&lt;/td&gt;
+      &lt;td&gt;jar包lib下要加密jar文件名，多个用&quot;,&quot;分割&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;-macCodes&lt;/td&gt;
+      &lt;td&gt;Mac地址，在绑定的机器生成，加密后只可在此机器上运行&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;执行命令，配置用等于号进行配置，用空格隔开下一个配置&lt;/p&gt;
+
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;java &lt;span class=&quot;nt&quot;&gt;-jar&lt;/span&gt; jarx-fatjar.jar &lt;span class=&quot;nt&quot;&gt;-filePath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;xxx-app.jar &lt;span class=&quot;nt&quot;&gt;-includeJars&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;a.jar,b.jar &lt;span class=&quot;nt&quot;&gt;-packages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;com.xxx.应用a.modules,com.xxx.应用b.modules &lt;span class=&quot;nt&quot;&gt;-excludeClasses&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;com.xxx.Application &lt;span class=&quot;nt&quot;&gt;-publicPassword&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;xxx &lt;span class=&quot;nt&quot;&gt;-password&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;123456 &lt;span class=&quot;nt&quot;&gt;-macCodes&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;90-9C-4A-CB-BC-FF
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;结果: 生成 xxx-app-encrypted.jar，这个就是加密后的jar文件；加密后的文件不可直接执行，需要配合javaagent启动。&lt;/p&gt;
+
+&lt;h3 id=&quot;整体架构图如下&quot;&gt;整体架构图如下&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-06-jarx/流程.png&quot; alt=&quot;流程&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;我们知道我们要实现的脉络后并生成了脚手架模块代码，接下来的事情就一路把功能代码填补上。&lt;/p&gt;
+
+&lt;h3 id=&quot;整体流程图&quot;&gt;整体流程图&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/1.png&quot; alt=&quot;流程&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;jar包处理&quot;&gt;Jar包处理&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;-filePath&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;按我们定义的参数第一个是待加密的jar包路径，先判断文件是否存在，是否是jar类型的扩展名。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;-publicPassword&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;接下来是公钥，为什么是公钥，这里的加密设计是用RSA对一个原始密码加密，存放到一个文件内，如果有指定Mac地址，也用RSA加密放到另外一个文件内，这里多出两个文件，那就一起定义加密后的文件存放到哪里好了，从jar的目录结果来看，BOOT-INF是原始文件夹，还有一个是META-INF文件夹，我选择放META-INF文件夹里面用点号开头命名隐藏文件夹如：.xxxClasses。&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;类uninx操作系统，以“.”开头的文件或文件夹，表示隐藏文件，ls，命令默认不显示
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407142756538.png&quot; alt=&quot;image-20220407142756538&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;这个浅颜色表示隐藏文件，如果没有设置显示隐藏文件很难看出来加密后的文件存于此。而加密后的密码和Mac地址群都在里面。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407144545022.png&quot; alt=&quot;image-20220407144545022&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;-macCodes&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Code和Pass文件都是RSA加密后的字符串，多个Mac地址就用逗号隔开即可。这里再次说明一下Mac地址校验问题，为什么要用逗号隔开这样设计而不是一个Mac地址打一个包。考虑到打制品包只能用一个最终制品，避免多制品不一致问题，打多个Mac地址包确实更安全，一个包传一个机器去，但是Jenkins打完后传到哪里这一步骤你在哪做都非常麻烦，要映射Mac和ip所在的机器连接关系，明显不现实且损失非常大，而且每打一个包要标明这个包对应的是那个ip用的，所以把Mac地址群放到一个Code文件里面是比较省事的方法。&lt;/p&gt;
+
+&lt;p&gt;所以这里公钥参数的用法表达完了，也在代码里面约定了加密后的文件存储到META-INF/.xxxClasses文件夹下。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;-includeJars&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;是否有二方包的代码需要加密，有就把二方包的jar解压，解压的临时目录就在当前的lib下，我这里的逻辑是大jar包建立一个临时目录_temp_来存放，二方包的目录就建立和二方包名称在加_temp_来存储，二方包哪些文件夹下的文件要加密就配合-packages参数使用，目录解构如图所示：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/WX20220406-183741.png&quot; alt=&quot;WX20220406-183741&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;-packages&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;待加密的文件代码我们按aop的切面方式进行配置，这种方式非常有利于我们对BOOT-INF下的源文件进行IO操作，因为包名就是文件夹的名称。我们只要解压得到文件夹，就可以把该文件夹下的所有文件遍历去加密即可，最后在xxxClasses文件夹内用java包名方式存储加密后的文件即可。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407144401281.png&quot; alt=&quot;image-20220407144401281&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;class文件的加密是用原始密码进行AES方式加密的，所以密码有两道关，如果要解密class文件要知道原始密码和加密方式，得到原始密码要知道密码文件Pass所在的路径，并用私钥解密后得到原始密码再AES解密class就能读出正常class内容。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;-excludeClasses&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;是否有排除掉不需要加密的class类，这里可以按需指定。&lt;/p&gt;
+
+&lt;h3 id=&quot;重写原始class&quot;&gt;重写原始class&lt;/h3&gt;
+
+&lt;p&gt;对原始的class文件进行重写，把原本的方法体全部清空，只保留注释、注解、方法正确返回值。&lt;/p&gt;
+
+&lt;p&gt;为什么要做这一步呢？能不能把class全部删掉，或者写一些乱七八糟的内容在里面？这里我们要知道：&lt;/p&gt;
+
+&lt;p&gt;1：类加载双亲委派模型，全部交由父类加载器从上Bootstrap -&amp;gt; Ext -&amp;gt; App -&amp;gt; 自己的类加载。&lt;/p&gt;
+
+&lt;p&gt;2：我们有些API生成器是要从Jar包中直接解析得出的，或者运行启动时扫描BOOT-INF下的代码生成的。&lt;/p&gt;
+
+&lt;p&gt;如果我们把BOOT-INF代码删了，或者变成一段不可运行的文本会导致怎么样？&lt;/p&gt;
+
+&lt;p&gt;1：API文档无法支持，因为API是去加载代码和扫描注释生成的，这里可能代码都无法被加载就报错了，间接会影响到别人的一些文档工作。&lt;/p&gt;
+
+&lt;p&gt;2：类加载问题，我们做个实验，把Application.class删掉会影响什么，启动时立马报错。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/WX20220406-174737.png&quot; alt=&quot;WX20220406-174737&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;为啥呢？因为SpringBoot的启动类必须要加载这个Application，类加载就会到这个路径下找class转成byte[]给jvm。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/WX20220406-175557@2x.png&quot; alt=&quot;WX20220406-175557@2x&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;3：如果我保留这个类不删，我把其他的删了总行吧？&lt;/p&gt;
+
+&lt;p&gt;也不行，为啥？因为Spring的Aop就是要根据包路径扫描的，你把代码全部删了，那Spring就认为这个路径下没有代码，那么Controller的注解那些就没有加载过，前端Ajax就请求不到资源。&lt;/p&gt;
+
+&lt;p&gt;4：那我能不能把代码都加密替换内容到里面？那我就不用把加密后的代码放META-INF了？省了一个空间。&lt;/p&gt;
+
+&lt;p&gt;也不行，还是类加载问题，因为第一手类加载不是你加载的，你加密后的文件第一次被类加载是顶层的Loader，你只能等它加载过一遍，传递到agent的时你赶紧把加密后的文件还原回来且ClassLoader重加载后再传递给应用去用。如果你的第一手文件Byte都是错的，那启动的时候就直接报错了。&lt;/p&gt;
+
+&lt;p&gt;所以，我们要想办法把原始class的方法体给清除掉，并且又能正常被加载，也就是还能作为一个正常的类来用。这也确保了如果别人拿到我们的包这个架子可以给你看，但是里面啥都没有，你看也看不出来是啥东西。看下图的效果：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407153717845.png&quot; alt=&quot;image-20220407153717845&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;这么做的目的是保证Spring的包扫描路径下都有文件，都有完整的方法定义，就算你把方法体的内容简写掉，也必须保证‘定义句柄’被Spring所知道，后续进过自定义的ClassLoader还原方法内容即可正常使用。实现这个目标我们用了javassist工具，他提供了很方便的工具方法重写原本的类，又能保证我这个类还能用。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;生成新jar包&quot;&gt;生成新jar包&lt;/h3&gt;
+
+&lt;p&gt;最后就是把整个文件夹打包成新jar包&lt;/p&gt;
+
+&lt;p&gt;1：先打包lib下的jar，记得删掉_temp_结尾的临时目录。&lt;/p&gt;
+
+&lt;p&gt;2：把META-INF/maven文件夹给删掉，为啥？&lt;/p&gt;
+
+&lt;p&gt;因为这个文件夹存储了pom信息，如果用了maven插件方式来加密的话，你的秘钥或密码都会暴露有安全风险，我们的依赖信息和私服地址都在里面，然而这个文件删除也不会影响启动，删！&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407154425224.png&quot; alt=&quot;image-20220407154425224&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;3：再整体把_temp_打成fatjar就是最后的完整可交付的jar包了，最后删除_temp_目录完毕。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407154848009.png&quot; alt=&quot;image-20220407154848009&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;整个jar包的处理逻辑流程和技术疑虑基本解决了。&lt;/p&gt;
+
+&lt;p&gt;Jar包的加密已经完毕了，现在开始做Jar包的解密开发，javaagent的开发工作量不多，只有是解密文件还原给应用使用。&lt;/p&gt;
+
+&lt;h3 id=&quot;agent加载问题注意&quot;&gt;agent加载问题注意&lt;/h3&gt;
+
+&lt;p&gt;开发加密Jar包的时候我的规划是文件操作的代码规划到core包里面，可以依赖一些方便的工具如：Apache common-land、io。guava等，而crypto包只用jdk提供的类提供加密的方法，RSE和AES都能满足了，文件操作也可以用io包解决，因为agent解密只要依赖crypto的包，不会依赖core包。&lt;/p&gt;
+
+&lt;p&gt;agent最好不要依赖第三方包，除非你全部重写过第三方包和包名，否则容易出现传递依赖包冲突问题，比如你在agent包中用了guava的3.x版本，但是应用的包依赖的是guava的2.x版本，3.x版本删除过某个2.x版本的class，那么别人应用中用了这个类就会报错，因为传递依赖的时候agent是把2.x的代码打到他的class下面的，发现在agent有的情况下会优先用agent包内加载的代码，这点在写agent jar的时候是需要很谨慎的。&lt;/p&gt;
+
+&lt;p&gt;大家有兴趣可以了解一下skywalking源码，它的agent虽然有用第三方包但是打包的pom都排除掉了，仅利用应用里面懒加载的jar依赖传递，就是避免用了它的agent启动不会因为全类名一致导致代码冲突，并且skywalking中你用了什么功能它才会被激活，一旦被激活，你的jar包肯定是有该依赖，这也是它的厉害之处。&lt;/p&gt;
+
+&lt;p&gt;如果你的agent要用尽量都用&amp;lt;scope&amp;gt;provided&amp;lt;/scope&amp;gt;来声明依赖，agent都去使用应用加载的第三方包。&lt;strong&gt;但注意，如果应用里面都没依赖过这个包，那启动的时候一用到这个包的类就异常了。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;javaagent流程&quot;&gt;javaagent流程&lt;/h3&gt;
+
+&lt;p&gt;我们加密的时候是把原始密码和Mac地址群分别放在Pass和Code文件里面，那么我们解密的时候是需要用到RSA私钥，那这个私钥存哪里也是个问题，目前暂定存放到环境变量中，如果觉得不稳妥，那就必须要在agent里面开发一个http去第三方配置中心取私钥了。&lt;/p&gt;
+
+&lt;p&gt;http接口是&lt;可选&gt;逻辑。&lt;/可选&gt;&lt;/p&gt;
+
+&lt;p&gt;得到私钥后到META-INF下面找Pass和Code解密得到原始密码和判断是否有Mac地址授权判断。&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;premain&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;args&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Instrumentation&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;inst&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;err&quot;&gt;。。。。。。&lt;/span&gt;
+  &lt;span class=&quot;c1&quot;&gt;//解密后重新定义Class：&lt;/span&gt;
+  &lt;span class=&quot;nc&quot;&gt;AgentTransformer&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tran&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;AgentTransformer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;inst&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;addTransformer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tran&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Transformer类中根据className到META-INF/xxxClasses文件夹下寻找对应的类，如果存在就进行解密返回新的byte[]，如果没有就返回原始byte[]。这里有个特殊的校验，即如何知道解密回来的文件是正常的class文件，如果你的文件被破坏了，可能就不是class文件，或者你的文件加密的时候是用txt格式内容，这里可能会转换错误的风险，我找了一些资料发现文件类型是有一个值可以区分的，就比如java文件有一个魔数，每个class文件前4个字节是CAFEBABE，Java语言的创始人设置的，爱喝咖啡的人有故事。&lt;/p&gt;
+
+&lt;p&gt;所以我只要判断是否为正常的class文件则解密正确，也保证的还原了文件，毕竟加密有问题就会导致整个包都不可用风险系数极高。&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;AgentTransformer&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;implements&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;ClassFileTransformer&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;nd&quot;&gt;@Override&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;byte&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;transform&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;ClassLoader&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;loader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;className&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Class&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;lt;?&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;classBeingRedefined&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+                          &lt;span class=&quot;nc&quot;&gt;ProtectionDomain&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;domain&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;byte&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;classBuffer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;className&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;domain&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;loader&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;classBuffer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+    &lt;span class=&quot;kt&quot;&gt;byte&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bytes&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;DECRYPT_UTILS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;decode&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;projectPath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;className&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bytes&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;classBuffer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;isJavaMagicNumber&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bytes&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bytes&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;no&quot;&gt;LOG&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;warn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;解密到的文件格式非JAVA格式 :&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;className&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;classBuffer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+  &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;final&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;byte&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;CA&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;54&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;final&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;byte&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;FE&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;final&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;byte&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;BA&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;70&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;final&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;byte&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;BE&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;66&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+
+  &lt;span class=&quot;cm&quot;&gt;/**
+   * 魔数占四个字节
+   */&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;isJavaMagicNumber&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;byte&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bytes&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bytes&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;CA&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bytes&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;FE&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bytes&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;BA&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;bytes&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;no&quot;&gt;BE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;禁用attach&quot;&gt;禁用Attach&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;-XX:+DisableAttachMechanism&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;深度使用java的人基本都会用诊断功能如arthas工具，如何禁用其他工具attach到本进程呢？启动时加这个参数即可。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;但是加这个参数意味这你放弃使用jcmd、jstack、jmap和jinfo等命令，因为该命令不允许工具与JVM连接。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;启动效果&quot;&gt;启动效果&lt;/h3&gt;
+
+&lt;p&gt;无论是懒加载或非懒加载，类被加载时都会先经过agent，agent作为应用的门卫角色，class被应用使用之前都会被优先校验或替换过。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407164650754.png&quot; alt=&quot;image-20220407164650754&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-08-jarx/image-20220407164737747.png&quot; alt=&quot;image-20220407164737747&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;当我们所有的功能实现都就绪的时候，就要考虑怎么触发这个打包问题了，最简单的我们写个Main方法来执行，有能力可以写一个maven plugin来做，参数在maven打包命令中可以传的。&lt;/p&gt;
+
+&lt;p&gt;我们先把Main方法这个实现了，这样用户其实不用修改他自己的源码pom任何东西都能用这个Jar包加固工具。&lt;/p&gt;
+
+&lt;h3 id=&quot;实现思路&quot;&gt;实现思路&lt;/h3&gt;
+
+&lt;p&gt;在core包中我们已经把整个加密包的功能写好了，那就提供一个方法处理，参数包装一下给fatjat这个模块用。fatjar模块就只有一个类一个main方法，完事。但是遇到了一个问题，我把fatjar打成jar包后，怎么用java -jar xxx-fatjat.jar来传参和执行我们写的这个main函数呢？maven有提供一个插件的，就是配置一下指定的类，该类里面必须有main方法，java -jar的时候就会去命中这个类的main方法。&lt;/p&gt;
+
+&lt;div class=&quot;language-xml highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;plugin&amp;gt;&lt;/span&gt;
+	&lt;span class=&quot;nt&quot;&gt;&amp;lt;groupId&amp;gt;&lt;/span&gt;org.apache.maven.plugins&lt;span class=&quot;nt&quot;&gt;&amp;lt;/groupId&amp;gt;&lt;/span&gt;
+	&lt;span class=&quot;nt&quot;&gt;&amp;lt;artifactId&amp;gt;&lt;/span&gt;maven-shade-plugin&lt;span class=&quot;nt&quot;&gt;&amp;lt;/artifactId&amp;gt;&lt;/span&gt;
+	&lt;span class=&quot;nt&quot;&gt;&amp;lt;version&amp;gt;&lt;/span&gt;3.0.0&lt;span class=&quot;nt&quot;&gt;&amp;lt;/version&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;configuration&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- 这个要配置一下，否则打包的时候额外生成一个没啥用的文件 --&amp;gt;&lt;/span&gt;
+  	&lt;span class=&quot;nt&quot;&gt;&amp;lt;createDependencyReducedPom&amp;gt;&lt;/span&gt;false&lt;span class=&quot;nt&quot;&gt;&amp;lt;/createDependencyReducedPom&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/configuration&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;executions&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;execution&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;phase&amp;gt;&lt;/span&gt;package&lt;span class=&quot;nt&quot;&gt;&amp;lt;/phase&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;goals&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;goal&amp;gt;&lt;/span&gt;shade&lt;span class=&quot;nt&quot;&gt;&amp;lt;/goal&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/goals&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;configuration&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;transformers&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;transformer&lt;/span&gt;
+          &lt;span class=&quot;na&quot;&gt;implementation=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;org.apache.maven.plugins.shade.resource.ManifestResourceTransformer&quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+          &lt;span class=&quot;nt&quot;&gt;&amp;lt;manifestEntries&amp;gt;&lt;/span&gt;
+          	&lt;span class=&quot;nt&quot;&gt;&amp;lt;Main-Class&amp;gt;&lt;/span&gt;com.xxx.jarx.fatjar.Main&lt;span class=&quot;nt&quot;&gt;&amp;lt;/Main-Class&amp;gt;&lt;/span&gt;
+          &lt;span class=&quot;nt&quot;&gt;&amp;lt;/manifestEntries&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;/transformer&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/transformers&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/configuration&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/execution&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/executions&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/plugin&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;main方法&quot;&gt;main方法&lt;/h3&gt;
+
+&lt;p&gt;最后就是如何校验java -jar 传的参数问题了，我们之前已经约定好的启动参数如下，只要安装我们约定的格式进行获取即可，&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;java&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;jar&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;jarx&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fatjar&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;jar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filePath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xxx&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;app&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;jar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;includeJars&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;jar&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;jar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;packages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;com&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;xxx&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;应用a&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;modules&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;com&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;xxx&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;应用b&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;modules&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;excludeClasses&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;com&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;xxx&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;Application&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;publicPassword&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xxx&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;123456&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;macCodes&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;90&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;9&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;C&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;CB&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;BC&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;no&quot;&gt;FF&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;[]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;args&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;c1&quot;&gt;//args参数校验和获取...&lt;/span&gt;
+	&lt;span class=&quot;nc&quot;&gt;AppEncryptor&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;encryptor&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;AppEncryptor&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dto&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt;
+  &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;result&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;encryptor&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;executeEncryptJar&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+	&lt;span class=&quot;c1&quot;&gt;//输出路径&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;整个jar包加密的流程已经诠释完成，跟谁集成怎么集成是后话，根据情况而定非公共工具要考虑的细节问题。&lt;/p&gt;
+
+&lt;p&gt;在此我想到一个细节，如果我们的agent、crypto包也应该要做代码混淆处理，因为放到公有云机房代码包也会有暴露的风险，我们自身也得把自身做一层混淆保护，这点利用混淆打包插件即可完成我们的工作。&lt;/p&gt;
+
+&lt;p&gt;Main方法打包方式用于自身测试比较方便，但在自动化打包方面并就显得繁琐，我们使用maven plugin来做，参数在maven打包命令中可以传，也可以在自身pom里面指定，两者均支持。&lt;/p&gt;
+
+&lt;h3 id=&quot;插件开发&quot;&gt;插件开发&lt;/h3&gt;
+
+&lt;p&gt;打加密包的插件开发其实和Fatjar的逻辑差不多，就是调用core包提供的加密方法，而插件包中其实就是怎么获取参数的问题。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;本章节略微说明一下maven plugin的开发中pom的配置如何获取，如需要了解maven plugin的原理请自行查找资料&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;我们定义了一个入口类，指明是package类型，maven打包到package之后，再执行这个入口逻辑，下面由@Parameter定义的属性名称其实就是&amp;lt;configuration&amp;gt;标签内的属性标签名称且一一对应，但我在该注解的defaultValue属性用了一个表达式，这是为了支持-D参数的设置，为什么说可以支持动态打包，就是用了这个表达式的作用。&lt;/p&gt;
+
+&lt;p&gt;优先级：pom.xml &amp;gt; -D&lt;/p&gt;
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nd&quot;&gt;@Mojo&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;xxxJarx&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;defaultPhase&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;LifecyclePhase&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;PACKAGE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;JarxPlugin&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;extends&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;AbstractMojo&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;nd&quot;&gt;@Parameter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;defaultValue&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;${mp.jarx.publicKey}&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;publicKey&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;nd&quot;&gt;@Parameter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;defaultValue&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;${mp.jarx.packages}&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;packages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;nd&quot;&gt;@Parameter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;defaultValue&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;${mp.jarx.password}&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;password&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;nd&quot;&gt;@Parameter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;defaultValue&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;${mp.jarx.macCodes}&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;macCodes&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;nd&quot;&gt;@Parameter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;defaultValue&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;${mp.jarx.includeJars}&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;includeJars&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;nd&quot;&gt;@Parameter&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;defaultValue&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;${mp.jarx.excludeClasses}&quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;excludeClasses&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  
+  &lt;span class=&quot;nd&quot;&gt;@Override&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;execute&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;throws&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;MojoExecutionException&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;MojoFailureException&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nc&quot;&gt;StringUtils&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;isBlank&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;publicKey&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;||&lt;/span&gt;
+        &lt;span class=&quot;nc&quot;&gt;StringUtils&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;isBlank&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;packages&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;//打印参数不全&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;如果是&amp;lt;configuration&amp;gt;标签内没有指定，那可以在灵犀流水线中去指定打包的参数(mp.jarx.开头，参数一样)。如果pom.xml加入了本maven plugin标签，但是必填字段不全，则不会启动打加密包逻辑。&lt;/p&gt;
+
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;mvn clean package &lt;span class=&quot;nt&quot;&gt;-DskipTests&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-Dmp&lt;/span&gt;.jarx.publicKey&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;xxx &lt;span class=&quot;nt&quot;&gt;-Dmp&lt;/span&gt;.jarx.-includeJars&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;应用B-1.0.0-RELEASE.jar &lt;span class=&quot;nt&quot;&gt;-Dmp&lt;/span&gt;.jarx.packages&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;com.xxx.应用A.modules,com.xxx.应用B.modules
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-xml highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;plugin&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;groupId&amp;gt;&lt;/span&gt;com.xxx.jarx&lt;span class=&quot;nt&quot;&gt;&amp;lt;/groupId&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;artifactId&amp;gt;&lt;/span&gt;jarx-maven-plugin&lt;span class=&quot;nt&quot;&gt;&amp;lt;/artifactId&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;version&amp;gt;&lt;/span&gt;1.0.0-RELEASE&lt;span class=&quot;nt&quot;&gt;&amp;lt;/version&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- begin configuration标签可以不指定，打包mvn脚本中可以动态指定 --&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;configuration&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- 必填 --&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;packages&amp;gt;&lt;/span&gt;扫描需要加密的包路径(多个以逗号隔开)&lt;span class=&quot;nt&quot;&gt;&amp;lt;/packages&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;publicKey&amp;gt;&lt;/span&gt;公钥&lt;span class=&quot;nt&quot;&gt;&amp;lt;/publicPassword&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- 非必填 --&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;password&amp;gt;&lt;/span&gt;自定义密码&lt;span class=&quot;nt&quot;&gt;&amp;lt;/password&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;includeJars&amp;gt;&lt;/span&gt;需要加密的二方包(多个以逗号隔开)&lt;span class=&quot;nt&quot;&gt;&amp;lt;/includeJars&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;excludeClasses&amp;gt;&lt;/span&gt;排除加密的类路径(多个以逗号隔开)&lt;span class=&quot;nt&quot;&gt;&amp;lt;/excludeClasses&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;macCodes&amp;gt;&lt;/span&gt;指定Mac地址群(多个以逗号隔开)&lt;span class=&quot;nt&quot;&gt;&amp;lt;/macCodes&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/configuration&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;c&quot;&gt;&amp;lt;!-- end --&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;executions&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;execution&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;phase&amp;gt;&lt;/span&gt;package&lt;span class=&quot;nt&quot;&gt;&amp;lt;/phase&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;goals&amp;gt;&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;lt;goal&amp;gt;&lt;/span&gt;xxxJarx&lt;span class=&quot;nt&quot;&gt;&amp;lt;/goal&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nt&quot;&gt;&amp;lt;/goals&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;/execution&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;nt&quot;&gt;&amp;lt;/executions&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/plugin&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;打包效果&quot;&gt;打包效果&lt;/h3&gt;
+
+&lt;p&gt;最后打包效果如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-06-jarx/image-20220412183228450.png&quot; alt=&quot;image-20220412183228450&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;如果参数不全，则有提示&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/2022-04-06-jarx/image-20220412183318592.png&quot; alt=&quot;image-20220412183318592&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;最后&quot;&gt;最后&lt;/h3&gt;
+
+&lt;p&gt;整个加密的流程逻辑已经讲清楚，按照这个思路其实你可以开发一个产品出来，不过这种产品使用的公司不多，但入局的人少，也可以是一个技术赛道。&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Java" /><category term="java" /><summary type="html">背景</summary></entry><entry><title type="html">什么是云原生？</title><link href="/cloud/2022/02/15/what-is-cloud-native.html" rel="alternate" type="text/html" title="什么是云原生？" /><published>2022-02-15T00:00:00+08:00</published><updated>2022-02-15T00:00:00+08:00</updated><id>/cloud/2022/02/15/what-is-cloud-native</id><content type="html" xml:base="/cloud/2022/02/15/what-is-cloud-native.html">&lt;h3 id=&quot;前言&quot;&gt;&lt;strong&gt;前言&lt;/strong&gt;&lt;/h3&gt;
 
 &lt;p&gt;想必在IT的工作中&lt;strong&gt;云原生&lt;/strong&gt;(CloudNative)这个词会在工作或学习中出现无数次，其实我也很不理解什么是云原生，和我现在的码字工作沾到了哪些边？很多开源应用都是声称自己是云原生或向云原生靠拢的趋势。还有云计算、云服务器，这些是不是就是云原生？出于焦虑原因，我就不停的去翻找资料查Wiki，试图真正的理解这个概念，至少吹牛的时候自己还能搭上话。&lt;/p&gt;
 
@@ -1113,4 +1255,283 @@ org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,\
 
 &lt;p&gt;&lt;strong&gt;1：应用进程的内存都是操作虚拟地址空间，并不是实际操作物理内存。&lt;/strong&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;2：避免操作系统反复把进程的虚拟地址页复映射物理内存页（缺页中断异常）操作，导致频繁的用户态和内核态切换造成的性能耗损。&lt;/strong&gt;&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Jvm" /><category term="jvm" /><summary type="html">前言</summary></entry></feed>
+&lt;p&gt;&lt;strong&gt;2：避免操作系统反复把进程的虚拟地址页复映射物理内存页（缺页中断异常）操作，导致频繁的用户态和内核态切换造成的性能耗损。&lt;/strong&gt;&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Jvm" /><category term="jvm" /><summary type="html">前言</summary></entry><entry><title type="html">iframe跨域解决方案</title><link href="/http/2021/12/29/iframe-cors.html" rel="alternate" type="text/html" title="iframe跨域解决方案" /><published>2021-12-29T00:00:00+08:00</published><updated>2021-12-29T00:00:00+08:00</updated><id>/http/2021/12/29/iframe-cors</id><content type="html" xml:base="/http/2021/12/29/iframe-cors.html">&lt;h2 id=&quot;1原因现象&quot;&gt;1.原因现象&lt;/h2&gt;
+
+&lt;p&gt;应用中如果需要用iframe嵌套某个应用的页面，该应用也是用了相同的CAS-SSO登录，但在iframe中出现无限循环登录。&lt;/p&gt;
+
+&lt;p&gt;该现象是在谷歌浏览器中出现，原因是谷歌浏览器限制了嵌入的网页不可设置cookie，导致无法访问。仔细检查，在浏览Set-cookie的响应头出发现提示：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-txt&quot;&gt;This Set-Cookie didn't specify a &quot;SameSite&quot; attribute and was defaulted to &quot;SameSite=lax&quot;, and was blocked because it came from a cross-site response which was not the response to a top-level navigation. ....
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;原因：谷歌最新版的浏览器默认SameSite=Lax （该设置从2020 年7月14全面展开，具体见： &lt;a href=&quot;https://www.chromestatus.com/feature/5088147346030592&quot;&gt;https://www.chromestatus.com/feature/5088147346030592&lt;/a&gt;），如果设置SameSite=Lax , 并且嵌入Iframe的地址和iframe外的地址不是SameSite,那么嵌入iframe的地址将无法设置设置cookie。关于什么是SameSite，首先应该理解site，所谓Site就是域名后缀和其前面的第一部分，比如web.dev可以是一个Site，从而 www.web.dev 和 static.web.dev 可以看成相同的Site。具体可以参考SameSite解释 或 &lt;a href=&quot;https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00&quot;&gt;https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00&lt;/a&gt; 。&lt;/p&gt;
+
+&lt;p&gt;如此图：由于主页登录过后，iframe的第三方页面无法设置已登录的信息在cookie中导致第三方页面无法获取到登录信息总是显示登录页&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/iframe_cors/image-20211230102458015.png&quot; alt=&quot;image-20211230102458015&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;2samesite-属性&quot;&gt;2.SameSite 属性&lt;/h2&gt;
+
+&lt;p&gt;Cookie 的&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SameSite&lt;/code&gt;属性用来限制第三方 Cookie，从而减少安全风险。&lt;/p&gt;
+
+&lt;p&gt;它可以设置三个值。&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;ul&gt;
+    &lt;li&gt;Strict&lt;/li&gt;
+    &lt;li&gt;Lax&lt;/li&gt;
+    &lt;li&gt;None&lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;21-strict&quot;&gt;2.1 Strict&lt;/h3&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Strict&lt;/code&gt;最为严格，完全禁止第三方 Cookie，跨站点时，任何情况下都不会发送 Cookie。换言之，只有当前网页的 URL 与请求目标一致，才会带上 Cookie。&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;Set-Cookie: &lt;span class=&quot;nv&quot;&gt;CookieName&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;CookieValue&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;SameSite&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;Strict&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;  &lt;/div&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;这个规则过于严格，可能造成非常不好的用户体验。比如，当前网页有一个 GitHub 链接，用户点击跳转就不会带有 GitHub 的 Cookie，跳转过去总是未登陆状态。&lt;/p&gt;
+
+&lt;h3 id=&quot;22-lax&quot;&gt;2.2 Lax&lt;/h3&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Lax&lt;/code&gt;规则稍稍放宽，大多数情况也是不发送第三方 Cookie，但是导航到目标网址的 Get 请求除外。&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;pre&gt;&lt;code class=&quot;language-markup&quot;&gt;Set-Cookie: CookieName=CookieValue; SameSite=Lax;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;导航到目标网址的 GET 请求，只包括三种情况：链接，预加载请求，GET 表单。&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;请求类型&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;示例&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;正常情况&lt;/th&gt;
+      &lt;th style=&quot;text-align: left&quot;&gt;Lax&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;链接&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;a href=&quot;...&quot;&amp;gt;&amp;lt;/a&amp;gt;&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;预加载&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;link rel=&quot;prerender&quot; href=&quot;...&quot;/&amp;gt;&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;GET 表单&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;form method=&quot;GET&quot; action=&quot;...&quot;&amp;gt;&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;POST 表单&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;form method=&quot;POST&quot; action=&quot;...&quot;&amp;gt;&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;不发送&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;iframe&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;iframe src=&quot;...&quot;&amp;gt;&amp;lt;/iframe&amp;gt;&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;不发送&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;AJAX&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;$.get(&quot;...&quot;)&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;不发送&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;Image&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;img src=&quot;...&quot;&amp;gt;&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;发送 Cookie&lt;/td&gt;
+      &lt;td style=&quot;text-align: left&quot;&gt;不发送&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h3 id=&quot;23-none&quot;&gt;2.3 None&lt;/h3&gt;
+
+&lt;p&gt;Chrome 计划将&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Lax&lt;/code&gt;变为默认设置。这时，网站可以选择显式关闭&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SameSite&lt;/code&gt;属性，将其设为&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;None&lt;/code&gt;。不过，前提是必须同时设置&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Secure&lt;/code&gt;属性（Cookie 只能通过 HTTPS 协议发送），否则无效。&lt;/p&gt;
+
+&lt;h2 id=&quot;3解决方案&quot;&gt;3.解决方案&lt;/h2&gt;
+
+&lt;h3 id=&quot;31解决方案一不推荐&quot;&gt;3.1解决方案一（不推荐）&lt;/h3&gt;
+
+&lt;p&gt;低版本的谷歌浏览器(80一下)在地址栏输入：Chrome://flags回车搜索cookies，设置两个值为Disabled，主要是Same-Site这个值是允许第三方设置Cookies属性。（此方法只能让用户去设置浏览器属性并不友好）&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/iframe_cors/image-20211230102641324.png&quot; alt=&quot;image-20211230102641324&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;32解决方案二不推荐&quot;&gt;3.2解决方案二（不推荐）&lt;/h3&gt;
+
+&lt;p&gt;在设置Cookie的响应头中添加 SameSite=None；Secure ，在Cookie响应头设置SameSite=None就可以替换谷歌浏览器的默认配置，而SameSite=None可以允许跨Site设置Cookie。一个完整的cookie响应头可以像这样： Set-Cookie: JSESSIONID=ACD341E8840C03003E4532921C21C035;Path=/begin01; SameSite=None; Secure ，至于怎么加响应头SameSite=None；Secure，可以考虑在nginx里设置，参考：&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c&quot;&gt;# 只支持 proxy 模式下设置，SameSite 不需要可删除(默认不设置则：Lax)，如果想更安全可以把 SameSite 设置为 Strict，我们需要Cookie则是None&lt;/span&gt;
+proxy_cookie_path / &lt;span class=&quot;s2&quot;&gt;&quot;/; httponly; secure; SameSite=None&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;c&quot;&gt;# 示例&lt;/span&gt;
+server &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    listen 443 ssl http2&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    server_name www.cat73.org&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+    ssl_certificate /etc/letsencrypt/live/cat73.org/fullchain.pem&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    ssl_certificate_key /etc/letsencrypt/live/cat73.org/privkey.pem&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+    ssl_trusted_certificate /etc/letsencrypt/live/cat73.org/chain.pem&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+    add_header X-XSS-Protection &lt;span class=&quot;s2&quot;&gt;&quot;1; mode=block&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    add_header X-Frame-Options SAMEORIGIN&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    add_header Strict-Transport-Security &lt;span class=&quot;s2&quot;&gt;&quot;max-age=15768000&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+    location / &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        root /var/www/html&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+    location /api &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        proxy_pass http://localhost:8080&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        proxy_set_header Host &lt;span class=&quot;nv&quot;&gt;$host&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        proxy_set_header X-Real-IP &lt;span class=&quot;nv&quot;&gt;$remote_addr&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        proxy_set_header X-Forwarded-For &lt;span class=&quot;nv&quot;&gt;$proxy_add_x_forwarded_for&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;c&quot;&gt;# 在这里设置&lt;/span&gt;
+        proxy_cookie_path / &lt;span class=&quot;s2&quot;&gt;&quot;/; httponly; secure; SameSite=None&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;也可以在后台代码里设置，推荐nginx吧。这里注意一点 Secure 属性，这个属性说明设置的该cookie只能在https下传输，所以要求你使用https，不使用行吗，不行，因为SameSite=None 要求必须要和Secure=true一起使用。所以采用这个方法解决，你嵌入iframe的页面必须使用https。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;（我们在本次解决方案中只设置了Cas的登录这边的Ng重启后就有效了，iframe的第三方没有改任何配置。这里为何不推荐使用此方式，是因为如果允许跨域传输cookie会让自身暴露在不安全的环境中，容易遭受CSRF漏洞工具或跨域追踪）&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/iframe_cors/20200904161952679.png&quot; alt=&quot;20200904161952679&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;33解决方案三&quot;&gt;3.3解决方案三&lt;/h3&gt;
+
+&lt;p&gt;改造该模式不再使用ifram方式嵌入页面，可用跳转子系统tab页展示第三方应用页面，由于已经全部集成了CAS登录，所以一次登录可多次流量SSO页面，从而避免跨域攻击。&lt;/p&gt;
+
+&lt;h3 id=&quot;34解决方案四&quot;&gt;3.4解决方案四&lt;/h3&gt;
+
+&lt;p&gt;页面UI的开发独立到一个应用中如xxx-ui(前后端分离)，请求可以用网关转发即可，此方式缺点在于发布UI要统一版本发布，集中式管理，如果是要用到其他第三方非本公司的系统页面还是无法解决(尽量避免)。优势是后端不受集中式发布影响，可避免嵌入Iframe。&lt;/p&gt;
+
+&lt;h2 id=&quot;4-跨域攻击csrf和跨域追踪&quot;&gt;4. 跨域攻击CSRF和跨域追踪&lt;/h2&gt;
+
+&lt;h3 id=&quot;41-跨域攻击&quot;&gt;4.1 跨域攻击&lt;/h3&gt;
+
+&lt;p&gt;可伪造你的身份去访问受信任的网站，以你名义发送邮件，发消息，盗取你的账号，甚至于购买商品，虚拟货币转账……造成的问题包括：个人隐私泄露以及财产安全。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/iframe_cors/WX20211230-114247.png&quot; alt=&quot;WX20211230-114247&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;示例：&lt;/p&gt;
+
+&lt;p&gt;银行网站A，它以GET/POST请求来完成银行转账的操作，如： http://www.mybank.com/loan.do?toBankId=cdg&amp;amp;money=1000&lt;/p&gt;
+
+&lt;p&gt;危险网站B，它里面有一段HTML的代码如下：&lt;/p&gt;
+
+&lt;p&gt;&amp;lt;img src= http://www.mybank.com/loan.do?toBankId=hack&amp;amp;money=1000 &amp;gt;&lt;/p&gt;
+
+&lt;p&gt;首先，你登录了银行网站A，然后访问危险网站B，噢，这时你会发现你的银行账户少了1000块……&lt;/p&gt;
+
+&lt;p&gt;为什么会这样呢？原因是在访问危险网站B的之前，你已经登录了银行网站A，而B中的&lt;img /&gt;以GET的方式请求第三方资源（这里的第三方就是指银行网站了，原本这是一个合法的请求，但这里被不法分子利用了），所以你的浏览器会带上你的银行网站A的Cookie发出Get/POST请求，去获取资源“ http://www.mybank.com/loan.do?toBankId=hack&amp;amp;money=1000”，结果银行网站服务器收到请求后，认为这是一个更新资源操作（转账操作），所以就立刻进行转账操作……&lt;/p&gt;
+
+&lt;h3 id=&quot;42-跨域追踪&quot;&gt;4.2 跨域追踪&lt;/h3&gt;
+
+&lt;p&gt;第三方网站引导发出的 Cookie，就称为第三方 Cookie。它除了用于 CSRF 攻击，还可以用于用户追踪。&lt;/p&gt;
+
+&lt;p&gt;比如，Facebook 在第三方网站插入一张看不见的图片。&lt;/p&gt;
+
+&lt;p&gt;&amp;lt;img src= facebook.com?d=xx style= visibility:hidden &amp;gt;&lt;/p&gt;
+
+&lt;p&gt;浏览器加载上面代码时，就会向 Facebook 发出带有 Cookie 的请求，从而 Facebook 就会知道你是谁，访问了什么网站。&lt;/p&gt;</content><author><name>曹德高</name></author><category term="Http" /><category term="http" /><summary type="html">1.原因现象</summary></entry><entry><title type="html">提问的艺术</title><link href="/self-cultivation/2021/12/16/self-cultivation.html" rel="alternate" type="text/html" title="提问的艺术" /><published>2021-12-16T00:00:00+08:00</published><updated>2021-12-16T00:00:00+08:00</updated><id>/self-cultivation/2021/12/16/self-cultivation</id><content type="html" xml:base="/self-cultivation/2021/12/16/self-cultivation.html">&lt;p&gt;&lt;img src=&quot;/images/2021-12-16-self-cultivation/v2-094bcea9f191a273e37612ffd33acc7c_1440w.jpg&quot; alt=&quot;v2-094bcea9f191a273e37612ffd33acc7c_1440w&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;最近我在解决一些日常维护应用的过程中遇到很多提问的同事，有些许感慨和无奈，我们工作确实有时候很无聊或久而久之麻木了，程序员确实是有些闷的职业于是导致很多人对沟通交流技能退化了，提问的方式和语句让人无力和不想与之交谈。&lt;/p&gt;
+
+&lt;p&gt;如：在吗？（&lt;em&gt;要是以前的2G时代我还得花一毛线短信回：在！啥事？&lt;/em&gt;）&lt;/p&gt;
+
+&lt;p&gt;如：大神，你们这个功能是不是有BUG？（&lt;em&gt;我知道我们系统存在问题的可能性，但是你啥都不告知我们还得不停的望闻问切。&lt;/em&gt;）&lt;/p&gt;
+
+&lt;p&gt;诸如此类的提问，一般很不想搭理的，我需要不停的问才能了解他的意图和来龙去脉，这花了我很长时间，也行过一会他说：请忽略，是我的VPN没登录。但我们作为基础软件的提供方，我们有时候不得不做一些类似客服的工作，耐心解答用户的问题。为了提高我的工作效率、为了证明我不是客服。我觉得尽我所能让更多人能够提高提问技巧，于是我参考了很多文章和书籍，如&lt;strong&gt;《提问的艺术：如何快速获得答案》&lt;/strong&gt;原著Eric Raymond，翻译D.H.Grand，改编Conmajia。它给了我很多提问理论上的帮助，所以我想分享给大家，希望能帮助到想提高这方面的人。其实提高并不难，记住几个要点照着做几次就会形成提问习惯，这个习惯我认为也很好养成。&lt;/p&gt;
+
+&lt;h3 id=&quot;如何获取帮助&quot;&gt;如何获取帮助&lt;/h3&gt;
+
+&lt;p&gt;在编程的世界里，当提出一个技术问题时，你能得到怎样的回答？这取决于挖出答案的难度，同样取决于你提问的方法。本指南旨在帮助你提高发问技巧，以获取你最想要的答案。&lt;/p&gt;
+
+&lt;p&gt;首先你必须明白，作为程序员我们或许有些自信，偏爱有些难度的问题，或者能激发我们思维的好问题。如若不然，公司招我们来干吗？躺吗？如果你有值得我们反复咀嚼玩味的好问题，我们自会对你感激不尽。好问题是激励，是厚礼，可以提高我们的理解力，而且通常会暴露我们以前从没意识到或者思考过的问题。对程序员而言，“问得好！”是发自内心的大力称赞。&lt;/p&gt;
+
+&lt;p&gt;尽管我们有时候蔑视简单问题和不友善的坏名声，有时看起来似乎我们对新手，对知识贫乏者怀有敌意，但其实不是那样的，至少我是很尊重所有人，应该我也是从小白丁成长起来的。&lt;/p&gt;
+
+&lt;p&gt;我们不想掩饰对这样一些人的蔑视——他们不愿思考，或者在发问前不去完成他们应该做的事。这种人只会谋杀时间–他们只愿索取，从不付出，无端消耗我们的时间，而我们本可以把时间用在更有趣的问题或者更值得回答的人身上。我们称这样的人为“失败者”（由于历史原因，我们有时把它拼作“lusers”）。&lt;/p&gt;
+
+&lt;p&gt;野比注：luser即loser，失败者、屌丝。&lt;/p&gt;
+
+&lt;p&gt;我们在很大程度上属于志愿者，从繁忙的生活中抽出时间来解惑答疑，而且时常被提问淹没。所以我们无情的滤掉一些话题，特别是抛弃那些看起来象失败者的家伙，以便更高效的利用时间来回答胜利者的问题。&lt;strong&gt;如果你觉得我们过于傲慢的态度让你不爽，让你委屈，不用问：就是这样的。&lt;/strong&gt;我们并没有要求你向我们屈服——事实上，我们中的大多数人最喜欢公平交易不过了，只要你付出小小努力来满足最起码的要求，我们就会欢迎你加入到我们的文化中来。但让我们帮助那些不愿意帮助自己的人是没有意义的。如果你不能接受这种“歧视”，我们建议你花点钱找家商业公司签个技术支持协议得了，别向程序员乞求帮助。如果你决定向我们求助，当然不希望被视为失败者，更不愿成为失败者中的一员。立刻得到有效答案的最好方法， 就是象胜利者那样提问——聪明、自信、有解决问题的思路，只是偶尔在特定的问题上需要获得一点帮助。&lt;/p&gt;
+
+&lt;h3 id=&quot;如何让别人喜欢回答你的提问&quot;&gt;如何让别人喜欢回答你的提问&lt;/h3&gt;
+
+&lt;p&gt;当你提出问题的时候，首先要说明在此之前你做了些什么（准备）。&lt;/p&gt;
+
+&lt;p&gt;有这么一个段子：某部门再开例会的时候，下属问他上级他遇到了几个问题，然后向他的上级说出他的问题后上级反而问他：你的答案是什么？下属心里顿时委屈与不解：这不是你作为上级要解决的吗？怎么反而问起我来了，我要是知道我还问你干嘛。事后他的上级跟他这么说的：其实我反问你是希望你也参与想这个问题的解决方案，如果只是我给答案，久了你也不会思考，就想小鸟在窝里叫饿了妈妈、饿了妈妈，等着鸟妈妈抓虫投喂。&lt;/p&gt;
+
+&lt;p&gt;我对这个段子有很深的印象，后来我每去向上级汇报或者我有疑问要请教别人的时候我都会事先准备一两个我个人的一些答案或方向，再去汇报或请教，这样别人对你会多看你一眼，对你的提问方式交谈非常高效和有质量。谨记千万别认为你这么思考没用，你可能会认为你的答案可能没作用或认为它是错误的就不去思考。这将有助于树立你的形象：你不是一个妄图不劳而获的乞讨者，不愿浪费别人的时间。如果提问者能从答案中学到东西，我们更乐于回答他的问题。&lt;/p&gt;
+
+&lt;p&gt;周全的思考，准备好你的问题，草率的发问只能得到草率的回答，或者根本得不到任何答案。越表现出在寻求帮助前为解决问题付出的努力，你越能得到实质性的帮助。决不要自以为够资格得到答案，你没这种资格。毕竟你没有为这种服务支付任何报酬。你要自己去“挣”回一个答案，靠提出一个有内涵的，有趣的，有思维激励作用的问题–一个对社区的经验有潜在贡献的问题，而不仅仅是被动的从他人处索要知识–去挣到这个答案。&lt;/p&gt;
+
+&lt;p&gt;另一方面，表明你愿意在找答案的过程中做点什么，是一个非常好的开端。“谁能给点提示？”、“我这个例子里缺了什么？”以及“我应该检查什么地方？”比“请把确切的过程贴出来”更容易得到答复。因为你显得只要有人指点正确的方向，你就有完成它的能力和决心。&lt;/p&gt;
+
+&lt;h3 id=&quot;问题解决后加个简短说明&quot;&gt;问题解决后，加个简短说明&lt;/h3&gt;
+
+&lt;p&gt;问题解决后，向所有帮助过你的人发个说明，让他们知道问题是怎样解决的，并再一次向他们表示感谢。&lt;/p&gt;
+
+&lt;p&gt;问题得到解决后可能引起别人的广泛关注， 应该在那里贴一个补充说明。补充说明不必很长或是很深入；简单的一句“你好，原来是网线出了问题！谢谢大家&lt;strong&gt;@解答者&lt;/strong&gt;”比什么也不说要强。事实上，除非结论真的很有技术含量，否则简短可爱的小结比长篇学术论文更好。说明问题是怎样解决的，但大可不必将解决问题的过程复述一遍。除了表示礼貌和反馈信息以外， 这种补充有助于他人在专门讨论群、论坛中搜索对你有过帮助的完整解决方案，这可能对他们也很有用。最后这种补充有助于所有提供过帮助的人从中得到满足感。&lt;/p&gt;
+
+&lt;p&gt;彬彬有礼，多用“请”和“先道个谢了”。让大家都知道你对他们花费时间义务提供帮助心存感激。然而，如果你有很多问题无法解决，礼貌将会增加你得到有用答案的机会。&lt;/p&gt;
+
+&lt;h3 id=&quot;最后&quot;&gt;最后&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;下面我提供⑥点提问要素，尽量精简易概：&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;谨慎明确的描述症状&lt;/li&gt;
+  &lt;li&gt;提供问题发生的环境（机器配置、操作系统、应用程序以及别的什么）&lt;/li&gt;
+  &lt;li&gt;说明你在提问前是怎样去研究和理解这个问题的&lt;/li&gt;
+  &lt;li&gt;说明你在提问前采取了什么步骤去解决它&lt;/li&gt;
+  &lt;li&gt;罗列最近做过什么可能有影响的硬件、软件变更&lt;/li&gt;
+  &lt;li&gt;尽量想象一个程序员会怎样反问你，在提问的时候预先给他答案（这点换位思考很重要）&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;当你认真看完并思考后，如果看完还还认为这是对的，那么请每次提问时按照这几点做下去，你会发现你比没有这里思维的人进步很大。你可以感谢你自己-成长了。&lt;/p&gt;</content><author><name>曹德高</name></author><category term="self-cultivation" /><category term="self-cultivation" /><summary type="html"></summary></entry><entry><title type="html">自立的代价</title><link href="/self-cultivation/2021/10/28/self-cultivation.html" rel="alternate" type="text/html" title="自立的代价" /><published>2021-10-28T00:00:00+08:00</published><updated>2021-10-28T00:00:00+08:00</updated><id>/self-cultivation/2021/10/28/self-cultivation</id><content type="html" xml:base="/self-cultivation/2021/10/28/self-cultivation.html">&lt;h3 id=&quot;何为自立&quot;&gt;何为自立&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;自立，动词，指依靠自己的力量独立生活。这里的生活首先应该是精神生活，然后是物质生活。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;自立很难，其实没有什么缺点。我们一般定义自立是用经济独立作为标志，认为一个人能够独自养活自己就算是自立。这是比较常见的说法，它与生存和生活完全是两码事。经济独立只是确保能够独自生存，距离称之为生活的东西还有很远的距离。&lt;/p&gt;
+
+&lt;p&gt;走入社会之后，我以为有一份过得去的工资，有一处属于自己的住所，这就叫自立。但在现实社会工作中你会发现没有体系力量的庇护，你的自立往往站不住脚。如果有一天你要离开，那么你所学会的技能不足以在体系之外生存。这样一来，当然让加班就得加班，要调动就得服从。除非拒绝这一套游戏规则，离开庇护冲进外面的风雨里，否则就没有多少选择的余地。这样的生活算是一种自立么？&lt;/p&gt;
+
+&lt;p&gt;电视剧《理想之城》中的苏筱，吴红玫就是两个不同的例子。苏筱能力强有干劲又遇到了能给她伸手的汪炀上级和(花泽类版男友)夏明，如果不是主角光环在现实中估计已经转行卖煎饼果子了。吴红玫不懂职场规则与她的上级用不合拍还被同事告黑状，虽有个男朋友很爱她，但那抠抠搜搜的样总无法带给她一丝物质上的享受，最后还是离开了嫁给了集团总裁赵显坤，&lt;strong&gt;去TM的生活&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;话说回来如果脱离了你现在的单位，也就脱离了体系的庇护，一方面当然可以说获得了自由；但在另外一方面，其实是终于知道了自由的代价和分量。当一个人开始完全靠自己求生的时候，那种惶恐不安的心情会完全把自由自在所带来的那点快乐冲到九霄云外。也许这就是人生的真相，你总得有担忧和焦虑的事情，一旦平复了一处，必然在别处生出更多来。所谓的选择，不是选择更好的选项，而是选择你更能承受的那一种。自立之中有的恐惧，但愿你能承受，而不是坐在原地对于变化无能为力，我们祈祷我所依附的力量帮我解决好问题，并且我刚好是受益的那一个。&lt;/p&gt;
+
+&lt;h3 id=&quot;支付代价&quot;&gt;支付代价&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;因为自由有其代价，本质上选择哪一种生活方式不是选不选自由，而是选择支付能力&lt;/strong&gt;。自立也是同样道理，无论在哪里，都有需要抱粗腿，找大哥的人。仿佛身边没有个依靠，自己就无法生存一样。坦率地说，人人都喜欢自由，都喜欢宣称自立，但几乎人人都喜欢大树下面好乘凉，努力让自己的生活变得容易一些。无非是有些人能找见大树，而多数做了茁壮野草的人只是因为实在是找不到大树愿意为自己挡风遮雨，不得不去自立，最后发现自己竟然长成了树。我认为，这种解释可能更符合生活的真实。世间没有那么多坚毅勇敢之辈，主动选择自立，最终也就真的做到了自立。&lt;/p&gt;
+
+&lt;p&gt;我鼓励人们建立一些自立精神。&lt;strong&gt;完全靠自身的力量独立生活，这在现代社会里几乎是不可能的。&lt;/strong&gt;哪怕是自由职业者，看起来是纯靠手艺吃饭，他们也得有几个长期合作者，固定供应商。只不过这种经济上的关系更趋近于平等，各取所需，而不是相互依赖。反而因为彼此都可以随时替换，所以人际关系上相对还要融洽一些。相对而言，在精神生活中也会多了许多理解和支持，谁也不是谁的指路明灯，更不需要一方对另一方言听计从。所以，指望人人自立是不可能的事情，我只说有一点自立精神。&lt;/p&gt;
+
+&lt;p&gt;哪怕一个人在经济上还没有完全独立，他也可以先培养自立精神。首先可以去掉任何依附他人的心理，不再寄望他人出手帮助自己。对生活里的诸多事情，不等不靠，尽可能用自己的力量完成。同时，对于自己完成的事情最好有一种珍视的心理。和别人相比也许做得不那么漂亮，甚至还磕磕绊绊，勉勉强强，但只要是自己独立完成，完成比质量更重要。质量总有提升的可能，但能否独立完成是另一个概念，决定了一个人对自己的信心。&lt;/p&gt;
+
+&lt;p&gt;然后是适应孤独。人在大多数时候都是孤独的，可知有些人下班回家后却在车里抽根烟迟迟不肯上楼。不能适应孤独，那就是精神上的不自立。精神上不自立，又怎么指望一个人在办公室里加班，或者是一个人坚持创业顶在最前面呢？甚至都根本谈不到如何面对自己，诚实地回答自己提出的问题。&lt;/p&gt;
+
+&lt;p&gt;&lt;u&gt;一个有自立精神的人迟早能够独当一面，在余暇时能找到独处的乐趣，不会因为焦虑和不安、因为他人不能符合自己的期待而时常生气或者失望。这种人已经把生活做过一轮简化，习惯了在他人，在规章，在流程，在系统的支持下完成指定任务。&lt;/u&gt;《侯卫东官场笔记》有一句话：一个公务员能办事不算有能力，而是能在规章制度捆手捆脚下还是把事办成了才是真正有本事有能力。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;具备自立精神的人，在获得物质上的自立之后，会活得更加自如和独立。不具备这种精神的人，物质上的自立只会加深依赖，因为无论是自己的物质生活还是精神生活，都需要外部的给予，自然会变得患得患失。请定期整理一张清单。在这张清单上列清楚自己生活里的每一件事情，看看哪些是自己独立完成的，哪些是需要仰赖他人的。不是为了自我改变，而仅只是为了认清自我。&lt;/strong&gt;这样的话，检查发现自己更为自立的人就不用再去费力逃避责任和使命，在犹犹豫豫中蹉跎岁月。&lt;u&gt;而发现自己习惯于依赖什么的人也就不用去羡慕和幻想另一种生活的可能，因为其实自己根本支付不起对应的代价。这样大家各安其所，世界和平&lt;/u&gt;。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;内容改编自《得到》app和菜头专栏，自立:你究竟能支付多少代价&lt;/strong&gt;的读后感。&lt;/p&gt;</content><author><name>曹德高</name></author><category term="self-cultivation" /><category term="self-cultivation" /><summary type="html">何为自立</summary></entry></feed>
