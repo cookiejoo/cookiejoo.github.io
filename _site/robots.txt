@@ -1,1 +1,1 @@
-Sitemap: https://cookiejoo.gitee.io/sitemap.xml
+Sitemap: /sitemap.xml
