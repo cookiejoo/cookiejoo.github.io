@@ -2,5 +2,5 @@
 # langs refer to https://cloud.google.com/translate/docs/languages
 
 - lang: zh-CN
-  img: http://localhost:4000/favicon.ico
+  img: /favicon.ico
   text: Chinese(Simple)
