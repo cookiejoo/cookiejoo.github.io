@@ -6,6 +6,8 @@ tags: [self-cultivation]
 categories: self-cultivation
 ---
 
+![1111](/images/2021-12-16-self-cultivation/1.webp)
+
 。。。我本来写了很多感慨，但是现在全删了，无非是一些苦口婆心的劝诫，想了想这些只是我自己的自以为而已。
 
 我想写这篇文章很久了，我写的时候就在想，我有什么资格教人这些东西，你也只是个普通小职员，又不是领导、总监、经理。你有这些资质吗？搞的好像有多能似的。
@@ -80,7 +82,7 @@ categories: self-cultivation
 
 提问的艺术这里我必须再次强调，我的另外的一片文章已经写的很清楚了，建议看到这的同学去再看一遍。还是有很多人提问都不会提，你又不能说重了，也不讨喜。
 
-[链接](2021-12-16-self-cultivation.md)
+[链接](../../../../self-cultivation/2021/12/16/self-cultivation.html)
 
 ### 做个教练型职业人吧
 
