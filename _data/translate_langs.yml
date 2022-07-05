@@ -2,5 +2,5 @@
 # langs refer to https://cloud.google.com/translate/docs/languages
 
 - lang: zh-CN
-  img: /favicon.ico
+  img: /pyq.jpg
   text: Chinese(Simple)
