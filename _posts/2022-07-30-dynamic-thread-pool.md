@@ -402,6 +402,12 @@ public class DynamicThreadPoolExecutor{
 }
 ```
 
+![image-20220801185753713](/images/2022-07-30-dynamic-thread-pool/image-20220801185753713.png)
+
+![image-20220801185818537](/images/2022-07-30-dynamic-thread-pool/image-20220801185818537.png)
+
+![image-20220801185911784](/images/2022-07-30-dynamic-thread-pool/image-20220801185911784.png)
+
 ### 最后
 
 最后就是UI了，自己实现一套UI去管理和展示即可，还有一些告警配置什么的，基本上动态线程池的功能设计就已经结束了，存储配置的选择由自身去做，用什么都可以，初步可以先用Map放内存，真正申请成项目后就可以申请资源去做更可靠的存储和完善更多的功能。
