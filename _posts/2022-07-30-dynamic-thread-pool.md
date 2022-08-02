@@ -34,6 +34,16 @@ categories: Java
 
 回到正题，管理线程池ThreadPoolExecutor接口，我们需要借助Spring AOP，把ThreadPoolExecutor接口扫描出来，那么必须要写一个封装类并且加一个注解，Spring的类扫描很容易让我们找到我们自己的封装类，加一个注解是为了把其他应用的线程池用，打上该注解的线程池则一并收集到我们的管理端。
 
+**线程池注解**
+
+```java
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface DynamicThreadPool {
+    String threadPoolId() default "";
+}
+```
+
 **线程池管理封装**
 
 ```java
@@ -82,7 +92,7 @@ public class DynamicThreadPoolWrapper implements DisposableBean {
 ```java
 /**
  * 自家线程封装类
- * 多了线程拒绝统计数、当个线程执行时间的计算
+ * 多了线程拒绝统计数、单个线程执行耗时的计算
  */
 @Getter
 @Setter
@@ -120,9 +130,6 @@ public class DynamicThreadPoolExecutor extends ThreadPoolExecutor {
 
     @Override
     public void execute(@NonNull Runnable command) {
-        if (taskDecorator != null) {
-            command = taskDecorator.decorate(command);
-        }
         super.execute(command);
     }
 
@@ -199,7 +206,7 @@ public class RejectedProxyInvocationHandler implements InvocationHandler {
 }
 ```
 
-基本的线程池封装已经完毕，我们看看如何用Spring收集线程池的Bean对象。（这里唠点题外话：我之前理解的动态线程池以为是可以动态把线程池new出来的，后来看到原生线程池ThreadPoolExecutor接口发现原来他提供了很多set参数的方法。这样我们在动态修改参数的时候非常方便了。）由于我们的线程池不是动态的new，我们动态线程池的规范是把new线程池放到Spring Bean里面产生的，那么我们就可以在系统启动的时候去扫描所有的类即可。换句话说其他应用使用的基于Spring架构开发的动态线程池必然是单独使用Bean管理的方式来创建线程池的。最后把线程池都收集到应用的内存中，用GlobalThreadPoolManage收集，没有什么特别的就是一个Map
+基本的线程池封装已经完毕，我们看看如何用Spring收集线程池的Bean对象。（这里唠点题外话：我之前理解的动态线程池以为是可以动态把线程池new出来的，后来看到原生线程池ThreadPoolExecutor接口发现原来他提供了很多set参数的方法。这样我们在动态修改参数的时候非常方便了。）由于我们的线程池不是动态的new，我们动态线程池的规范是把new线程池放到Spring Bean里面产生的，那么我们就可以在系统启动的时候去扫描所有的类即可。换句话说其他应用使用的基于Spring架构开发的动态线程池必然是单独使用Bean管理的方式来创建线程池的。最后把线程池都收集到应用的内存中，用GlobalThreadPoolManage收集，没有什么特别的就是一个Map。
 
 ```java
 /**
@@ -210,7 +217,18 @@ public class RejectedProxyInvocationHandler implements InvocationHandler {
 public class DynamicThreadPoolPostProcessor implements BeanPostProcessor {
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+        // 支持两种新建本项目定义的线程池方式
         if (bean instanceof DynamicThreadPoolExecutor) {
+            DynamicThreadPoolExecutor dynamicExecutor = (DynamicThreadPoolExecutor) bean;
+            DynamicThreadPoolWrapper wrap = new DynamicThreadPoolWrapper(dynamicExecutor.getThreadPoolId(), dynamicExecutor);
+            fillPoolAndRegister(wrap);
+        }
+        if (bean instanceof DynamicThreadPoolWrapper) {
+            DynamicThreadPoolWrapper wrap = (DynamicThreadPoolWrapper) bean;
+            fillPoolAndRegister(wrap);
+        }
+        // 通过这个方法去支持其他系统的线程池
+        if (bean instanceof ThreadPoolExecutor) {
             DynamicThreadPool dynamicThreadPool;
             try {
               // 通过ApplicationContextHolder去找所有这个类的
@@ -224,13 +242,10 @@ public class DynamicThreadPoolPostProcessor implements BeanPostProcessor {
                 ex.printStackTrace();
                 return bean;
             }
-            DynamicThreadPoolExecutor dynamicExecutor = (DynamicThreadPoolExecutor) bean;
-            DynamicThreadPoolWrapper wrap = new DynamicThreadPoolWrapper(dynamicExecutor.getThreadPoolId(), dynamicExecutor);
-            ThreadPoolExecutor remoteExecutor = fillPoolAndRegister(wrap);
-            return remoteExecutor;
-        }
-        if (bean instanceof DynamicThreadPoolWrapper) {
-            DynamicThreadPoolWrapper wrap = (DynamicThreadPoolWrapper) bean;
+            ThreadPoolExecutor executor = (ThreadPoolExecutor) bean;
+            // 转成DynamicThreadPoolExecutor
+            DynamicThreadPoolExecutor dynamicExecutor = new DynamicThreadPoolExecutor(executor)
+            DynamicThreadPoolWrapper wrap = new DynamicThreadPoolWrapper(dynamicThreadPool.threadPoolId(), executor);
             fillPoolAndRegister(wrap);
         }
         return bean;
@@ -297,8 +312,12 @@ public class DynamicThreadPoolPostProcessor implements BeanPostProcessor {
                 .setKeepAliveTime(executor.getKeepAliveTime(TimeUnit.SECONDS))
                 .setQueueType(queueType)
                 .setQueueCapacity(queueCapacity)
-                .setRejectedHandler(((DynamicThreadPoolExecutor) executor).getRedundancyHandler().getClass().getSimpleName())
                 .setThreadPoolId(threadPoolId);
+        if (executor instanceof DynamicThreadPoolExecutor) {
+            executorProperties.setRejectedHandler(((DynamicThreadPoolExecutor) executor).getRedundancyHandler().getClass().getSimpleName());
+        } else {
+            executorProperties.setRejectedHandler(executor.getRejectedExecutionHandler().getClass().getSimpleName());
+        }
         return executorProperties;
     }
 }
@@ -309,7 +328,7 @@ public class DynamicThreadPoolPostProcessor implements BeanPostProcessor {
 
 到这里core包的任务已经完成使命了，接下来要将本地的线程池上报到服务端，那么需要在server中实现上报接口，并且在服务端实现实时修改线程池参数方法，还需要提供应用端启动时拉取线程池的方法。
 
-我推荐服务端主动去推送线程池参数，每隔几分钟推送一次这个应用的线程池配置，应用端判断如果没有变化就不更新到线程池即可，这样做的一个好处是服务端UI修改线程池参数，可能整体下发到应用端时某个节点暂时失联了无法更新到。还有应用重启时会主动拉取一次配置去初始化启动线程池，已经很严谨了。
+我推荐服务端主动去推送线程池参数，每隔几分钟推送一次这个应用的线程池配置，应用端判断如果没有变化就不更新到线程池即可，这样做的一个好处是服务端UI修改线程池参数，可能整体下发到应用端时某个节点暂时失联了无法更新到。还有应用重启时会主动拉取一次配置去初始化启动线程池，已经很严谨了。**另外一个原因是如果应用端的代码在解析上有bug或者版本上兼容json问题，在服务端改比较好，发版相对容易一点，不用召回应用客户端升级也能平滑慢慢过度。**
 
 应用先上报心跳信息，上报后服务端才会知道推送的应用端所有的节点和端口，discover包开发一个http服务调用和接收即可。上报心跳一分钟一次即可，服务端也做好长时间没有上报就下线或自动剔除动作。再上报自身GlobalThreadPoolManage.registerPool的线程池运行状态，每隔20秒就上报一次，服务端做好记录，我是用Apache的CircularFifoQueue固定队列只存储60个Metric就可以简单的绘制图表实时观看了，如需要长时间的就要实现存储到数据库。
 
@@ -345,12 +364,6 @@ public class HttpRefresherHandler {
 				// 如果拒绝策略有变化，也要用代理模式增强后设置进来，才有拒绝数的功能
         if (!Objects.equals(beforeProperties.getRejectedHandler(), properties.getRejectedHandler())) {
             RejectedExecutionHandler rejectedExecutionHandler = RejectedTypeEnum.createPolicy(properties.getRejectedHandler());
-            if (executor instanceof AbstractDynamicExecutorSupport) {
-                DynamicThreadPoolExecutor dynamicExecutor = (DynamicThreadPoolExecutor) executor;
-                dynamicExecutor.setRedundancyHandler(rejectedExecutionHandler);
-                AtomicLong rejectCount = dynamicExecutor.getRejectCount();
-                rejectedExecutionHandler = RejectedProxyUtil.createProxy(rejectedExecutionHandler, rejectCount);
-            }
             executor.setRejectedExecutionHandler(rejectedExecutionHandler);
         }
 
@@ -398,6 +411,75 @@ public class DynamicThreadPoolExecutor{
   	// 获取拒绝任务个数
     public Long getRejectCountNum() {
         return rejectCount.get();
+    }
+}
+```
+
+### 使用示例
+
+```java
+@Configuration
+public class TestConfig {
+  	/**
+  	单独写一个模板给下面使用即可
+    public static DynamicThreadPoolExecutor buildDynamicPool(ThreadPoolInitParam initParam) {
+        DynamicThreadPoolExecutor dynamicThreadPoolExecutor;
+        try {
+            dynamicThreadPoolExecutor = new DynamicThreadPoolExecutor(
+                    initParam.getCorePoolNum(),
+                    initParam.getMaxPoolNum(),
+                    initParam.getKeepAliveTime(),
+                    initParam.getTimeUnit(),
+                    initParam.getExecuteTimeOut(),
+                    initParam.getWaitForTasksToCompleteOnShutdown(),
+                    initParam.getAwaitTerminationMillis(),
+                    initParam.getWorkQueue(),
+                    initParam.getThreadPoolId(),
+                    initParam.getThreadFactory(),
+                    initParam.getRejectedExecutionHandler());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException(String.format("Error creating thread pool parameter. threadPool id :: %s", initParam.getThreadPoolId()), ex);threadPoolId
+        }
+        dynamicThreadPoolExecutor.setTaskDecorator(initParam.getTaskDecorator());
+        dynamicThreadPoolExecutor.allowCoreThreadTimeOut(initParam.allowCoreThreadTimeOut);
+        return dynamicThreadPoolExecutor;
+    }
+    **/
+    //@Bean
+    @DynamicThreadPool
+    public ThreadPoolExecutor messageConsumeDynamicThreadPool() {
+        String threadPoolId = "MESSAGE_CONSUME";
+        ThreadPoolExecutor customExecutor = ThreadPoolBuilder.builder()
+                .threadFactory(threadPoolId)
+                .threadPoolId(threadPoolId)
+                .executeTimeOut(800L)
+                .waitForTasksToCompleteOnShutdown(true)
+                .awaitTerminationMillis(5000L)
+                .build();
+        return customExecutor;
+    }
+
+    @Bean
+    public DynamicThreadPoolWrapper cdgDynamicThreadPool() {
+        ThreadPoolExecutor customExecutor = ThreadPoolBuilder.builder()
+                .threadFactory("CUSTOM_POOL")
+                .build();
+
+        return new DynamicThreadPoolWrapper("CUSTOM_POOL", customExecutor);
+    }
+
+    @Bean
+    @DynamicThreadPool(threadPoolId = "tempDynamicThreadPool")
+    public ThreadPoolExecutor tempDynamicThreadPool() {
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                10,//核心线程数
+                20,//最大线程数
+                5,//非核心回收超时时间
+                TimeUnit.SECONDS,//超时时间单位
+                new ArrayBlockingQueue<>(30)//任务队列
+        );
+
+        return executor;
     }
 }
 ```
