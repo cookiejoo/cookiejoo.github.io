@@ -50,7 +50,7 @@ security.provider.8=org.jcp.xml.dsig.internal.dom.XMLDSigRI
 security.provider.9=sun.security.smartcardio.SunPCSC
 ```
 
-3：在AES代码中使用bouncycastle包支持
+2：在AES代码中使用bouncycastle包支持
 
 ```java
 /**
