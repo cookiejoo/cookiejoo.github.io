@@ -215,4 +215,5 @@ jdk
 注意：jre\lib\security\policy，在某些版本这个文件夹下能看见两个文件夹，分别是“limited”和“unlimited”，两个文件夹下面的内容都是“local_policy.jar和US_export_policy.jar”这两个东西，我们要用的是“unlimited”下的jar
 ```
 
+
 2：升级高版本的jdk（以1.8.x版本为例），但具体的版本我也没有安装过那么多，目前是1.8.151版本不行，换到1.8.202版本后可以。
