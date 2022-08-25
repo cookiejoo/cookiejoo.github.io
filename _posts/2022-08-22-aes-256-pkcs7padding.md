@@ -11,7 +11,7 @@ categories: Java
 1：我们在java-8中使用AES加解密用PKCS5Padding填充(默认支持)，但是换成PKCS7Padding填充就会报错，原因是jdk-8中没有支持PKCS7Padding的填充。
 
 ```
-com.qihoo.finance.msf.core.utils.MsfAESUtilTest
+com.utils.MsfAESUtilTest
 ============PKCS5Padding===========
 java.security.NoSuchAlgorithmException: Cannot find any provider supporting AES/CBC/PKCS7Padding
 	at javax.crypto.Cipher.getInstance(Cipher.java:543)
