@@ -71,7 +71,7 @@ public static String encryptByCBC256(String data, String secretKey, String iv) t
 示例
 
 ```java
-package com.qihoo.finance.msf.core.utils;
+package com.utils;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
