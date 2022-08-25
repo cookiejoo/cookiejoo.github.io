@@ -15,8 +15,6 @@ com.qihoo.finance.msf.core.utils.MsfAESUtilTest
 ============PKCS5Padding===========
 java.security.NoSuchAlgorithmException: Cannot find any provider supporting AES/CBC/PKCS7Padding
 	at javax.crypto.Cipher.getInstance(Cipher.java:543)
-	at com.qihoo.finance.msf.core.utils.MsfAESUtilTest.encryptByCBC(MsfAESUtilTest.java:53)
-	at com.qihoo.finance.msf.core.utils.MsfAESUtilTest.main(MsfAESUtilTest.java:26)
 
 Process finished with exit code 0
 ```
