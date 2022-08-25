@@ -87,7 +87,7 @@ public class MsfAESUtilTest {
 
     private static final String KEY_ALGORITHM = "AES";
     public static final String SECRET_KEY = "88888888888888888888888888888888";
-    public static final String IV = "8cdf051a68d05f24";
+    public static final String IV = "xxxxxxxxxxxxxx";
     private static final String CBC_CIPHER_ALGORITHM = "AES/CBC/PKCS5Padding";
     private static final String CBC_CIPHER_ALGORITHM_256 = "AES/CBC/PKCS7Padding";
     private static final String CHARSET_NAME = "utf-8";
@@ -96,16 +96,16 @@ public class MsfAESUtilTest {
         try {
 
             System.out.println("============PKCS5Padding===========");
-            String encrypted = encryptByCBC("caodegao", SECRET_KEY, IV);
+            String encrypted = encryptByP5("caodegao", SECRET_KEY, IV);
             System.out.println("encrypted ： " + encrypted);
-            String result = decryptByCBC(encrypted, SECRET_KEY, IV);
+            String result = decryptByP5(encrypted, SECRET_KEY, IV);
             System.out.println("result ： " + result);
 
             System.out.println("============PKCS7Padding===========");
 
-            encrypted = encryptByCBC256("caodegao", SECRET_KEY, IV);
+            encrypted = encryptByP7("caodegao", SECRET_KEY, IV);
             System.out.println("encrypted ： " + encrypted);
-            result = decryptByCBC256(encrypted, SECRET_KEY, IV);
+            result = decryptByP7(encrypted, SECRET_KEY, IV);
             System.out.println("result ： " + result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -113,12 +113,12 @@ public class MsfAESUtilTest {
 
     }
 
-    public static String encryptByCBC(String data, String secretKey, String iv) throws Exception {
+    public static String encryptByP5(String data, String secretKey, String iv) throws Exception {
         if (org.apache.commons.lang3.StringUtils.isBlank(data)) {
             return data;
         }
         if (org.apache.commons.lang3.StringUtils.isBlank(iv)) {
-            throw new IllegalArgumentException("decryptByCBC iv isBlank");
+            throw new IllegalArgumentException("decrypt iv isBlank");
         }
         byte[] raw = secretKey.getBytes(CHARSET_NAME);
         SecretKeySpec sKeySpec = new SecretKeySpec(raw, KEY_ALGORITHM);
@@ -133,12 +133,12 @@ public class MsfAESUtilTest {
 
     }
 
-    public static String encryptByCBC256(String data, String secretKey, String iv) throws Exception {
+    public static String encryptByP7(String data, String secretKey, String iv) throws Exception {
         if (org.apache.commons.lang3.StringUtils.isBlank(data)) {
             return data;
         }
         if (org.apache.commons.lang3.StringUtils.isBlank(iv)) {
-            throw new IllegalArgumentException("decryptByCBC iv isBlank");
+            throw new IllegalArgumentException("decrypt iv isBlank");
         }
         byte[] raw = secretKey.getBytes(CHARSET_NAME);
         SecretKeySpec keySpec = new SecretKeySpec(raw, "AES");
@@ -151,12 +151,12 @@ public class MsfAESUtilTest {
 
     }
 
-    public static String decryptByCBC(String data, String secretKey, String iv) throws Exception {
+    public static String decryptByP5(String data, String secretKey, String iv) throws Exception {
         if (org.apache.commons.lang3.StringUtils.isBlank(data)) {
             return data;
         }
         if (StringUtils.isBlank(iv)) {
-            throw new IllegalArgumentException("decryptByCBC iv isBlank");
+            throw new IllegalArgumentException("decrypt iv isBlank");
         }
         byte[] raw = secretKey.getBytes(CHARSET_NAME);
         SecretKeySpec sKeySpec = new SecretKeySpec(raw, KEY_ALGORITHM);
@@ -168,12 +168,12 @@ public class MsfAESUtilTest {
         return new String(original, CHARSET_NAME);
     }
 
-    public static String decryptByCBC256(String data, String secretKey, String iv) throws Exception {
+    public static String decryptByP7(String data, String secretKey, String iv) throws Exception {
         if (org.apache.commons.lang3.StringUtils.isBlank(data)) {
             return data;
         }
         if (StringUtils.isBlank(iv)) {
-            throw new IllegalArgumentException("decryptByCBC iv isBlank");
+            throw new IllegalArgumentException("decrypt iv isBlank");
         }
         byte[] raw = secretKey.getBytes(CHARSET_NAME);
         SecretKeySpec keySpec = new SecretKeySpec(raw, KEY_ALGORITHM);
