@@ -35,7 +35,9 @@
           <div class="trigger">
             {%- for path in page_paths -%}
               {%- assign my_page = site.pages | where: "path", path | first -%}
-              {%- if my_page.title -%}
+              {%- if my_page.title == '我的兴趣爱好' -%}
+              <a class="page-link" href="{{ my_page.url | relative_url }}">{{ my_page.title_temp | upcase | escape }}</a>
+              {%- else -%}
               <a class="page-link" href="{{ my_page.url | relative_url }}">{{ my_page.title | upcase | escape }}</a>
               {%- endif -%}
             {%- endfor -%}
