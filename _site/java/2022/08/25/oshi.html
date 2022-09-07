@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-translate-customization" content="108d9124921d80c3-80e20d618ff053c8-g4f02ec6f3dba68b7-c">
+<!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>OSHI获取系统信息 | Cookie.Joo Blog</title>
+<meta name="generator" content="Jekyll v4.2.0">
+<meta property="og:title" content="OSHI获取系统信息">
+<meta name="author" content="曹德高">
+<meta property="og:locale" content="en_US">
+<meta name="description" content="前言">
+<meta property="og:description" content="前言">
+<link rel="canonical" href="/java/2022/08/25/oshi.html">
+<meta property="og:url" content="/java/2022/08/25/oshi.html">
+<meta property="og:site_name" content="Cookie.Joo Blog">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2022-08-25T00:00:00+08:00">
+<meta name="twitter:card" content="summary">
+<meta property="twitter:title" content="OSHI获取系统信息">
+<script type="application/ld+json">
+{"headline":"OSHI获取系统信息","dateModified":"2022-08-25T00:00:00+08:00","datePublished":"2022-08-25T00:00:00+08:00","@type":"BlogPosting","author":{"@type":"Person","name":"曹德高"},"mainEntityOfPage":{"@type":"WebPage","@id":"/java/2022/08/25/oshi.html"},"description":"前言","url":"/java/2022/08/25/oshi.html","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="shortcut icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/assets/css/index.min.css">
+  <link rel="stylesheet" href="/assets/css/main.css">
+  <script src="/assets/js/main.js"></script><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Cookie.Joo Blog">
+<link rel="stylesheet" href="/assets/css/default.min.css">
+<script src="/assets/js/highlight.min.js"></script>
+<!-- and it's easy to individually load additional languages -->
+<script charset="UTF-8" src="/assets/js/go.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// Init highlight js
+document.addEventListener('DOMContentLoaded', function(event) {
+  var els = document.querySelectorAll('pre code')
+
+  function addLangData(block) {
+    var outer = block.parentElement.parentElement.parentElement;
+    var lang = block.getAttribute('data-lang');
+    for (var i = 0; i < outer.classList.length; i++) {
+      var cls = outer.classList[i];
+      if (cls.startsWith('language-')) {
+        lang = cls;
+        break;
+      }
+    }
+    if (!lang) {
+      cls = block.getAttribute('class');
+      lang = cls ? cls.replace('hljs ', '') : '';
+    }
+    if (lang.startsWith('language-')) {
+      lang = lang.substr(9);
+    }
+    block.setAttribute('class', 'hljs ' + lang);
+    block.parentNode.setAttribute('data-lang', lang);
+  }
+
+  function addBadge(block) {
+    var enabled = ('true' || 'true').toLowerCase();
+    if (enabled == 'true') {
+      var pre = block.parentElement;
+      pre.classList.add('badge');
+    }
+  }
+
+  function handle(block) {
+    addLangData(block);
+    addBadge(block)
+    hljs.highlightBlock(block);
+  }
+
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    handle(el);
+  }
+});
+</script>
+
+<style>
+  /* code language badge */
+  pre.badge::before {
+    content: attr(data-lang);
+    color: #fff;
+    background-color: #ff4e00;
+    padding: 0 .5em;
+    border-radius: 0 2px;
+    text-transform: uppercase;
+    text-align: center;
+    min-width: 32px;
+    display: inline-block;
+    position: absolute;
+    right: 0;
+  }
+
+  /* fix wrong badge display for firefox browser */
+  code > table pre::before {
+    display: none;
+  }
+</style>
+</head>
+<body>
+    <img src="/pyq.jpg" width="0" height="0">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<header class="site-header " role="banner">
+
+  <div class="wrapper">
+    <div class="site-header-inner">
+<span class="site-brand"><a class="site-brand-inner" rel="author" href="/">
+  <img class="site-favicon" title="Cookie.Joo Blog" src="/favicon.ico" onerror="this.style.display='none'">
+  Cookie.Joo Blog
+</a>
+</span><nav class="site-nav">
+          <input type="checkbox" id="nav-trigger" class="nav-trigger">
+          <label for="nav-trigger">
+            <span class="menu-icon">
+              <svg viewbox="0 0 18 15" width="18px" height="15px">
+                <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"></path>
+              </svg>
+            </span>
+          </label>
+
+          <div class="trigger">
+<a class="page-link" href="/404.html"></a><a class="page-link" href="/about.html">ABOUT</a><a class="page-link" href="/archives.html">ARCHIVES</a><a class="page-link" href="/categories.html">CATEGORIES</a><a class="page-link" href="/">HOME</a><a class="page-link" href="/tags.html">TAGS</a><a class="page-link" href="/feed.xml"></a><a class="page-link" href="/sitemap.xml"></a><a class="page-link" href="/robots.txt"></a>
+
+
+
+
+<span class="page-link">
+
+<div id="google_translate_element" style="display: none;">
+</div>
+
+<span class="ct-language">
+  <ul class="list-unstyled ct-language-dropdown">
+    
+      <li>
+        <a href="#" class="lang-select" data-lang="zh-CN">
+          
+          <img src="/pyq.jpg" title="Chinese(Simple)">
+          
+        </a>
+      </li>
+    
+  </ul>
+</span>
+
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: '',
+    autoDisplay: false,
+    layout: google.translate.TranslateElement.InlineLayout.VERTICAL
+  }, 'google_translate_element');
+
+  function restoreLang() {
+    var iframe = document.getElementsByClassName('goog-te-banner-frame')[0];
+    if (!iframe) return;
+
+    var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+    var restore_el = innerDoc.getElementsByTagName("button");
+
+    for (var i = 0; i < restore_el.length; i++) {
+      if (restore_el[i].id.indexOf("restore") >= 0) {
+        restore_el[i].click();
+        var close_el = innerDoc.getElementsByClassName("goog-close-link");
+        close_el[0].click();
+        return;
+      }
+    }
+  }
+
+  function triggerHtmlEvent(element, eventName) {
+    var event;
+    if (document.createEvent) {
+      event = document.createEvent('HTMLEvents');
+      event.initEvent(eventName, true, true);
+      element.dispatchEvent(event);
+    } else {
+      event = document.createEventObject();
+      event.eventType = eventName;
+      element.fireEvent('on' + event.eventType, event);
+    }
+  }
+
+  var googleCombo = document.querySelector("select.goog-te-combo");
+  var langSelect = document.querySelector('.ct-language');
+  langSelect.addEventListener('click', function(event) {
+    if (!event.target) {
+      return;
+    }
+
+    var selected = document.querySelector('.ct-language .ct-language-selected');
+    if (selected) {
+      selected.classList.remove('ct-language-selected');
+    }
+
+    var target = event.target;
+    while (target && target !== langSelect ) {
+      if (target.matches('.lang-select')) {
+        break;
+      }
+      target = target.parentElement;
+    }
+
+    if (target && target.matches('.lang-select')) {
+      var lang = target.getAttribute('data-lang');
+      if (googleCombo.value == lang) {
+        restoreLang();
+      } else {
+        target.parentElement.classList.add('ct-language-selected');
+        googleCombo.value = lang;
+        triggerHtmlEvent(googleCombo, 'change');
+      }
+    }
+
+    event.preventDefault();
+  });
+}
+</script>
+
+<script type="text/javascript" src="/assets/js/element.js?cb=googleTranslateElementInit"></script>
+</span>
+</div>
+        </nav>
+</div>
+  </div>
+</header>
+
+<script>
+  (function() {
+    var lastScrollY = getScrollPos().y;
+    var documentElement = document.documentElement;
+
+    function storeScrollData() {
+      var y = getScrollPos().y;var scrollStatus = "";
+
+      if (y <= 0) {
+        scrollStatus = "top";
+      } else if ((window.innerHeight + y) >= document.body.offsetHeight) {
+        scrollStatus = "bottom";
+      } else {
+        var isScrollDown = (y - lastScrollY > 0) ? true : false;
+        scrollStatus = isScrollDown ? "down" : "up";
+      }
+
+      lastScrollY = y;
+      documentElement.setAttribute("data-scroll-status", scrollStatus);
+    }
+
+    window.addEventListener('scroll', function(e) {
+      storeScrollData();
+    });
+
+    storeScrollData();
+  })();
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+  function hashLocate(hashValue) {
+    hashValue = hashValue.replace(/^.*#h-/, '');
+    hashValue = decodeURIComponent(hashValue);
+    var element = document.getElementById(hashValue);
+
+    if (!element) {
+      return;
+    }
+
+    var header = document.querySelector('header.site-header');
+    var headerRect = header.getBoundingClientRect();
+    var headerTop = Math.floor(headerRect.top);
+    var headerHeight = Math.floor(headerRect.height);
+    var scrollPos = getScrollPos();
+    var offsetY = element.offsetTop - (headerTop + headerHeight + 20);
+
+    if (offsetY == scrollPos.y) {
+      return;
+    }
+
+    if (headerTop == 0  && offsetY > scrollPos.y) {
+      offsetY += headerHeight + 2;
+    } else if (headerTop < 0  && offsetY < scrollPos.y) {
+      offsetY -= headerHeight - 2;
+    }
+
+    smoothScrollTo(offsetY);
+  }
+
+  // The first event occurred
+  window.addEventListener('load', function(event) {
+    if (window.location.hash) {
+      hashLocate(window.location.hash);
+    }
+  });
+
+  // The first event occurred
+  window.addEventListener('click', function(event) {
+    if (event.target.tagName.toLowerCase() == 'a') {
+      hashLocate(event.target.getAttribute('href'));
+    }
+  });
+</script>
+<div class="theme-toggle">
+  <input type="checkbox" id="theme-switch">
+  <label for="theme-switch">
+    <div class="toggle"></div>
+    <div class="names">
+      <p class="light">Light</p>
+      <p class="dark">Dark</p>
+    </div>
+  </label>
+</div>
+
+
+
+
+<script>
+  (function() {
+    var sw = document.getElementById('theme-switch');
+    var html = document.getElementsByTagName('html')[0];
+    var nightModeOption = ('auto' || 'auto').toLowerCase();
+    var storage = nightModeOption === 'manual'
+        ? localStorage
+        : sessionStorage;
+    var themeData = loadThemeData();
+
+    function saveThemeData(data) {
+      storage.setItem('theme', JSON.stringify(data));
+    }
+
+    function loadThemeData() {
+      var data = storage.getItem('theme');
+      try {
+        data = JSON.parse(data ? data : '');
+      } catch(e) {
+        data = { nightShift: undefined, autoToggleAt: 0 };
+        saveThemeData(data);
+      }
+      return data;
+    }
+
+    function handleThemeToggle(nightShift) {
+      themeData.nightShift = nightShift;
+      saveThemeData(themeData);
+      html.dataset.theme = nightShift ? 'dark' : 'light';
+      setTimeout(function() {
+        sw.checked = nightShift ? true : false;
+      }, 50);
+    }
+
+    function autoThemeToggle() {
+      // Next time point of theme toggle
+      var now = new Date();
+      var toggleAt = new Date();
+      var hours = now.getHours();
+      var nightShift = hours >= 19 || hours <=7;
+
+      if (nightShift) {
+        if (hours > 7) {
+          toggleAt.setDate(toggleAt.getDate() + 1);
+        }
+        toggleAt.setHours(7);
+      } else {
+        toggleAt.setHours(19);
+      }
+
+      toggleAt.setMinutes(0);
+      toggleAt.setSeconds(0);
+      toggleAt.setMilliseconds(0)
+
+      var delay = toggleAt.getTime() - now.getTime();
+
+      // auto toggle theme mode
+      setTimeout(function() {
+        handleThemeToggle(!nightShift);
+      }, delay);
+
+      return {
+        nightShift: nightShift,
+        toggleAt: toggleAt.getTime()
+      };
+    }
+
+    // Listen the theme toggle event
+    sw.addEventListener('change', function(event) {
+      handleThemeToggle(event.target.checked);
+    });
+
+    if (nightModeOption == 'auto') {
+      var data = autoThemeToggle();
+
+      // Toggle theme by local setting
+      if (data.toggleAt > themeData.autoToggleAt) {
+        themeData.autoToggleAt = data.toggleAt;
+        handleThemeToggle(data.nightShift);
+      } else {
+        handleThemeToggle(themeData.nightShift);
+      }
+    } else if (nightModeOption == 'manual') {
+      handleThemeToggle(themeData.nightShift);
+    } else {
+      var nightShift = themeData.nightShift;
+      if (nightShift === undefined) {
+        nightShift = nightModeOption === 'on';
+      }
+      handleThemeToggle(nightShift);
+    }
+  })();
+</script>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <div class="framework">
+  <section class="main">
+
+     <div class="post">
+  <section>
+
+
+
+
+
+
+
+
+
+<header class="post-header">
+  <h1 class="post-title p-name" itemprop="name headline">OSHI获取系统信息</h1>
+  <h2 class="post-subtitle"></h2>
+
+  <p class="post-meta">
+    <time class="dt-published" datetime="2022-08-25T00:00:00+08:00" itemprop="datePublished"><i class="fa fa-calendar"></i> Aug 25, 2022
+    </time>
+
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 7 mins</span>
+  </p>
+<div class="post-tags"><a class="post-tag" href="/tags.html#java">#java</a></div></header>
+<article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+    <div class="post-content e-content" itemprop="articleBody">
+
+      <h3 id="前言">前言</h3>
+
+<p>我们在常规性系统观测领域会做一些系统层面的服务指标暂时仪表盘，但基本上对系统的指标或许、进程的指标获取用java其实也有点难度的，今天我们学一下OSHI这个类库，它提供了很多方法用于获取系统和进程数据，咱们来做个漂亮的仪表盘。</p>
+
+<h3 id="oshi">OSHI</h3>
+
+<p>OSHI是Java的免费的基于JNA的（本机）操作系统和硬件信息库。它不需要安装任何其他本机库，并且旨在提供一种跨平台的实现来检索系统信息，例如OS版本，进程，内存和CPU使用率，磁盘和分区，设备，传感器等。</p>
+
+<p>支持平台:
+Windows • Linux • macOS • Unix (AIX, FreeBSD, Solaris)</p>
+
+<p>– 计算机系统和固件，底板</p>
+
+<p>– 操作系统和版本/内部版本</p>
+
+<p>– 物理（核心）和逻辑（超线程）CPU，处理器组，NUMA节点</p>
+
+<p>– 系统和每个处理器的负载，使用情况滴答计数器，中断，正常运行时间</p>
+
+<p>– 进程正常运行时间，CPU，内存使用情况，用户/组，命令行参数，线程详细信息</p>
+
+<p>– 已使用/可用的物理和虚拟内存</p>
+
+<p>– 挂载的文件系统（类型，可用空间和总空间，选项，读取和写入）</p>
+
+<p>– 磁盘驱动器（型号，序列号，大小，读取和写入）和分区</p>
+
+<p>– 网络接口（IP，带宽输入/输出），网络参数，TCP / UDP统计信息</p>
+
+<p>– 电池状态（电量百分比，剩余时间，电量使用情况统计信息）</p>
+
+<p>– USB设备</p>
+
+<p>– 连接的显示器（带有EDID信息），图形和声卡</p>
+
+<p>– 某些硬件上的传感器（温度，风扇速度，电压）</p>
+
+<p>所以绝大部分平台都满足需求了，我们来看看他的一些获取系统指标的方法，有很多我也没整明白，但是大部分看懂的已经够用了。</p>
+
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;dependency&gt;</span>
+    <span class="nt">&lt;groupId&gt;</span>com.github.oshi<span class="nt">&lt;/groupId&gt;</span>
+    <span class="nt">&lt;artifactId&gt;</span>oshi-core<span class="nt">&lt;/artifactId&gt;</span>
+    <span class="nt">&lt;version&gt;</span>6.2.2<span class="nt">&lt;/version&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</code></pre></div></div>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">oshi.SystemInfo</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.hardware.CentralProcessor</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.hardware.CentralProcessor.TickType</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.hardware.GlobalMemory</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.hardware.HardwareAbstractionLayer</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.software.os.FileSystem</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.software.os.OSFileStore</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.software.os.OperatingSystem</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.util.Util</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.net.UnknownHostException</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.List</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.Properties</span><span class="o">;</span>
+
+<span class="cm">/**
+ * @author cookie.joo
+ * @date 2022-08-25
+ */</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">OshiTest</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+        <span class="nc">SystemInfo</span> <span class="n">si</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SystemInfo</span><span class="o">();</span>
+        <span class="nc">HardwareAbstractionLayer</span> <span class="n">hal</span> <span class="o">=</span> <span class="n">si</span><span class="o">.</span><span class="na">getHardware</span><span class="o">();</span>
+        <span class="n">setCpuInfo</span><span class="o">(</span><span class="n">hal</span><span class="o">.</span><span class="na">getProcessor</span><span class="o">());</span>
+        <span class="n">setMemInfo</span><span class="o">(</span><span class="n">hal</span><span class="o">.</span><span class="na">getMemory</span><span class="o">());</span>
+        <span class="n">setSysInfo</span><span class="o">();</span>
+        <span class="n">setJvmInfo</span><span class="o">();</span>
+        <span class="n">setSysFiles</span><span class="o">(</span><span class="n">si</span><span class="o">.</span><span class="na">getOperatingSystem</span><span class="o">());</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 设置CPU信息
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">setCpuInfo</span><span class="o">(</span><span class="nc">CentralProcessor</span> <span class="n">processor</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// CPU信息</span>
+        <span class="kt">long</span><span class="o">[]</span> <span class="n">prevTicks</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="na">getSystemCpuLoadTicks</span><span class="o">();</span>
+        <span class="nc">Util</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">1000</span><span class="o">);</span>
+        <span class="kt">long</span><span class="o">[]</span> <span class="n">ticks</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="na">getSystemCpuLoadTicks</span><span class="o">();</span>
+        <span class="kt">long</span> <span class="n">nice</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">NICE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">NICE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">irq</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IRQ</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IRQ</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">softirq</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">SOFTIRQ</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">SOFTIRQ</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">steal</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">STEAL</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">STEAL</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">cSys</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">SYSTEM</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">SYSTEM</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">user</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">USER</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">USER</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">iowait</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IOWAIT</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IOWAIT</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">idle</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IDLE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IDLE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">totalCpu</span> <span class="o">=</span> <span class="n">user</span> <span class="o">+</span> <span class="n">nice</span> <span class="o">+</span> <span class="n">cSys</span> <span class="o">+</span> <span class="n">idle</span> <span class="o">+</span> <span class="n">iowait</span> <span class="o">+</span> <span class="n">irq</span> <span class="o">+</span> <span class="n">softirq</span> <span class="o">+</span> <span class="n">steal</span><span class="o">;</span>
+        <span class="c1">// 核心数 processor.getLogicalProcessorCount()</span>
+        <span class="c1">// CPU总的使用率 totalCpu</span>
+        <span class="c1">// CPU系统使用率 cSys</span>
+        <span class="c1">// CPU用户使用率 user</span>
+        <span class="c1">// CPU当前等待率 iowait</span>
+        <span class="c1">// CPU当前空闲率 idle</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 设置内存信息
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">setMemInfo</span><span class="o">(</span><span class="nc">GlobalMemory</span> <span class="n">memory</span><span class="o">)</span> <span class="o">{</span>
+         <span class="c1">// 内存总量 memory.getTotal()</span>
+         <span class="c1">// 已用内存 memory.getTotal() - memory.getAvailable()</span>
+         <span class="c1">// 剩余内存 memory.getAvailable()</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 设置服务器信息
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">setSysInfo</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">Properties</span> <span class="n">props</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">getProperties</span><span class="o">();</span>
+        <span class="c1">// 操作系统 sys.setOsName(props.getProperty("os.name"));</span>
+        <span class="c1">// 系统架构 sys.setOsArch(props.getProperty("os.arch"));</span>
+        <span class="c1">// 项目路径 sys.setUserDir(props.getProperty("user.dir"));</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 设置Java虚拟机
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">setJvmInfo</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">UnknownHostException</span> <span class="o">{</span>
+        <span class="nc">Properties</span> <span class="n">props</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">getProperties</span><span class="o">();</span>
+        <span class="c1">// 内存总量 Runtime.getRuntime().totalMemory()</span>
+        <span class="c1">// 当前内存使用率 Runtime.getRuntime().maxMemory()</span>
+        <span class="c1">// 内存空闲率 Runtime.getRuntime().freeMemory()</span>
+        <span class="c1">// JDK版本 props.getProperty("java.version")</span>
+        <span class="c1">// JDK安装路径 props.getProperty("java.home")</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 设置磁盘信息
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">setSysFiles</span><span class="o">(</span><span class="nc">OperatingSystem</span> <span class="n">os</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">FileSystem</span> <span class="n">fileSystem</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="na">getFileSystem</span><span class="o">();</span>
+        <span class="nc">List</span><span class="o">&lt;</span><span class="nc">OSFileStore</span><span class="o">&gt;</span> <span class="n">fsArray</span> <span class="o">=</span> <span class="n">fileSystem</span><span class="o">.</span><span class="na">getFileStores</span><span class="o">();</span>
+        <span class="k">for</span> <span class="o">(</span><span class="nc">OSFileStore</span> <span class="n">fs</span> <span class="o">:</span> <span class="n">fsArray</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kt">long</span> <span class="n">free</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="na">getUsableSpace</span><span class="o">();</span>
+            <span class="kt">long</span> <span class="n">total</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="na">getTotalSpace</span><span class="o">();</span>
+            <span class="kt">long</span> <span class="n">used</span> <span class="o">=</span> <span class="n">total</span> <span class="o">-</span> <span class="n">free</span><span class="o">;</span>
+            <span class="c1">// 盘符路径 fs.getMount()</span>
+            <span class="c1">// 盘符类型 fs.getType()</span>
+            <span class="c1">// 文件类型 fs.getName());</span>
+            <span class="c1">// 总大小 convertFileSize(total)</span>
+            <span class="c1">// 剩余大小 convertFileSize(free)</span>
+            <span class="c1">// 已经使用量 sysFile.setUsed(convertFileSize(used)</span>
+            <span class="c1">// 资源的使用率 Arith.mul(Arith.div(used, total, 4), 100)</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 字节转换
+     *
+     * @param size 字节大小
+     * @return 转换后值
+     */</span>
+    <span class="kd">public</span> <span class="nc">String</span> <span class="nf">convertFileSize</span><span class="o">(</span><span class="kt">long</span> <span class="n">size</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kt">long</span> <span class="n">kb</span> <span class="o">=</span> <span class="mi">1024</span><span class="o">;</span>
+        <span class="kt">long</span> <span class="n">mb</span> <span class="o">=</span> <span class="n">kb</span> <span class="o">*</span> <span class="mi">1024</span><span class="o">;</span>
+        <span class="kt">long</span> <span class="n">gb</span> <span class="o">=</span> <span class="n">mb</span> <span class="o">*</span> <span class="mi">1024</span><span class="o">;</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">gb</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="s">"%.1f GB"</span><span class="o">,</span> <span class="o">(</span><span class="kt">float</span><span class="o">)</span> <span class="n">size</span> <span class="o">/</span> <span class="n">gb</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">mb</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kt">float</span> <span class="n">f</span> <span class="o">=</span> <span class="o">(</span><span class="kt">float</span><span class="o">)</span> <span class="n">size</span> <span class="o">/</span> <span class="n">mb</span><span class="o">;</span>
+            <span class="k">return</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="n">f</span> <span class="o">&gt;</span> <span class="mi">100</span> <span class="o">?</span> <span class="s">"%.0f MB"</span> <span class="o">:</span> <span class="s">"%.1f MB"</span><span class="o">,</span> <span class="n">f</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">kb</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kt">float</span> <span class="n">f</span> <span class="o">=</span> <span class="o">(</span><span class="kt">float</span><span class="o">)</span> <span class="n">size</span> <span class="o">/</span> <span class="n">kb</span><span class="o">;</span>
+            <span class="k">return</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="n">f</span> <span class="o">&gt;</span> <span class="mi">100</span> <span class="o">?</span> <span class="s">"%.0f KB"</span> <span class="o">:</span> <span class="s">"%.1f KB"</span><span class="o">,</span> <span class="n">f</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="s">"%d B"</span><span class="o">,</span> <span class="n">size</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="仪表盘">仪表盘</h3>
+
+<p><img src="/images/2022-08-25-oshi/image-20220825182025514.png" alt="image-20220825182025514"></p>
+
+<p>我们借用开源的一个界面来做参考，叫WARD的一个GitHub项目，有兴趣可以去看看，其实就是用的OSHI，前端用的js和css生成的动态背景图很酷炫漂亮，我把他集成到我的个人web项目里面偶尔可以打开看看机器负载情况。</p>
+
+<p>建立一个Controller类前端每个一秒钟来获取一下系统指标数据即可。重点要说一下这个Util.sleep(1000)为什么要休眠一会，然后用当前时间值减去上一个时间值，我CentralProcessor.getSystemCpuLoadTicks方法注释上看到了说明，意思是<strong>通过测量跨时间间隔的节拍之间的差异，可以计算该时间间隔上的CPU负载</strong>。它目的是计算当前直接的使用率，这个值是不停的递增的，所以必须用这个方式来得到这个值。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">private</span> <span class="kt">int</span> <span class="nf">getProcessor</span><span class="o">(){</span>
+  <span class="nc">CentralProcessor</span> <span class="n">centralProcessor</span> <span class="o">=</span> <span class="n">systemInfo</span><span class="o">.</span><span class="na">getHardware</span><span class="o">().</span><span class="na">getProcessor</span><span class="o">();</span>
+  <span class="c1">// 第一次获取：获取系统范围的 CPU 负载滴答计数器：</span>
+  <span class="kt">long</span><span class="o">[]</span> <span class="n">prevTicksArray</span> <span class="o">=</span> <span class="n">centralProcessor</span><span class="o">.</span><span class="na">getSystemCpuLoadTicks</span><span class="o">();</span>
+  <span class="kt">long</span> <span class="n">prevTotalTicks</span> <span class="o">=</span> <span class="nc">Arrays</span><span class="o">.</span><span class="na">stream</span><span class="o">(</span><span class="n">prevTicksArray</span><span class="o">).</span><span class="na">sum</span><span class="o">();</span>
+  <span class="kt">long</span> <span class="n">prevIdleTicks</span> <span class="o">=</span> <span class="n">prevTicksArray</span><span class="o">[</span><span class="nc">CentralProcessor</span><span class="o">.</span><span class="na">TickType</span><span class="o">.</span><span class="na">IDLE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+  <span class="c1">//等待一段时间</span>
+  <span class="nc">Util</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">1000</span><span class="o">);</span>
+
+  <span class="c1">//第二次获取：获取系统范围的 CPU 负载滴答计数器：</span>
+  <span class="kt">long</span><span class="o">[]</span> <span class="n">currTicksArray</span> <span class="o">=</span> <span class="n">centralProcessor</span><span class="o">.</span><span class="na">getSystemCpuLoadTicks</span><span class="o">();</span>
+  <span class="kt">long</span> <span class="n">currTotalTicks</span> <span class="o">=</span> <span class="nc">Arrays</span><span class="o">.</span><span class="na">stream</span><span class="o">(</span><span class="n">currTicksArray</span><span class="o">).</span><span class="na">sum</span><span class="o">();</span>
+  <span class="kt">long</span> <span class="n">currIdleTicks</span> <span class="o">=</span> <span class="n">currTicksArray</span><span class="o">[</span><span class="nc">CentralProcessor</span><span class="o">.</span><span class="na">TickType</span><span class="o">.</span><span class="na">IDLE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+
+  <span class="k">return</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="nc">Math</span><span class="o">.</span><span class="na">round</span><span class="o">((</span><span class="mi">1</span> <span class="o">-</span> <span class="o">((</span><span class="kt">double</span><span class="o">)</span> <span class="o">(</span><span class="n">currIdleTicks</span> <span class="o">-</span> <span class="n">prevIdleTicks</span><span class="o">))</span> <span class="o">/</span> <span class="o">((</span><span class="kt">double</span><span class="o">)</span> <span class="o">(</span><span class="n">currTotalTicks</span> <span class="o">-</span> <span class="n">prevTotalTicks</span><span class="o">)))</span> <span class="o">*</span> <span class="mi">100</span><span class="o">);</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="最后">最后</h3>
+
+<p>OSHI的工具类让我们在Java中获取系统参数指标提供了遍历，WARD项目让我们在开发web应用的时候多了一个赏心悦目的仪表盘，让我们非前端开发人员也能做出一个漂亮的前端展示来，这个前端在手机端浏览也是适配的。</p>
+
+<p>可以点击我的<a href="http://caodegao.com:8080/">服务链接</a>看这个前端显示效果。</p>
+
+<p>OSHI更多参数请到官网中探索吧！</p>
+
+
+
+    </div>
+
+</article>
+<div class="post-nav">
+<a class="previous" href="/linux/2022/08/24/crontab.html" title="Linux定时任务">Linux定时任务</a><a class="next" href="/tech/2022/08/30/lowcode.html" title="我想象中的低代码">我想象中的低代码</a>
+</div>
+<div class="post-related">
+      <div>Related Articles</div>
+      <ul>
+        <li><a class="post-link" href="/unit/test/2021/07/18/mockito-normal-skill.html" title="我想象中的低代码">Mockito 正常场景测试技巧《第六章》</a></li>
+<li><a class="post-link" href="/netty/2021/09/02/netty-http-server.html" title="我想象中的低代码">netty-http-server</a></li>
+<li><a class="post-link" href="/netty/2021/09/07/netty-reactor.html" title="我想象中的低代码">netty-reactor</a></li>
+<li><a class="post-link" href="/unit/test/2021/06/19/mockito-test-standard.html" title="我想象中的低代码">单元测试准则《开篇》</a></li>
+</ul>
+    </div>
+<div class="post-comments"></div></section>
+</div>
+
+
+  </section>
+  <section class="sidebar" style="margin-left: 15px;">
+    <!-- Get sidebar items --><style type="text/css" media="screen">
+.post-menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+</style>
+
+<div class="post-menu">
+  <div class="post-menu-title">TOC</div>
+  <div class="post-menu-content"></div>
+</div>
+
+<script>
+  function generateContent() {
+    var menu = document.querySelector(".post-menu");
+    var menuContent =  menu.querySelector(".post-menu-content");
+    var headings = document.querySelector(".post-content").querySelectorAll("h2, h3, h4, h5, h6");
+
+    // Hide menu when no headings
+    if (headings.length === 0) {
+      return menu.style.display = "none";
+    }
+
+    // Generate post menu
+    var menuHTML = '';
+    for (var i = 0; i < headings.length; i++) {
+      var h = headings[i];
+      menuHTML += (
+        '<li class="h-' + h.tagName.toLowerCase() + '">'
+        + '<a href="#h-' + h.getAttribute('id') + '">' + h.textContent + '</a></li>');
+    }
+
+    menuContent.innerHTML = '<ul>' + menuHTML + '</ul>';
+
+    // The header element
+    var header = document.querySelector('header.site-header');
+
+    function doMenuCollapse(index, over_items) {
+      var items = menuContent.firstChild.children;
+
+      if (over_items == undefined) {
+        over_items = 20;
+      }
+
+      if (items.length < over_items) {
+        return;
+      }
+
+      var activeItem = items[index];
+      var beginItem = activeItem
+      var endItem = activeItem
+      var beginIndex = index;
+      var endIndex = index + 1;
+      while (beginIndex >= 0
+        && !items[beginIndex].classList.contains('h-h2')) {
+        beginIndex -= 1;
+      }
+      while (endIndex < items.length
+        && !items[endIndex].classList.contains('h-h2')) {
+        endIndex += 1;
+      }
+      for (var i = 0; i < beginIndex; i++) {
+        item = items[i]
+        if (!item.classList.contains('h-h2')) {
+          item.style.display = 'none';
+        }
+      }
+      for (var i = beginIndex + 1; i < endIndex; i++) {
+        item = items[i]
+        // if (!item.classList.contains('h-h2')) {
+          item.style.display = '';
+        // }
+      }
+      for (var i = endIndex; i < items.length; i++) {
+        item = items[i]
+        if (!item.classList.contains('h-h2')) {
+          item.style.display = 'none';
+        }
+      }
+    }
+
+    // Init menu collapsed
+    doMenuCollapse(-1);
+
+    // Active the menu item
+    window.addEventListener('scroll', function (event) {
+      var lastActive = menuContent.querySelector('.active');
+      var changed = true;
+      var activeIndex = -1;
+      for (var i = headings.length - 1; i >= 0; i--) {
+        var h = headings[i];
+        var headingRect = h.getBoundingClientRect();
+        var headerRect = header.getBoundingClientRect();
+        var headerTop = Math.floor(headerRect.top);
+        var headerHeight = Math.floor(headerRect.height);
+        var headerHeight = headerTop + headerHeight + 20;
+        if (headingRect.top <= headerHeight) {
+          var id = 'h-' + h.getAttribute('id');
+          var a = menuContent.querySelector('a[href="#' + id  + '"]');
+          var curActive = a.parentNode;
+          if (curActive) {
+            curActive.classList.add('active');
+            activeIndex = i;
+          }
+          if (lastActive == curActive) {
+            changed = false;
+          }
+          break;
+        }
+      }
+      if (changed) {
+        if (lastActive) {
+          lastActive.classList.remove('active');
+        }
+        doMenuCollapse(activeIndex);
+      }
+      event.preventDefault();
+    });
+  }
+  generateContent();
+</script>
+</section>
+</div>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+    <div class="site-footer-inner">
+      <a href="https://beian.miit.gov.cn/" target="_blank">琼ICP备2021000224号-2</a>
+      <div>Copyright © 1970-2010 @GitHub User</div>
+      <div>Powered by <a title="Jekyll is a simple, blog-aware, static site
+      generator." href="http://jekyllrb.com/">Jekyll</a> &amp; <a title="Yat, yet
+      another theme." href="https://github.com/jeffreytse/jekyll-theme-yat">Yat Theme</a>.</div>
+      <div class="footer-col rss-subscribe">Subscribe <a href="/feed.xml">via RSS</a>
+</div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
