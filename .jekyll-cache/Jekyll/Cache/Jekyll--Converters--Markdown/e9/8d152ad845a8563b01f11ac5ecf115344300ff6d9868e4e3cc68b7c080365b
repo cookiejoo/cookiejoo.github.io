@@ -1,0 +1,91 @@
+I"o"<h3 id="前言">前言</h3>
+
+<p>我们在Linux系统启动应用服务成功后需要做一下运维监控工作，比如应用因某些不可控原因服务挂了，或者断电机器后重启了，我们发服务进程就消失了，如果人不在电脑旁边就无法快速响应服务拉起工作。</p>
+
+<p>这时候我们需要一个机器层面的任务调度，自动把不在服务的应用自动拉起。</p>
+
+<h3 id="定时任务">定时任务</h3>
+
+<p><strong>crontab</strong></p>
+
+<p>Linux系统中有一个定时任务配置，我们可以利用这个工具帮我们做这类操作，一般操作系统已经安装了的，如果没有安装的网上找一下安装方式，这类就不着重说安装了。我们着重看如何使用。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 执行命令</span>
+crontab <span class="nt">-e</span>
+<span class="c"># 会打开一个vi编辑界面，这里要注意的是你现在登录的用户是什么用户。</span>
+<span class="c"># crontab执行的用户是分开的，所以一定要注意</span>
+<span class="c"># 这里我用的root登录linux的，所以执行这个命令的时候是打开root用户的调度器</span>
+</code></pre></div></div>
+
+<p>cron表达含义如下：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>其中 f1 是表示分钟，f2 表示小时，f3 表示一个月份中的第几日，f4 表示月份，f5 表示一个星期中的第几天。program 表示要执行的程序。
+当 f1 为 * 时表示每分钟都要执行 program，f2 为 * 时表示每小时都要执行程序，其馀类推
+当 f1 为 a-b 时表示从第 a 分钟到第 b 分钟这段时间内要执行，f2 为 a-b 时表示从第 a 到第 b 小时都要执行，其馀类推
+当 f1 为 */n 时表示每 n 分钟个时间间隔执行一次，f2 为 */n 表示每 n 小时个时间间隔执行一次，其馀类推
+当 f1 为 a, b, c,... 时表示第 a, b, c,... 分钟要执行，f2 为 a, b, c,... 时表示第 a, b, c...个小时要执行，其馀类推
+
+*    *    *    *    *
+-    -    -    -    -
+|    |    |    |    |
+|    |    |    |    +----- 星期中星期几 (0 - 6) (星期天 为0)
+|    |    |    +---------- 月份 (1 - 12) 
+|    |    +--------------- 一个月中的第几天 (1 - 31)
+|    +-------------------- 小时 (0 - 23)
++------------------------- 分钟 (0 - 59)
+</code></pre></div></div>
+
+<p>假如我们在/home/下有一个test.sh执行文件，需要一分钟执行一次，那可以这么在里面加定时任务语句</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 执行crontab -e 其实就是打开这个文件进行编辑的 /var/spool/cron/root</span>
+... 省略 ...
+<span class="k">*</span> <span class="k">*</span> <span class="k">*</span> <span class="k">*</span> <span class="k">*</span> /home/test.sh
+</code></pre></div></div>
+
+<p>执行结果请到这个目录下查看</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 日志路径</span>
+<span class="nb">tail</span> <span class="nt">-f</span> /var/log/cron
+<span class="c"># 这个是指(root)执行脚本的用户</span>
+Aug 24 19:18:01 VM-0-17-centos CROND[19146]: <span class="o">(</span>root<span class="o">)</span> CMD <span class="o">(</span>flock <span class="nt">-xn</span> /tmp/stargate.lock <span class="nt">-c</span> <span class="s1">'/usr/local/qcloud/stargate/admin/start.sh &gt; /dev/null 2&gt;&amp;1 &amp;'</span><span class="o">)</span>
+Aug 24 19:18:01 VM-0-17-centos CROND[19145]: <span class="o">(</span>root<span class="o">)</span> CMD <span class="o">(</span>bash /home/jekyll/cookiejoo/jekyll_monitor.sh<span class="o">)</span>
+Aug 24 19:19:01 VM-0-17-centos CROND[20233]: <span class="o">(</span>root<span class="o">)</span> CMD <span class="o">(</span>bash /home/jekyll/cookiejoo/jekyll_monitor.sh<span class="o">)</span>
+Aug 24 19:19:01 VM-0-17-centos CROND[20234]: <span class="o">(</span>root<span class="o">)</span> CMD <span class="o">(</span>flock <span class="nt">-xn</span> /tmp/stargate.lock <span class="nt">-c</span> <span class="s1">'/usr/local/qcloud/stargate/admin/start.sh &gt; /dev/null 2&gt;&amp;1 &amp;'</span><span class="o">)</span>
+Aug 24 19:20:01 VM-0-17-centos CROND[20551]: <span class="o">(</span>root<span class="o">)</span> CMD <span class="o">(</span>flock <span class="nt">-xn</span> /tmp/stargate.lock <span class="nt">-c</span> <span class="s1">'/usr/local/qcloud/stargate/admin/start.sh &gt; /dev/null 2&gt;&amp;1 &amp;'</span><span class="o">)</span>
+Aug 24 19:20:01 VM-0-17-centos CROND[20555]: <span class="o">(</span>root<span class="o">)</span> CMD <span class="o">(</span>flock <span class="nt">-xn</span> /tmp/stargate.lock <span class="nt">-c</span> <span class="s1">'/usr/local/qcloud/stargate/admin/start.sh &gt; /dev/null 2&gt;&amp;1 &amp;'</span><span class="o">)</span>
+Aug 24 19:20:01 VM-0-17-centos CROND[20565]: <span class="o">(</span>root<span class="o">)</span> CMD <span class="o">(</span>/usr/local/qcloud/YunJing/clearRules.sh <span class="o">&gt;</span> /dev/null 2&gt;&amp;1<span class="o">)</span>
+Aug 24 19:20:01 VM-0-17-centos CROND[20566]: <span class="o">(</span>root<span class="o">)</span> CMD <span class="o">(</span>bash /home/jekyll/cookiejoo/jekyll_monitor.sh<span class="o">)</span>
+Aug 24 19:21:01 VM-0-17-centos CROND[20889]: <span class="o">(</span>root<span class="o">)</span> CMD <span class="o">(</span>bash /home/jekyll/cookiejoo/jekyll_monitor.sh<span class="o">)</span>
+Aug 24 19:21:01 VM-0-17-centos CROND[20897]: <span class="o">(</span>root<span class="o">)</span> CMD <span class="o">(</span>flock <span class="nt">-xn</span> /tmp/stargate.lock <span class="nt">-c</span> <span class="s1">'/usr/local/qcloud/stargate/admin/start.sh &gt; /dev/null 2&gt;&amp;1 &amp;'</span><span class="o">)</span>
+
+</code></pre></div></div>
+
+<h3 id="实际应用">实际应用</h3>
+
+<p>我们以博客启动为例，我用静态markdown脚本生成工具jekyll，但是总会莫名其妙的挂，我在gitee.io上面就没这种情况，自己在腾讯云上部署就出现，所以我就用这种方式解决自启动问题。</p>
+
+<p>用curl去检测网站是否已经启动返回200状态，如果启动就跳过，如果没有启动就执行启动命令。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/sh</span>
+<span class="c"># 这一句很重要，一定要有刷新环境变量的声明，否则下面执行的命令可能就报错没有权限</span>
+<span class="c"># 比如java -jar 和 ruby一些命令，这个问题我搞了好几个小时才测通过。</span>
+<span class="c"># 注意：不同版本的OS版本source 路径不一样，大家要看清楚刷新环境变量的功能</span>
+<span class="nb">source</span> /etc/profile
+<span class="nv">status</span><span class="o">=</span><span class="si">$(</span>curl <span class="nt">-s</span> <span class="nt">-m</span> 5 <span class="nt">-IL</span> http://localhost:80/|grep 200<span class="si">)</span>
+<span class="c"># 如果服务没有开启，sever 0</span>
+<span class="c"># 如果服务没有开启，开启；若服务已经开启，输出提示</span>
+<span class="k">if</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$status</span><span class="s2">"</span> <span class="o">==</span> <span class="s2">""</span> <span class="o">]</span><span class="p">;</span> <span class="k">then 
+  </span><span class="nb">sudo </span>su root
+  <span class="nb">cd</span> /home/xxx/
+  <span class="nb">nohup</span> <span class="k">**</span>脚本<span class="k">**</span>  <span class="o">&gt;</span> 日志路径 2&gt;&amp;1 &amp;
+  <span class="nb">printf</span> <span class="s2">"时间：</span><span class="si">$(</span><span class="nb">date</span> +<span class="s2">"%Y-%m-%d %H:%M:%S"</span><span class="si">)</span><span class="s2"> 执行启动命令</span><span class="se">\n</span><span class="s2">"</span> <span class="o">&gt;&gt;</span> /home/jekyll/port_scan.log
+<span class="k">else
+  </span><span class="nb">printf</span> <span class="s2">"时间：</span><span class="si">$(</span><span class="nb">date</span> +<span class="s2">"%Y-%m-%d %H:%M:%S"</span><span class="si">)</span><span class="s2"> jekyll is running!!</span><span class="se">\n</span><span class="s2">"</span> <span class="o">&gt;&gt;</span> /home/jekyll/port_scan.log
+<span class="k">fi</span>
+</code></pre></div></div>
+
+<p>最后，完毕。</p>
+
+<p>我以后再也不用担心我的博客莫名其妙的挂，自己又不在电脑旁边了。</p>
+
+:ET

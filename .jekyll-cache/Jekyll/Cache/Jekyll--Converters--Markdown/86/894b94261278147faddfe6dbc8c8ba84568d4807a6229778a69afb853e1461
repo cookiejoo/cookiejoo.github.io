@@ -1,0 +1,168 @@
+I"�F<h3 id="前言">前言</h3>
+
+<p>上一章大概的聊了一下我设想中的低代码模式原型，其中就有代码编辑器的功能，这一章来分享一下我的网页版代码编辑器如何实现。</p>
+
+<h3 id="monaco-editor">Monaco-Editor</h3>
+
+<p>前端使用的是VUE，微软开源了VSCode前端版插件，我们就用这个插件来做代码编辑器功能，虽然基础版只有几种前端的高级支持，但显示上已经包含很多语言的基础版支持了。</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 安装</span>
+npm <span class="nb">install </span>monaco-editor <span class="nt">-S</span>
+</code></pre></div></div>
+
+<p>我们需要自定义这个组件(类似java的封装)方便后续的组件引入使用，所以在src-&gt;components下新建了一个组件MonacoEditor.vue。</p>
+
+<p>由于我的项目优先支持java所以我默认把组件的语言设置为java，还有一个注意事项的是props的定义，这个属性下面的子属性是可以在组件使用时传值过来动态设置绑定的，我也是跟前端大佬学的一招，我自己开发的时候不知道怎么根据文件后缀来动态设置语言苦恼了好几个小时。</p>
+
+<div class="language-vue highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;</span><span class="k">template</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;div</span> <span class="na">ref=</span><span class="s">"editorContainer"</span> <span class="na">class=</span><span class="s">"editor"</span><span class="nt">&gt;&lt;/div&gt;</span>
+<span class="nt">&lt;/</span><span class="k">template</span><span class="nt">&gt;</span>
+
+<span class="nt">&lt;</span><span class="k">script</span><span class="nt">&gt;</span>
+<span class="k">import</span> <span class="o">*</span> <span class="k">as</span> <span class="nx">monaco</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">monaco-editor</span><span class="dl">'</span><span class="p">;</span>
+<span class="k">export</span> <span class="k">default</span> <span class="p">{</span>
+  <span class="na">name</span><span class="p">:</span> <span class="dl">'</span><span class="s1">MonacoEditor</span><span class="dl">'</span><span class="p">,</span>
+  <span class="na">props</span><span class="p">:</span> <span class="p">{</span>
+    <span class="na">code</span><span class="p">:</span> <span class="dl">''</span><span class="p">,</span>
+    <span class="na">language</span><span class="p">:</span> <span class="dl">'</span><span class="s1">java</span><span class="dl">'</span>
+  <span class="p">},</span>
+  <span class="nx">data</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">{</span>
+      <span class="na">editor</span><span class="p">:</span> <span class="kc">null</span>
+    <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="nx">mounted</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">init</span><span class="p">()</span>
+  <span class="p">},</span>
+  <span class="na">methods</span><span class="p">:</span> <span class="p">{</span>
+    <span class="nx">init</span><span class="p">()</span> <span class="p">{</span>
+      <span class="c1">// 初始化编辑器</span>
+      <span class="k">if</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">language</span> <span class="o">===</span> <span class="dl">'</span><span class="s1">properties</span><span class="dl">'</span><span class="p">){</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">language</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">yaml</span><span class="dl">'</span>
+      <span class="p">}</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">editor</span> <span class="o">=</span> <span class="nx">monaco</span><span class="p">.</span><span class="nx">editor</span><span class="p">.</span><span class="nx">create</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">$refs</span><span class="p">.</span><span class="nx">editorContainer</span><span class="p">,</span> <span class="p">{</span>
+        <span class="na">value</span><span class="p">:</span> <span class="k">this</span><span class="p">.</span><span class="nx">code</span><span class="p">,</span>
+        <span class="na">language</span><span class="p">:</span> <span class="k">this</span><span class="p">.</span><span class="nx">language</span><span class="p">,</span>
+        <span class="na">tabSize</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="na">scrollBeyondLastLine</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+        <span class="na">automaticLayout</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span> <span class="c1">// 自动布局</span>
+        <span class="na">readOnly</span><span class="p">:</span> <span class="kc">false</span>
+      <span class="p">})</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">editor</span><span class="p">)</span>
+
+      <span class="c1">// 监听内容变化</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">editor</span><span class="p">.</span><span class="nx">onDidChangeModelContent</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+
+      <span class="p">})</span>
+
+      <span class="c1">// 监听失去焦点事件</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">editor</span><span class="p">.</span><span class="nx">onDidBlurEditorText</span><span class="p">((</span><span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span>
+      <span class="p">});</span>
+    <span class="p">},</span>
+    <span class="c1">// 获取编辑框内容</span>
+    <span class="nx">getCodeContext</span><span class="p">()</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">editor</span><span class="p">.</span><span class="nx">getValue</span><span class="p">()</span>
+    <span class="p">},</span>
+    <span class="c1">// 自动格式化代码</span>
+    <span class="nx">format</span><span class="p">()</span> <span class="p">{</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">editor</span><span class="p">.</span><span class="nx">trigger</span><span class="p">(</span><span class="dl">'</span><span class="s1">anything</span><span class="dl">'</span><span class="p">,</span> <span class="dl">'</span><span class="s1">editor.action.formatDocument</span><span class="dl">'</span><span class="p">)</span>
+      <span class="c1">// 或者</span>
+      <span class="c1">// this.editor.getAction(['editor.action.formatDocument']).run()</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="nt">&lt;/</span><span class="k">script</span><span class="nt">&gt;</span>
+
+<span class="nt">&lt;</span><span class="k">style</span> <span class="na">scoped</span><span class="nt">&gt;</span>
+<span class="nc">.editor</span> <span class="p">{</span>
+  <span class="nl">width</span><span class="p">:</span> <span class="m">100%</span><span class="p">;</span>
+  <span class="nl">height</span><span class="p">:</span> <span class="m">100%</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="nt">&lt;/</span><span class="k">style</span><span class="nt">&gt;</span>
+
+</code></pre></div></div>
+
+<h3 id="使用">使用</h3>
+
+<p>根据左边的项目文件树，选中文件后，右边的面板动态打开自定义的组件&lt;MonacoEditor&gt;，这里:code=”item.content” :language=”item.suffix”两个属性就是上面我说到的动态传值了。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">&lt;</span><span class="n">el</span><span class="o">-</span><span class="n">tabs</span> <span class="n">v</span><span class="o">-</span><span class="n">model</span><span class="o">=</span><span class="s">"activeName"</span> <span class="n">closable</span> <span class="nd">@tab</span><span class="o">-</span><span class="n">remove</span><span class="o">=</span><span class="s">"removeFileTab"</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">el</span><span class="o">-</span><span class="n">tab</span><span class="o">-</span><span class="n">pane</span>
+  	<span class="n">v</span><span class="o">-</span><span class="k">for</span><span class="o">=</span><span class="s">"item in fileTabList"</span>
+    	<span class="o">:</span><span class="n">key</span><span class="o">=</span><span class="s">"item.path"</span>
+      <span class="o">:</span><span class="n">label</span><span class="o">=</span><span class="s">"item.title"</span>
+      <span class="o">:</span><span class="n">name</span><span class="o">=</span><span class="s">"item.name"</span><span class="o">&gt;</span>
+          <span class="o">&lt;</span><span class="nc">MonacoEditor</span> <span class="o">:</span><span class="n">code</span><span class="o">=</span><span class="s">"item.content"</span> <span class="o">:</span><span class="n">language</span><span class="o">=</span><span class="s">"item.suffix"</span> <span class="n">ref</span><span class="o">=</span><span class="s">"MonacoEditor"</span> <span class="n">style</span><span class="o">=</span><span class="s">"height: 830px"</span><span class="o">&gt;&lt;/</span><span class="nc">MonacoEditor</span><span class="o">&gt;</span>
+	<span class="o">&lt;/</span><span class="n">el</span><span class="o">-</span><span class="n">tab</span><span class="o">-</span><span class="n">pane</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">el</span><span class="o">-</span><span class="n">tabs</span><span class="o">&gt;</span>
+</code></pre></div></div>
+
+<p>读取文件路径下所有的文件，返回给前端生成文件树</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@Getter</span>
+<span class="nd">@Setter</span>
+<span class="nd">@ToString</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">FileTreeVO</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="nc">String</span> <span class="n">filename</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="nc">String</span> <span class="n">path</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="nc">String</span> <span class="n">content</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="nc">Boolean</span> <span class="n">directory</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="nc">String</span> <span class="n">suffix</span><span class="o">;</span>
+
+    <span class="nc">List</span><span class="o">&lt;</span><span class="nc">FileTreeVO</span><span class="o">&gt;</span> <span class="n">children</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="nd">@Slf4j</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">FileUtil</span> <span class="o">{</span>
+		<span class="cm">/**
+     * 枚举所有文件，包括文件夹
+     */</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">listFile</span><span class="o">(</span><span class="nc">List</span><span class="o">&lt;</span><span class="nc">FileTreeVO</span><span class="o">&gt;</span> <span class="n">fileTree</span><span class="o">,</span> <span class="nc">File</span> <span class="n">dir</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(!</span><span class="n">dir</span><span class="o">.</span><span class="na">exists</span><span class="o">())</span> <span class="o">{</span>
+            <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="nc">File</span><span class="o">[]</span> <span class="n">fs</span> <span class="o">=</span> <span class="n">dir</span><span class="o">.</span><span class="na">listFiles</span><span class="o">();</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">fs</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">for</span> <span class="o">(</span><span class="nc">File</span> <span class="n">f</span> <span class="o">:</span> <span class="n">fs</span><span class="o">)</span> <span class="o">{</span>
+                <span class="c1">//隐藏文件类型就不用显示</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">f</span><span class="o">.</span><span class="na">isHidden</span><span class="o">())</span> <span class="o">{</span>
+                    <span class="k">continue</span><span class="o">;</span>
+                <span class="o">}</span>
+                <span class="nc">FileTreeVO</span> <span class="n">vo</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">FileTreeVO</span><span class="o">();</span>
+                <span class="n">vo</span><span class="o">.</span><span class="na">setFilename</span><span class="o">(</span><span class="n">f</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span>
+                <span class="n">vo</span><span class="o">.</span><span class="na">setPath</span><span class="o">(</span><span class="n">f</span><span class="o">.</span><span class="na">getPath</span><span class="o">());</span>
+                <span class="n">vo</span><span class="o">.</span><span class="na">setDirectory</span><span class="o">(</span><span class="n">f</span><span class="o">.</span><span class="na">isDirectory</span><span class="o">());</span>
+                <span class="n">fileTree</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">vo</span><span class="o">);</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">f</span><span class="o">.</span><span class="na">isDirectory</span><span class="o">())</span> <span class="o">{</span>
+                    <span class="n">vo</span><span class="o">.</span><span class="na">setChildren</span><span class="o">(</span><span class="nc">Lists</span><span class="o">.</span><span class="na">newLinkedList</span><span class="o">());</span>
+                    <span class="n">listFile</span><span class="o">(</span><span class="n">vo</span><span class="o">.</span><span class="na">getChildren</span><span class="o">(),</span> <span class="n">f</span><span class="o">,</span> <span class="n">accessSuffix</span><span class="o">);</span>
+                    <span class="n">vo</span><span class="o">.</span><span class="na">setSuffix</span><span class="o">(</span><span class="nc">StringUtils</span><span class="o">.</span><span class="na">EMPTY</span><span class="o">);</span>
+                <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                    <span class="n">vo</span><span class="o">.</span><span class="na">setSuffix</span><span class="o">(</span><span class="nc">FilenameUtils</span><span class="o">.</span><span class="na">getExtension</span><span class="o">(</span><span class="n">f</span><span class="o">.</span><span class="na">getName</span><span class="o">()));</span>
+                    
+                  	<span class="k">try</span> <span class="o">{</span>
+                    	<span class="n">vo</span><span class="o">.</span><span class="na">setContent</span><span class="o">(</span><span class="nc">FileUtils</span><span class="o">.</span><span class="na">readFileToString</span><span class="o">(</span><span class="n">f</span><span class="o">,</span> <span class="nc">StandardCharsets</span><span class="o">.</span><span class="na">UTF_8</span><span class="o">));</span>
+                  	<span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+                    	<span class="n">log</span><span class="o">.</span><span class="na">warn</span><span class="o">(</span><span class="s">"{},读取失败！"</span><span class="o">,</span> <span class="n">f</span><span class="o">.</span><span class="na">getName</span><span class="o">());</span>
+                  	<span class="o">}</span>
+                <span class="o">}</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>具体的效果如下：这个编辑器还是很漂亮的。</p>
+
+<p><img src="/images/2022-10-13-monaco-editor/image-20221013191911876.png" alt="image-20221013191911876" /></p>
+
+<p><img src="/images/2022-10-13-monaco-editor/image-20221013192029604.png" alt="image-20221013192029604" /></p>
+
+<h3 id="最后">最后</h3>
+
+<p>编辑器的模型已经有了，虽然它只是个基础版，我看了有人已经把这个插件做了扩展能连接远程得到java的一些代码提示的功能，由于个人前端能力极其有限，所以这个高级功能留给专门的前端大佬去完善吧。</p>
+
+<p>后续我把我实现的代码脚手架和Mysql连接到POJO的三层代码的做法分享出来。</p>
+
+:ET

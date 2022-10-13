@@ -22,7 +22,7 @@
 <meta name="twitter:card" content="summary">
 <meta property="twitter:title" content="Java线程池工作流程">
 <script type="application/ld+json">
-{"author":{"@type":"Person","name":"曹德高"},"@type":"BlogPosting","headline":"Java线程池工作流程","description":"前言","datePublished":"2022-01-26T00:00:00+08:00","dateModified":"2022-01-26T00:00:00+08:00","url":"/java/2022/01/26/java-thread.html","mainEntityOfPage":{"@type":"WebPage","@id":"/java/2022/01/26/java-thread.html"},"@context":"https://schema.org"}</script>
+{"headline":"Java线程池工作流程","dateModified":"2022-01-26T00:00:00+08:00","datePublished":"2022-01-26T00:00:00+08:00","@type":"BlogPosting","author":{"@type":"Person","name":"曹德高"},"mainEntityOfPage":{"@type":"WebPage","@id":"/java/2022/01/26/java-thread.html"},"description":"前言","url":"/java/2022/01/26/java-thread.html","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="shortcut icon" href="/favicon.ico">
   <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
@@ -121,17 +121,6 @@ document.addEventListener('DOMContentLoaded', function(event) {
   }
 </style>
 </head>
-<script>
-    window.courseInfo = {"id":50,"courseCId":"","courseName":"31 讲带你搞懂 SkyWalking","teachers":[{"id":51,"teacherName":"徐郡明","position":"前搜狗资深技术专家、源码剖析系列畅销书作者","teacherHeadPicUrl":"https://cookiejoo.gitee.io/pyq.jpg","description":"<p><span data-shimo-docs=\"[[20,&quot;徐郡明，网名&quot;],[20,&quot;吴小胖&quot;,&quot;8:1&quot;],[20,&quot;，前搜狗资深技术专家，&quot;],[20,&quot;目前就职于某知名短视频互联网公司，主要负责开发、运维全公司的 APM 系统，深入研究多个开源中间件，对 APM 系统有十分深入的研究。曾牵头&quot;,&quot;0:\\&quot;%233f3f3f\\&quot;|31:8&quot;],[20,&quot;改造过多个开源产品，在架构设计方面经验丰富。\\n\\n热衷技术分享，著有畅销书《Apache Kafka 源码剖析》《MyBatis 技术内幕》《etcd 技术内幕》《OpenTSDB  技术内幕》《Promethus 技术秘籍》等。\\n\\n&quot;]]\"></span></p><p line=\"c1o2\"><span style=\"font-family: 微软雅黑, &quot;Microsoft YaHei&quot;; font-size: 14px;\">徐郡明，网名吴小胖，前搜狗资深技术专家，目前就职于某知名短视频互联网公司，主要负责开发、运维全公司的 APM 系统，深入研究多个开源中间件，对 APM 系统有十分深入的研究。曾牵头改造过多个开源产品，在架构设计方面经验丰富。</span></p><p line=\"NdcM\"><span style=\"font-family: 微软雅黑, &quot;Microsoft YaHei&quot;; font-size: 14px;\">&nbsp;</span></p><p line=\"BEAl\"><span style=\"font-family: 微软雅黑, &quot;Microsoft YaHei&quot;; font-size: 14px;\">热衷技术分享，著有畅销书《Apache Kafka 源码剖析》《MyBatis 技术内幕》《etcd 技术内幕》《OpenTSDB &nbsp;技术内幕》《Promethus 技术秘籍》等。</span></p><p line=\"7LbC\"><span style=\"font-family: 微软雅黑, &quot;Microsoft YaHei&quot;; font-size: 14px;\">&nbsp;</span></p><p style=\"text-align:center\"><img src=\"https://cookiejoo.gitee.io/pyq.jpg\" title=\"11\" alt=\"11.png\"/></p><p><br/></p>"}],"totalCourseTime":31,"totalDuration":500,"sales":6369,"priceTag":"立即购买","discounts":"98","discountsTag":"立即购买","courseImgUrl":"https://cookiejoo.gitee.io/pyq.jpg","sellGoodsId":59,"sellGoodsPriceId":2241,"lgCoinPrice":98,"isBuy":false,"isFavorite":false,"isNewDes":"","seoDescription":"2019年4月，SkyWalking 这款国人开源的 APM 监控工具，正式从 Apache 基金会的孵化器毕业成为顶级项目。\n\n如今 Skywalking 增长势头强劲，社区活跃，中文文档齐全，没有语言障碍，支持多语言探针。同时，还支持 Dubbo、gRPC、SOFARPC 等等框架。这些优点，让 Skywalking 的使用者越来越多，比如我们熟悉的阿里云、腾讯、华为、滴滴、中国电信、中国联通等等。\n\n但在网络上的学习资料，仅有一些概述性的文章或者对部分代码的解释，会让你难以系统理解 Skywalking 的整体架构设计。\n\n这个专栏，会带你手把手带你从基础知识开始，逐步深入分析 Skywalking 源码，对 Skywalking 的核心实现、工作原理以及整体设计做详细剖析。不仅通过丰富的 Demo 演示手把手教你 SkyWalking 的落地方法和技巧，更会告诉你如何通过 Skywalking 的设计思想解决工作中的实际问题，提升你的 Coding 能力。","seoKeywords":"Skywalking,APM,Byte Buddy,OpenTracing,SPI,SkyWalking Agent,BootService,Trace, OAP, Tomcat, toolkit-activation,Dubbo,Configuration,Cluster,register-receiver-plugin,jvm-receiver,GraphQL,query-graphql,SW Rocketbot,server-alarm,OAL,Thread Dump,源码剖析,gRPC,SOFARPC,Apache,Java探针,字节码增强,k8s,Mesos,es,mysql,TiDB,H2, ShardingSphere,metric,Java,C#,PHP,Node.js,Java High Level Client","seoTitle":"31 讲带你搞懂 SkyWalking","shareTitle":"我在剖析 SkyWalking 的源码，看看他有什么好，你来看看么？","shareDescription":"源码剖析系列图书作者，带你从源码剖析到应用，一键通关 SkyWalking","brief":"从源码剖析到应用，一键通关 SkyWalking","courseListImg":"https://cookiejoo.gitee.io/pyq.jpg","courseType":1,"previewFirstField":"共31讲","previewSecondField":"已全部更新","joinMember":false,"freeForVip":true,"decorateId":235,"showCatalog":true,"showEvaluation":false,"courseTags":["6369人已购"],"hasFreeListen":false,"moduleId":210,"successShowType":"COURSE_COMMUNITY","weixinQrUrl":"https://cookiejoo.gitee.io/pyq.jpg","appDecorateId":235,"recruitAppDecorateId":235,"joinSeckill":false,"seckillRemainSeconds":"0","hasActivityTask":false,"enterpriseDecorateId":235,"hasCoupon":false,"hasActivityGroup":false,"synEnterprise":false,"classCourseType":0};
-    window.isLogin = false;
-    window.sellGoodsPriceId = -1;
-    window.orderToken = '988761a2deb241c3b457264539bb2673';
-    window.userInfo = {};
-    window.enterNewPage = true;
-    window.activityButtonInfo = null;
-</script>
-<!-- <script type="text/javascript" src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script> -->
-
 <body>
     <img src="/pyq.jpg" width="0" height="0">
 
@@ -276,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
           </label>
 
           <div class="trigger">
-<a class="page-link" href="/about.html">ABOUT</a><a class="page-link" href="/archives.html">ARCHIVES</a><a class="page-link" href="/categories.html">CATEGORIES</a><a class="page-link" href="/">HOME</a><a class="page-link" href="/tags.html">TAGS</a>
+<a class="page-link" href="/404.html"></a><a class="page-link" href="/about.html">ABOUT</a><a class="page-link" href="/archives.html">ARCHIVES</a><a class="page-link" href="/categories.html">CATEGORIES</a><a class="page-link" href="/">HOME</a><a class="page-link" href="/tags.html">TAGS</a><a class="page-link" href="/feed.xml"></a><a class="page-link" href="/sitemap.xml"></a><a class="page-link" href="/robots.txt"></a>
 
 
 
@@ -763,7 +752,7 @@ function googleTranslateElementInit() {
 
 
 
-    <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 3 mins</span>
+    <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 4 mins</span>
   </p>
 <div class="post-tags"><a class="post-tag" href="/tags.html#java">#java</a></div></header>
 <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
@@ -772,15 +761,47 @@ function googleTranslateElementInit() {
 
       <h3 id="前言"><strong>前言</strong></h3>
 
-<p>面试的时候Java线程池的概念肯定是要被拷问到的一个知识点，一般说线程池的几个核心参数的作用，什么情况下会使用到最大线程数？线程是通过哪个类创建出来的？拒绝策略有哪些？基本上会答一通就差不多了。</p>
+<p>我们在工作中基本都会用到池连接技术，数据库连接池、HTTP连接池、线程池。深入了解其设计思路背后是为了解决频繁开启连接和关闭了解带来的性能开销，合理的复用连接池技术有效的减少创建和消耗带来的内存开销。</p>
 
-<p>如当线程数据&gt;=核心线程数 且 任务队列满时就会新建线程数到最大线程数据的范围；</p>
+<p>今天分享一下线程池的一些原理和示例，让我们更好的理解线程池的工作流程。</p>
 
-<p>如线程是由实现ThreadFactory接口的DefaultThreadFactory去创建线程的，源码中就是new Thread()；</p>
+<p>一般说线程池的几个核心参数的作用，什么情况下会使用到最大线程数？线程是通过哪个类创建出来的？拒绝策略有哪些？基本上大家都有了解，如当线程数&gt;=核心线程数且任务队列满时就会新建线程数到最大线程数据的范围；如线程是由实现ThreadFactory接口的DefaultThreadFactory去创建线程的，源码中就是new Thread()；当任务队列满时新的任务如何处理就看拒绝策略，默认的AbortPolicy就是抛异常。</p>
 
-<p>当任务队列满时新的任务如何处理就看拒绝策略，默认的AbortPolicy就是抛异常。</p>
+<p><img src="/images/2022-01-26-java-thread/image-20220729183831505.png" alt="image-20220729183831505"></p>
 
-<p>我们通过一个实际例子来看一下线程池在一批队列中他的执行时间的变化，得出的一些数据让我们更直观的感受一下这种参数设置的原理。</p>
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th><strong>拒绝策略类型</strong></th>
+      <th><strong>说明</strong></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>ThreadPoolExecutor.AbortPolicy</td>
+      <td>默认拒绝策略，拒绝任务并抛出任务</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>ThreadPoolExecutor.CallerRunsPolicy</td>
+      <td>使用调用线程直接运行任务</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>ThreadPoolExecutor.DiscardPolicy</td>
+      <td>直接拒绝任务，不抛出错误</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>ThreadPoolExecutor.DiscardOldestPolicy</td>
+      <td>触发拒绝策略，只要还有任务新增，一直会丢弃阻塞队列的最老的任务，并将新的任务加入</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>但是有了上面的了解，你是否知道线程池中的线程创建了多少个线程去执行任务的吗？我相信都不知道吧，我们通过一个实际例子来看一下线程池在一批队列中他的执行时间的变化，得出的一些线程数让我们更直观的感受一下这种参数设置的原理。</p>
 
 <h3 id="示例">示例</h3>
 
@@ -812,7 +833,7 @@ function googleTranslateElementInit() {
      * @param taskCount 任务数
      */</span>
     <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">execute</span><span class="o">(</span><span class="kt">int</span> <span class="n">taskCount</span><span class="o">)</span> <span class="o">{</span>
-        <span class="nc">AtomicInteger</span> <span class="n">integer</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">AtomicInteger</span><span class="o">();</span>
+        
         <span class="nc">ThreadPoolExecutor</span> <span class="n">executor</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ThreadPoolExecutor</span><span class="o">(</span>
                 <span class="mi">10</span><span class="o">,</span><span class="c1">//核心线程数</span>
                 <span class="mi">20</span><span class="o">,</span><span class="c1">//最大线程数</span>
@@ -869,13 +890,18 @@ function googleTranslateElementInit() {
   <tbody>
     <tr>
       <td>公式①</td>
-      <td>任务数 &lt;= 核心线程数时 &lt;= 核心线程数 + 队列容量</td>
+      <td>任务数 &lt;= 核心线程数</td>
       <td>线程池中工作线程数 = 任务数</td>
     </tr>
     <tr>
       <td>公式②</td>
+      <td>核心线程数 &lt; 任务数 &lt;= 最大线程数 + 队列容量时</td>
+      <td>线程池中工作线程数 = 核心线程数</td>
+    </tr>
+    <tr>
+      <td>公式③</td>
       <td>核心线程数 + 队列容量 &lt; 任务数 &lt;= 最大线程数 + 队列容量时</td>
-      <td>工作线程数 = 任务数 - 队列容量</td>
+      <td>线程池中工作线程数 = 任务数 - 队列容量</td>
     </tr>
   </tbody>
 </table>
@@ -885,7 +911,7 @@ function googleTranslateElementInit() {
 <table>
   <thead>
     <tr>
-      <th>核心/最大线程数-队列容量</th>
+      <th>核心、最大线程数、队列容量</th>
       <th>总任务数</th>
       <th>总耗时(ms)</th>
       <th>公式数据</th>
@@ -893,61 +919,61 @@ function googleTranslateElementInit() {
   </thead>
   <tbody>
     <tr>
-      <td>10 / 20 - 30</td>
+      <td>10 、 20 、 30</td>
       <td>5</td>
       <td>585</td>
       <td>① 执行批次为5 =》1 * 500</td>
     </tr>
     <tr>
-      <td>10 / 20 - 30</td>
+      <td>10 、 20 、 30</td>
       <td>10</td>
       <td>504</td>
       <td>① 执行批次为10 =》1 * 500</td>
     </tr>
     <tr>
-      <td>10 / 20 - 30</td>
+      <td>10 、 20 、 30</td>
       <td>11</td>
       <td>1003</td>
-      <td>① 执行批次为10 + 1 =》2 * 500</td>
+      <td>②执行批次为10 + 1 =》2 * 500</td>
     </tr>
     <tr>
-      <td>10 / 20 - 30</td>
+      <td>10 、 20 、 30</td>
       <td>20</td>
       <td>1008</td>
-      <td>① 。。。20 =》2 * 500</td>
+      <td>② 10 + 10 =》2 * 500</td>
     </tr>
     <tr>
-      <td>10 / 20 - 30</td>
+      <td>10 、 20 、 30</td>
       <td>30</td>
       <td>1506</td>
-      <td>① 。。。30 =》3 * 500</td>
+      <td>② 10 + 10 + 10 =》3 * 500</td>
     </tr>
     <tr>
-      <td>10 / 20 - 30</td>
+      <td>10 、 20 、 30</td>
       <td>40</td>
       <td>2011</td>
-      <td>① 执行批次为10 + 10 + 10 + 10 =》4 * 500</td>
+      <td>② 执行批次为10 + 10 + 10 + 10 =》4 * 500</td>
     </tr>
     <tr>
-      <td>10 / 20 - 30</td>
+      <td>10 、 20 、 30</td>
       <td>41</td>
       <td>2016</td>
-      <td>② 41-30=11，执行批次为11+11+11+8 =》4 * 500</td>
+      <td>③ 41-30=11，执行批次为11+11+11+8 =》4 * 500</td>
     </tr>
     <tr>
-      <td>10 / 20 - 30</td>
+      <td>10 、 20 、 30</td>
       <td>45</td>
       <td>1514</td>
-      <td>② 45-30=15，执行批次为15+15+15 =》3 * 500</td>
+      <td>③ 45-30=15，执行批次为15+15+15 =》3 * 500</td>
     </tr>
     <tr>
-      <td>10 / 20 - 30</td>
+      <td>10 、 20 、 30</td>
       <td>50</td>
       <td>1512</td>
-      <td>② 50-30=11，执行批次为20+20+10 =》3 * 500</td>
+      <td>③ 50-30=20，执行批次为20+20+10 =》3 * 500</td>
     </tr>
     <tr>
-      <td>10 / 20 - 30</td>
+      <td>10 、 20 、 30</td>
       <td>51</td>
       <td>1517</td>
       <td>拒绝了一个任务等同上</td>
@@ -975,10 +1001,10 @@ function googleTranslateElementInit() {
 <div class="post-related">
       <div>Related Articles</div>
       <ul>
-        <li><a class="post-link" href="/spring/2022/01/28/spring-dependence.html" title="Spring Bean初始化流程">Spring是如何解决循环依赖</a></li>
-<li><a class="post-link" href="/cloud/2022/02/15/what-is-cloud-native.html" title="Spring Bean初始化流程">什么是云原生？</a></li>
-<li><a class="post-link" href="/unit/test/2021/07/01/mockito-test-mongo.html" title="Spring Bean初始化流程">Mockito MongoDB测试《第三章》</a></li>
-<li><a class="post-link" href="/self-cultivation/2021/12/16/self-cultivation.html" title="Spring Bean初始化流程">提问的艺术</a></li>
+        <li><a class="post-link" href="/java/2022/04/13/jarx.html" title="Spring Bean初始化流程">Jar包加固</a></li>
+<li><a class="post-link" href="/self-cultivation/2022/05/01/self-cultivation.html" title="Spring Bean初始化流程">你在教我做事？</a></li>
+<li><a class="post-link" href="/self-cultivation/2021/10/28/self-cultivation.html" title="Spring Bean初始化流程">自立的代价</a></li>
+<li><a class="post-link" href="/unit/test/2021/07/18/mockito-normal-skill.html" title="Spring Bean初始化流程">Mockito 正常场景测试技巧《第六章》</a></li>
 </ul>
     </div>
 <div class="post-comments"></div></section>
@@ -1118,6 +1144,7 @@ function googleTranslateElementInit() {
 
   <div class="wrapper">
     <div class="site-footer-inner">
+      <a href="https://beian.miit.gov.cn/" target="_blank">琼ICP备2021000224号-2</a>
       <div>Copyright © 1970-2010 @GitHub User</div>
       <div>Powered by <a title="Jekyll is a simple, blog-aware, static site
       generator." href="http://jekyllrb.com/">Jekyll</a> &amp; <a title="Yat, yet

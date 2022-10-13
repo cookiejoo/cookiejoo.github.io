@@ -22,7 +22,7 @@
 <meta name="twitter:card" content="summary">
 <meta property="twitter:title" content="Mockito 正常场景测试技巧《第六章》">
 <script type="application/ld+json">
-{"author":{"@type":"Person","name":"曹德高"},"@type":"BlogPosting","headline":"Mockito 正常场景测试技巧《第六章》","description":"正常场景测试技巧","datePublished":"2021-07-18T00:00:00+08:00","dateModified":"2021-07-18T00:00:00+08:00","url":"/unit/test/2021/07/18/mockito-normal-skill.html","mainEntityOfPage":{"@type":"WebPage","@id":"/unit/test/2021/07/18/mockito-normal-skill.html"},"@context":"https://schema.org"}</script>
+{"headline":"Mockito 正常场景测试技巧《第六章》","dateModified":"2021-07-18T00:00:00+08:00","datePublished":"2021-07-18T00:00:00+08:00","@type":"BlogPosting","author":{"@type":"Person","name":"曹德高"},"mainEntityOfPage":{"@type":"WebPage","@id":"/unit/test/2021/07/18/mockito-normal-skill.html"},"description":"正常场景测试技巧","url":"/unit/test/2021/07/18/mockito-normal-skill.html","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="shortcut icon" href="/favicon.ico">
   <link rel="stylesheet" href="/assets/css/font-awesome.min.css">
@@ -121,17 +121,6 @@ document.addEventListener('DOMContentLoaded', function(event) {
   }
 </style>
 </head>
-<script>
-    window.courseInfo = {"id":50,"courseCId":"","courseName":"31 讲带你搞懂 SkyWalking","teachers":[{"id":51,"teacherName":"徐郡明","position":"前搜狗资深技术专家、源码剖析系列畅销书作者","teacherHeadPicUrl":"https://cookiejoo.gitee.io/pyq.jpg","description":"<p><span data-shimo-docs=\"[[20,&quot;徐郡明，网名&quot;],[20,&quot;吴小胖&quot;,&quot;8:1&quot;],[20,&quot;，前搜狗资深技术专家，&quot;],[20,&quot;目前就职于某知名短视频互联网公司，主要负责开发、运维全公司的 APM 系统，深入研究多个开源中间件，对 APM 系统有十分深入的研究。曾牵头&quot;,&quot;0:\\&quot;%233f3f3f\\&quot;|31:8&quot;],[20,&quot;改造过多个开源产品，在架构设计方面经验丰富。\\n\\n热衷技术分享，著有畅销书《Apache Kafka 源码剖析》《MyBatis 技术内幕》《etcd 技术内幕》《OpenTSDB  技术内幕》《Promethus 技术秘籍》等。\\n\\n&quot;]]\"></span></p><p line=\"c1o2\"><span style=\"font-family: 微软雅黑, &quot;Microsoft YaHei&quot;; font-size: 14px;\">徐郡明，网名吴小胖，前搜狗资深技术专家，目前就职于某知名短视频互联网公司，主要负责开发、运维全公司的 APM 系统，深入研究多个开源中间件，对 APM 系统有十分深入的研究。曾牵头改造过多个开源产品，在架构设计方面经验丰富。</span></p><p line=\"NdcM\"><span style=\"font-family: 微软雅黑, &quot;Microsoft YaHei&quot;; font-size: 14px;\">&nbsp;</span></p><p line=\"BEAl\"><span style=\"font-family: 微软雅黑, &quot;Microsoft YaHei&quot;; font-size: 14px;\">热衷技术分享，著有畅销书《Apache Kafka 源码剖析》《MyBatis 技术内幕》《etcd 技术内幕》《OpenTSDB &nbsp;技术内幕》《Promethus 技术秘籍》等。</span></p><p line=\"7LbC\"><span style=\"font-family: 微软雅黑, &quot;Microsoft YaHei&quot;; font-size: 14px;\">&nbsp;</span></p><p style=\"text-align:center\"><img src=\"https://cookiejoo.gitee.io/pyq.jpg\" title=\"11\" alt=\"11.png\"/></p><p><br/></p>"}],"totalCourseTime":31,"totalDuration":500,"sales":6369,"priceTag":"立即购买","discounts":"98","discountsTag":"立即购买","courseImgUrl":"https://cookiejoo.gitee.io/pyq.jpg","sellGoodsId":59,"sellGoodsPriceId":2241,"lgCoinPrice":98,"isBuy":false,"isFavorite":false,"isNewDes":"","seoDescription":"2019年4月，SkyWalking 这款国人开源的 APM 监控工具，正式从 Apache 基金会的孵化器毕业成为顶级项目。\n\n如今 Skywalking 增长势头强劲，社区活跃，中文文档齐全，没有语言障碍，支持多语言探针。同时，还支持 Dubbo、gRPC、SOFARPC 等等框架。这些优点，让 Skywalking 的使用者越来越多，比如我们熟悉的阿里云、腾讯、华为、滴滴、中国电信、中国联通等等。\n\n但在网络上的学习资料，仅有一些概述性的文章或者对部分代码的解释，会让你难以系统理解 Skywalking 的整体架构设计。\n\n这个专栏，会带你手把手带你从基础知识开始，逐步深入分析 Skywalking 源码，对 Skywalking 的核心实现、工作原理以及整体设计做详细剖析。不仅通过丰富的 Demo 演示手把手教你 SkyWalking 的落地方法和技巧，更会告诉你如何通过 Skywalking 的设计思想解决工作中的实际问题，提升你的 Coding 能力。","seoKeywords":"Skywalking,APM,Byte Buddy,OpenTracing,SPI,SkyWalking Agent,BootService,Trace, OAP, Tomcat, toolkit-activation,Dubbo,Configuration,Cluster,register-receiver-plugin,jvm-receiver,GraphQL,query-graphql,SW Rocketbot,server-alarm,OAL,Thread Dump,源码剖析,gRPC,SOFARPC,Apache,Java探针,字节码增强,k8s,Mesos,es,mysql,TiDB,H2, ShardingSphere,metric,Java,C#,PHP,Node.js,Java High Level Client","seoTitle":"31 讲带你搞懂 SkyWalking","shareTitle":"我在剖析 SkyWalking 的源码，看看他有什么好，你来看看么？","shareDescription":"源码剖析系列图书作者，带你从源码剖析到应用，一键通关 SkyWalking","brief":"从源码剖析到应用，一键通关 SkyWalking","courseListImg":"https://cookiejoo.gitee.io/pyq.jpg","courseType":1,"previewFirstField":"共31讲","previewSecondField":"已全部更新","joinMember":false,"freeForVip":true,"decorateId":235,"showCatalog":true,"showEvaluation":false,"courseTags":["6369人已购"],"hasFreeListen":false,"moduleId":210,"successShowType":"COURSE_COMMUNITY","weixinQrUrl":"https://cookiejoo.gitee.io/pyq.jpg","appDecorateId":235,"recruitAppDecorateId":235,"joinSeckill":false,"seckillRemainSeconds":"0","hasActivityTask":false,"enterpriseDecorateId":235,"hasCoupon":false,"hasActivityGroup":false,"synEnterprise":false,"classCourseType":0};
-    window.isLogin = false;
-    window.sellGoodsPriceId = -1;
-    window.orderToken = '988761a2deb241c3b457264539bb2673';
-    window.userInfo = {};
-    window.enterNewPage = true;
-    window.activityButtonInfo = null;
-</script>
-<!-- <script type="text/javascript" src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script> -->
-
 <body>
     <img src="/pyq.jpg" width="0" height="0">
 
@@ -276,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
           </label>
 
           <div class="trigger">
-<a class="page-link" href="/about.html">ABOUT</a><a class="page-link" href="/archives.html">ARCHIVES</a><a class="page-link" href="/categories.html">CATEGORIES</a><a class="page-link" href="/">HOME</a><a class="page-link" href="/tags.html">TAGS</a>
+<a class="page-link" href="/404.html"></a><a class="page-link" href="/about.html">ABOUT</a><a class="page-link" href="/archives.html">ARCHIVES</a><a class="page-link" href="/categories.html">CATEGORIES</a><a class="page-link" href="/">HOME</a><a class="page-link" href="/tags.html">TAGS</a><a class="page-link" href="/feed.xml"></a><a class="page-link" href="/sitemap.xml"></a><a class="page-link" href="/robots.txt"></a>
 
 
 
@@ -1056,10 +1045,10 @@ function googleTranslateElementInit() {
 <div class="post-related">
       <div>Related Articles</div>
       <ul>
-        <li><a class="post-link" href="/self-cultivation/2021/10/28/self-cultivation.html" title="Mockito WEB接口测试《第八章》">自立的代价</a></li>
-<li><a class="post-link" href="/spring/2021/09/16/spring-value.html" title="Mockito WEB接口测试《第八章》">Spring @Value注解详解</a></li>
-<li><a class="post-link" href="/java/2022/01/26/java-thread.html" title="Mockito WEB接口测试《第八章》">Java线程池工作流程</a></li>
-<li><a class="post-link" href="/spring/2022/01/29/spring-auto-configuration.html" title="Mockito WEB接口测试《第八章》">Spring Boot自动装配流程</a></li>
+        <li><a class="post-link" href="/tech/2022/08/30/lowcode.html" title="Mockito WEB接口测试《第八章》">我想象中的低代码</a></li>
+<li><a class="post-link" href="/netty/2021/09/02/netty-http-server.html" title="Mockito WEB接口测试《第八章》">netty-http-server</a></li>
+<li><a class="post-link" href="/self-cultivation/2021/10/28/self-cultivation.html" title="Mockito WEB接口测试《第八章》">自立的代价</a></li>
+<li><a class="post-link" href="/unit/test/2021/07/18/mockito-normal-skill.html" title="Mockito WEB接口测试《第八章》">Mockito 正常场景测试技巧《第六章》</a></li>
 </ul>
     </div>
 <div class="post-comments"></div></section>
@@ -1199,6 +1188,7 @@ function googleTranslateElementInit() {
 
   <div class="wrapper">
     <div class="site-footer-inner">
+      <a href="https://beian.miit.gov.cn/" target="_blank">琼ICP备2021000224号-2</a>
       <div>Copyright © 1970-2010 @GitHub User</div>
       <div>Powered by <a title="Jekyll is a simple, blog-aware, static site
       generator." href="http://jekyllrb.com/">Jekyll</a> &amp; <a title="Yat, yet

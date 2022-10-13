@@ -1,0 +1,482 @@
+I"��<h3 id="背景">背景</h3>
+
+<p>我们平时使用线程池参数都是写死在代码中的，需要改变线程池参数则需重启应用才能有效(必须要配置化参数)，那么动态变更线程池则非常有效的解决普通线程池在调优方面的便利问题。</p>
+
+<h3 id="如何设计它">如何设计它？</h3>
+
+<p>在我们的第一反应就是将每一个线程池管理起来，则每一个线程池都必须有一个id唯一标识，再有则必须要有个存储来存放线程池id对应的参数数据，还需要有个控制台UI方便我们实时操作变更，并且能显示出变更后的执行结果，我还想看到每10秒钟该线程池的执行情况，并绘制出图标一目了然的知道在执行的线程数、已经执行完成的任务数。再高级一点的则是任务的执行耗时，并能够配置执行任务耗时告警，出现拒绝任务的数据到达多少时能告警出来。围绕这个猜想，我们画图设置一下。</p>
+
+<p><img src="/images/2022-07-30-dynamic-thread-pool/2022-07-30-dynamic-thread-pool.png" alt="条件结构流程图" /></p>
+
+<p>我们规划一下项目的脚手架</p>
+
+<ul>
+  <li><strong>dynamic-threadpool-core:</strong> 对应用的加载时进行类扫描，对线程池收集；</li>
+  <li><strong>dynamic-threadpool-server:</strong> 控制台web，对接线程池管理、展示界面；</li>
+  <li><strong>dynamic-threadpool-common:</strong> 一些两边都会用到的工具类和实体类等；</li>
+  <li><strong>dynamic-threadpool-alam:</strong> 告警功能模块；</li>
+  <li><strong>dynamic-threadpool-discover:</strong> 上报心跳、线程运行信息，接收线程池变化通知。</li>
+</ul>
+
+<p>这样对应总体的设计原形已经完全满足了，接下来对功能进行填充完善。</p>
+
+<h3 id="线程池封装">线程池封装</h3>
+
+<p>在开发核心包的时候我就不停的在想，该如何有效的进行线程池ThreadPoolExecutor接口的管理？并且我们自家中间件的类中也能够使用我们这个功能，如果只是做一个新的线程池封装，不考虑其他的系统怎么用的话一股脑直接写一个新的封装类就好，如果考虑兼容其他系统自己用的线程池那么就要考虑怎么把他们写的线程池纳入进来适配。</p>
+
+<p>当然，如果只是自己自High的写一个动态线程池写起来还是非常简单的，但是自High代表着小众，你也无法推广给别人，如果你觉得自己写的代码设计的系统很牛，那么整合现有的东西是必须要做的，要不然走不远，也不会得到支持。<strong>这句话要仔细推敲！</strong></p>
+
+<p>回到正题，管理线程池ThreadPoolExecutor接口，我们需要借助Spring AOP，把ThreadPoolExecutor接口扫描出来，那么必须要写一个封装类并且加一个注解，Spring的类扫描很容易让我们找到我们自己的封装类，加一个注解是为了把其他应用的线程池用，打上该注解的线程池则一并收集到我们的管理端。</p>
+
+<p><strong>线程池注解</strong></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@Target</span><span class="o">(</span><span class="nc">ElementType</span><span class="o">.</span><span class="na">METHOD</span><span class="o">)</span>
+<span class="nd">@Retention</span><span class="o">(</span><span class="nc">RetentionPolicy</span><span class="o">.</span><span class="na">RUNTIME</span><span class="o">)</span>
+<span class="kd">public</span> <span class="nd">@interface</span> <span class="nc">DynamicThreadPool</span> <span class="o">{</span>
+    <span class="nc">String</span> <span class="nf">threadPoolId</span><span class="o">()</span> <span class="k">default</span> <span class="s">""</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p><strong>线程池管理封装</strong></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/**
+ * 封装自家线程池包装管理类，多了两个属性-&gt;归属系统、线程池ID
+ * 提供执行常用的执行方法execute、submit
+ * 实现DisposableBean类用于重写与销毁线程池方法
+ */</span>
+<span class="nd">@Data</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">DynamicThreadPoolWrapper</span> <span class="kd">implements</span> <span class="nc">DisposableBean</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="nc">String</span> <span class="n">serviceName</span><span class="o">;</span> 
+    <span class="kd">private</span> <span class="nc">String</span> <span class="n">threadPoolId</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="nc">ThreadPoolExecutor</span> <span class="n">executor</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">DynamicThreadPoolWrapper</span><span class="o">(</span><span class="nc">String</span> <span class="n">threadPoolId</span><span class="o">,</span> <span class="nc">ThreadPoolExecutor</span> <span class="n">threadPoolExecutor</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">threadPoolId</span> <span class="o">=</span> <span class="n">threadPoolId</span><span class="o">;</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">executor</span> <span class="o">=</span> <span class="n">threadPoolExecutor</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">execute</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">command</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">executor</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="n">command</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="nc">Future</span><span class="o">&lt;?&gt;</span> <span class="n">submit</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">task</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">executor</span><span class="o">.</span><span class="na">submit</span><span class="o">(</span><span class="n">task</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="o">&lt;</span><span class="no">T</span><span class="o">&gt;</span> <span class="nc">Future</span><span class="o">&lt;</span><span class="no">T</span><span class="o">&gt;</span> <span class="nf">submit</span><span class="o">(</span><span class="nc">Callable</span><span class="o">&lt;</span><span class="no">T</span><span class="o">&gt;</span> <span class="n">task</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">executor</span><span class="o">.</span><span class="na">submit</span><span class="o">(</span><span class="n">task</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">destroy</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">executor</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">executor</span> <span class="k">instanceof</span> <span class="nc">AbstractDynamicExecutorSupport</span><span class="o">)</span> <span class="o">{</span>
+            <span class="o">((</span><span class="nc">AbstractDynamicExecutorSupport</span><span class="o">)</span> <span class="n">executor</span><span class="o">).</span><span class="na">destroy</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<p><strong>线程池封装</strong></p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/**
+ * 自家线程封装类
+ * 多了线程拒绝统计数、单个线程执行耗时的计算
+ */</span>
+<span class="nd">@Getter</span>
+<span class="nd">@Setter</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">DynamicThreadPoolExecutor</span> <span class="kd">extends</span> <span class="nc">ThreadPoolExecutor</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="nc">Long</span> <span class="n">executeTimeOut</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="nc">TaskDecorator</span> <span class="n">taskDecorator</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="nc">String</span> <span class="n">threadPoolId</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="nc">AtomicLong</span> <span class="n">rejectCount</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">AtomicLong</span><span class="o">();</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="nc">ThreadLocal</span><span class="o">&lt;</span><span class="nc">Long</span><span class="o">&gt;</span> <span class="n">startTime</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ThreadLocal</span><span class="o">&lt;&gt;();</span>
+
+    <span class="kd">public</span> <span class="nf">DynamicThreadPoolExecutor</span><span class="o">(</span><span class="kt">int</span> <span class="n">corePoolSize</span><span class="o">,</span>
+                                     <span class="kt">int</span> <span class="n">maximumPoolSize</span><span class="o">,</span>
+                                     <span class="kt">long</span> <span class="n">keepAliveTime</span><span class="o">,</span>
+                                     <span class="nc">TimeUnit</span> <span class="n">unit</span><span class="o">,</span>
+                                     <span class="kt">long</span> <span class="n">executeTimeOut</span><span class="o">,</span>
+                                     <span class="kt">boolean</span> <span class="n">waitForTasksToCompleteOnShutdown</span><span class="o">,</span>
+                                     <span class="kt">long</span> <span class="n">awaitTerminationMillis</span><span class="o">,</span>
+                                     <span class="nd">@NonNull</span> <span class="nc">BlockingQueue</span><span class="o">&lt;</span><span class="nc">Runnable</span><span class="o">&gt;</span> <span class="n">workQueue</span><span class="o">,</span>
+                                     <span class="nd">@NonNull</span> <span class="nc">String</span> <span class="n">threadPoolId</span><span class="o">,</span>
+                                     <span class="nd">@NonNull</span> <span class="nc">ThreadFactory</span> <span class="n">threadFactory</span><span class="o">,</span>
+                                     <span class="nd">@NonNull</span> <span class="nc">RejectedExecutionHandler</span> <span class="n">handler</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kd">super</span><span class="o">(</span><span class="n">corePoolSize</span><span class="o">,</span> <span class="n">maximumPoolSize</span><span class="o">,</span> <span class="n">keepAliveTime</span><span class="o">,</span> <span class="n">unit</span><span class="o">,</span> <span class="n">waitForTasksToCompleteOnShutdown</span><span class="o">,</span> <span class="n">awaitTerminationMillis</span><span class="o">,</span> <span class="n">workQueue</span><span class="o">,</span> <span class="n">threadPoolId</span><span class="o">,</span> <span class="n">threadFactory</span><span class="o">,</span> <span class="n">handler</span><span class="o">);</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">threadPoolId</span> <span class="o">=</span> <span class="n">threadPoolId</span><span class="o">;</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">executeTimeOut</span> <span class="o">=</span> <span class="n">executeTimeOut</span><span class="o">;</span>
+        <span class="c1">// 为什么要自己实现拒绝策略？</span>
+        <span class="nc">RejectedExecutionHandler</span> <span class="n">rejectedProxy</span> <span class="o">=</span> <span class="nc">RejectedProxyUtil</span><span class="o">.</span><span class="na">createProxy</span><span class="o">(</span><span class="n">handler</span><span class="o">,</span> <span class="n">rejectCount</span><span class="o">);</span>
+        <span class="c1">// extends ThreadPoolExecutor类的方法，替换成自家实现的拒绝策略接口</span>
+        <span class="n">setRejectedExecutionHandler</span><span class="o">(</span><span class="n">rejectedProxy</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">execute</span><span class="o">(</span><span class="nd">@NonNull</span> <span class="nc">Runnable</span> <span class="n">command</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kd">super</span><span class="o">.</span><span class="na">execute</span><span class="o">(</span><span class="n">command</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">beforeExecute</span><span class="o">(</span><span class="nc">Thread</span> <span class="n">t</span><span class="o">,</span> <span class="nc">Runnable</span> <span class="n">r</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">executeTimeOut</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">executeTimeOut</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">startTime</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">());</span>
+    <span class="o">}</span>
+		<span class="c1">// 计算单个线程执行耗时，可以做监控告警</span>
+    <span class="nd">@Override</span>
+    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">afterExecute</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">r</span><span class="o">,</span> <span class="nc">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">executeTimeOut</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">executeTimeOut</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="kt">long</span> <span class="n">startTime</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">startTime</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
+            <span class="kt">long</span> <span class="n">endTime</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">();</span>
+            <span class="kt">long</span> <span class="n">executeTime</span> <span class="o">=</span> <span class="n">endTime</span> <span class="o">-</span> <span class="n">startTime</span><span class="o">;</span>
+            <span class="k">if</span><span class="o">(</span><span class="n">executeTimeOut</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">executeTime</span> <span class="o">&gt;</span> <span class="n">executeTimeOut</span><span class="o">){</span>
+              	<span class="c1">// 记录到该应用的事件中，异步上报到控制台</span>
+            		<span class="c1">// 内容省略</span>
+            <span class="o">}</span>
+              
+        <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+            <span class="k">this</span><span class="o">.</span><span class="na">startTime</span><span class="o">.</span><span class="na">remove</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+  	<span class="c1">// 获取拒绝任务个数</span>
+    <span class="kd">public</span> <span class="nc">Long</span> <span class="nf">getRejectCountNum</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">rejectCount</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<p>该类有一个疑问，为什么要自己实现一个拒绝策略类？</p>
+
+<p>因为我们需要知道拒绝策略在触发统计一下个数，原生的拒绝策略是没有办法提供这个功能的，所以这个功能必须我们来做，详细看代码注释。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/**
+ * 使用代理类从原生的类中进行增强
+ */</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">RejectedProxyUtil</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">RejectedExecutionHandler</span> <span class="nf">createProxy</span><span class="o">(</span><span class="nc">RejectedExecutionHandler</span> <span class="n">rejectedExecutionHandler</span><span class="o">,</span> <span class="nc">AtomicLong</span> <span class="n">rejectedNum</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">RejectedExecutionHandler</span> <span class="n">rejectedProxy</span> <span class="o">=</span> <span class="o">(</span><span class="nc">RejectedExecutionHandler</span><span class="o">)</span> <span class="nc">Proxy</span>
+                <span class="o">.</span><span class="na">newProxyInstance</span><span class="o">(</span>
+                        <span class="n">rejectedExecutionHandler</span><span class="o">.</span><span class="na">getClass</span><span class="o">().</span><span class="na">getClassLoader</span><span class="o">(),</span>
+                        <span class="k">new</span> <span class="nc">Class</span><span class="o">[]{</span><span class="nc">RejectedExecutionHandler</span><span class="o">.</span><span class="na">class</span><span class="o">},</span>
+                        <span class="k">new</span> <span class="nf">RejectedProxyInvocationHandler</span><span class="o">(</span><span class="n">rejectedExecutionHandler</span><span class="o">,</span> <span class="n">rejectedNum</span><span class="o">));</span>
+        <span class="k">return</span> <span class="n">rejectedProxy</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="nd">@AllArgsConstructor</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">RejectedProxyInvocationHandler</span> <span class="kd">implements</span> <span class="nc">InvocationHandler</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="nc">Object</span> <span class="n">target</span><span class="o">;</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="nc">AtomicLong</span> <span class="n">rejectCount</span><span class="o">;</span>
+		<span class="c1">// 在执行原生方法时调用封装类的自有属性rejectCount去自增1，这样拒绝策略被触发时，我们就能统计到拒绝数了。</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="nc">Object</span> <span class="nf">invoke</span><span class="o">(</span><span class="nc">Object</span> <span class="n">proxy</span><span class="o">,</span> <span class="nc">Method</span> <span class="n">method</span><span class="o">,</span> <span class="nc">Object</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Throwable</span> <span class="o">{</span>
+        <span class="n">rejectCount</span><span class="o">.</span><span class="na">incrementAndGet</span><span class="o">();</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="n">method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">target</span><span class="o">,</span> <span class="n">args</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">InvocationTargetException</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">throw</span> <span class="n">ex</span><span class="o">.</span><span class="na">getCause</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>基本的线程池封装已经完毕，我们看看如何用Spring收集线程池的Bean对象。（这里唠点题外话：我之前理解的动态线程池以为是可以动态把线程池new出来的，后来看到原生线程池ThreadPoolExecutor接口发现原来他提供了很多set参数的方法。这样我们在动态修改参数的时候非常方便了。）由于我们的线程池不是动态的new，我们动态线程池的规范是把new线程池放到Spring Bean里面产生的，那么我们就可以在系统启动的时候去扫描所有的类即可。换句话说其他应用使用的基于Spring架构开发的动态线程池必然是单独使用Bean管理的方式来创建线程池的。最后把线程池都收集到应用的内存中，用GlobalThreadPoolManage收集，没有什么特别的就是一个Map。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/**
+ * 我们用BeanPostProcessor接口
+ * Spring会在Bean创建的时候经过一系列的Processor后到达我们这个类的postProcessAfterInitialization方法
+ */</span>
+<span class="nd">@Slf4j</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">DynamicThreadPoolPostProcessor</span> <span class="kd">implements</span> <span class="nc">BeanPostProcessor</span> <span class="o">{</span>
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="nc">Object</span> <span class="nf">postProcessAfterInitialization</span><span class="o">(</span><span class="nc">Object</span> <span class="n">bean</span><span class="o">,</span> <span class="nc">String</span> <span class="n">beanName</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">BeansException</span> <span class="o">{</span>
+        <span class="c1">// 支持两种新建本项目定义的线程池方式</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">bean</span> <span class="k">instanceof</span> <span class="nc">DynamicThreadPoolExecutor</span><span class="o">)</span> <span class="o">{</span>
+            <span class="nc">DynamicThreadPoolExecutor</span> <span class="n">dynamicExecutor</span> <span class="o">=</span> <span class="o">(</span><span class="nc">DynamicThreadPoolExecutor</span><span class="o">)</span> <span class="n">bean</span><span class="o">;</span>
+            <span class="nc">DynamicThreadPoolWrapper</span> <span class="n">wrap</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">DynamicThreadPoolWrapper</span><span class="o">(</span><span class="n">dynamicExecutor</span><span class="o">.</span><span class="na">getThreadPoolId</span><span class="o">(),</span> <span class="n">dynamicExecutor</span><span class="o">);</span>
+            <span class="n">fillPoolAndRegister</span><span class="o">(</span><span class="n">wrap</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">bean</span> <span class="k">instanceof</span> <span class="nc">DynamicThreadPoolWrapper</span><span class="o">)</span> <span class="o">{</span>
+            <span class="nc">DynamicThreadPoolWrapper</span> <span class="n">wrap</span> <span class="o">=</span> <span class="o">(</span><span class="nc">DynamicThreadPoolWrapper</span><span class="o">)</span> <span class="n">bean</span><span class="o">;</span>
+            <span class="n">fillPoolAndRegister</span><span class="o">(</span><span class="n">wrap</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="c1">// 通过这个方法去支持其他系统的线程池</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">bean</span> <span class="k">instanceof</span> <span class="nc">ThreadPoolExecutor</span><span class="o">)</span> <span class="o">{</span>
+            <span class="nc">DynamicThreadPool</span> <span class="n">dynamicThreadPool</span><span class="o">;</span>
+            <span class="k">try</span> <span class="o">{</span>
+              <span class="c1">// 通过ApplicationContextHolder去找所有这个类的</span>
+              <span class="n">dynamicThreadPool</span> <span class="o">=</span> <span class="nc">DynamicThreadPoolAnnotationUtil</span><span class="o">.</span><span class="na">findAnnotationOnBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="nc">DynamicThreadPool</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+              <span class="k">if</span> <span class="o">(</span><span class="nc">Objects</span><span class="o">.</span><span class="na">isNull</span><span class="o">(</span><span class="n">dynamicThreadPool</span><span class="o">))</span> <span class="o">{</span>
+                <span class="k">return</span> <span class="n">bean</span><span class="o">;</span>
+              <span class="o">}</span>
+                
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">log</span><span class="o">.</span><span class="na">error</span><span class="o">(</span><span class="s">"Failed to create dynamic thread pool in annotation mode."</span><span class="o">,</span> <span class="n">ex</span><span class="o">);</span>
+                <span class="n">ex</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+                <span class="k">return</span> <span class="n">bean</span><span class="o">;</span>
+            <span class="o">}</span>
+            <span class="nc">ThreadPoolExecutor</span> <span class="n">executor</span> <span class="o">=</span> <span class="o">(</span><span class="nc">ThreadPoolExecutor</span><span class="o">)</span> <span class="n">bean</span><span class="o">;</span>
+            <span class="c1">// 转成DynamicThreadPoolExecutor</span>
+            <span class="nc">DynamicThreadPoolExecutor</span> <span class="n">dynamicExecutor</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">DynamicThreadPoolExecutor</span><span class="o">(</span><span class="n">executor</span><span class="o">)</span>
+            <span class="nc">DynamicThreadPoolWrapper</span> <span class="n">wrap</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">DynamicThreadPoolWrapper</span><span class="o">(</span><span class="n">dynamicThreadPool</span><span class="o">.</span><span class="na">threadPoolId</span><span class="o">(),</span> <span class="n">executor</span><span class="o">);</span>
+            <span class="n">fillPoolAndRegister</span><span class="o">(</span><span class="n">wrap</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="k">return</span> <span class="n">bean</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 初始化线程池和线程池存储到内存Map中
+     */</span>
+    <span class="kd">protected</span> <span class="nc">ThreadPoolExecutor</span> <span class="nf">fillPoolAndRegister</span><span class="o">(</span><span class="nc">DynamicThreadPoolWrapper</span> <span class="n">dynamicThreadPoolWrap</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">String</span> <span class="n">threadPoolId</span> <span class="o">=</span> <span class="n">dynamicThreadPoolWrap</span><span class="o">.</span><span class="na">getThreadPoolId</span><span class="o">();</span>
+        <span class="nc">ThreadPoolExecutor</span> <span class="n">newDynamicPoolExecutor</span> <span class="o">=</span> <span class="n">dynamicThreadPoolWrap</span><span class="o">.</span><span class="na">getExecutor</span><span class="o">();</span>
+        <span class="cm">/**
+         * 到远程端获取原本的配置并设置初始线程池参数
+         * 系统启动后自动加载配置里面的配置进行初始化线程，这样可以保证启动时的线程池和管理端的配置一致
+         */</span>
+        <span class="nc">ExecutorProperties</span> <span class="n">executorProperties</span> <span class="o">=</span> <span class="nc">Http</span> <span class="n">or</span> <span class="nc">File</span><span class="o">;</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">executorProperties</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">try</span> <span class="o">{</span>
+                <span class="nc">BlockingQueue</span> <span class="n">workQueue</span> <span class="o">=</span> <span class="nc">QueueTypeEnum</span><span class="o">.</span><span class="na">createBlockingQueue</span><span class="o">(</span><span class="n">executorProperties</span><span class="o">.</span><span class="na">getQueueType</span><span class="o">(),</span> <span class="n">executorProperties</span><span class="o">.</span><span class="na">getQueueCapacity</span><span class="o">());</span>
+                <span class="nc">String</span> <span class="n">threadNamePrefix</span> <span class="o">=</span> <span class="n">executorProperties</span><span class="o">.</span><span class="na">getThreadNamePrefix</span><span class="o">();</span>
+                <span class="n">newDynamicPoolExecutor</span> <span class="o">=</span> <span class="nc">ThreadPoolBuilder</span><span class="o">.</span><span class="na">builder</span><span class="o">()</span>
+                        <span class="o">.</span><span class="na">dynamicPool</span><span class="o">()</span>
+                        <span class="o">.</span><span class="na">workQueue</span><span class="o">(</span><span class="n">workQueue</span><span class="o">)</span>
+                        <span class="o">.</span><span class="na">threadFactory</span><span class="o">(</span><span class="nc">StringUtils</span><span class="o">.</span><span class="na">isNotBlank</span><span class="o">(</span><span class="n">threadNamePrefix</span><span class="o">)</span> <span class="o">?</span> <span class="n">threadNamePrefix</span> <span class="o">:</span> <span class="n">threadPoolId</span><span class="o">)</span>
+                        <span class="o">.</span><span class="na">executeTimeOut</span><span class="o">(</span><span class="nc">Optional</span><span class="o">.</span><span class="na">ofNullable</span><span class="o">(</span><span class="n">executorProperties</span><span class="o">.</span><span class="na">getExecuteTimeOut</span><span class="o">()).</span><span class="na">orElse</span><span class="o">(</span><span class="mi">0L</span><span class="o">))</span>
+                        <span class="o">.</span><span class="na">poolThreadSize</span><span class="o">(</span><span class="n">executorProperties</span><span class="o">.</span><span class="na">getCorePoolSize</span><span class="o">(),</span> <span class="n">executorProperties</span><span class="o">.</span><span class="na">getMaximumPoolSize</span><span class="o">())</span>
+                        <span class="o">.</span><span class="na">keepAliveTime</span><span class="o">(</span><span class="n">executorProperties</span><span class="o">.</span><span class="na">getKeepAliveTime</span><span class="o">(),</span> <span class="nc">TimeUnit</span><span class="o">.</span><span class="na">SECONDS</span><span class="o">)</span>
+                        <span class="o">.</span><span class="na">rejected</span><span class="o">(</span><span class="nc">RejectedTypeEnum</span><span class="o">.</span><span class="na">createPolicy</span><span class="o">(</span><span class="n">executorProperties</span><span class="o">.</span><span class="na">getRejectedHandler</span><span class="o">()))</span>
+                        <span class="o">.</span><span class="na">allowCoreThreadTimeOut</span><span class="o">(</span><span class="n">executorProperties</span><span class="o">.</span><span class="na">getAllowCoreThreadTimeOut</span><span class="o">())</span>
+                        <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">log</span><span class="o">.</span><span class="na">error</span><span class="o">(</span><span class="s">"Failed to initialize thread pool configuration. error :: {}"</span><span class="o">,</span> <span class="n">ex</span><span class="o">);</span>
+            <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+                <span class="k">if</span> <span class="o">(</span><span class="nc">Objects</span><span class="o">.</span><span class="na">isNull</span><span class="o">(</span><span class="n">dynamicThreadPoolWrap</span><span class="o">.</span><span class="na">getExecutor</span><span class="o">()))</span> <span class="o">{</span>
+                    <span class="n">dynamicThreadPoolWrap</span><span class="o">.</span><span class="na">setExecutor</span><span class="o">(</span><span class="nc">CommonDynamicThreadPool</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="n">threadPoolId</span><span class="o">));</span>
+                <span class="o">}</span>
+                <span class="n">dynamicThreadPoolWrap</span><span class="o">.</span><span class="na">setInitFlag</span><span class="o">(</span><span class="nc">Boolean</span><span class="o">.</span><span class="na">TRUE</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+
+        <span class="n">dynamicThreadPoolWrap</span><span class="o">.</span><span class="na">setExecutor</span><span class="o">(</span><span class="n">newDynamicPoolExecutor</span><span class="o">);</span>
+
+      	<span class="c1">// 存储到内存中Map&lt;线程ID,线程池管理类&gt;，Map&lt;线程ID,线程池参数信息类&gt;</span>
+        <span class="nc">GlobalThreadPoolManage</span><span class="o">.</span><span class="na">registerPool</span><span class="o">(</span><span class="n">dynamicThreadPoolWrap</span><span class="o">.</span><span class="na">getThreadPoolId</span><span class="o">(),</span> <span class="n">dynamicThreadPoolWrap</span><span class="o">);</span>
+        <span class="nc">GlobalThreadPoolManage</span><span class="o">.</span><span class="na">registerPoolParameter</span><span class="o">(</span><span class="n">dynamicThreadPoolWrap</span><span class="o">.</span><span class="na">getThreadPoolId</span><span class="o">(),</span> <span class="n">buildExecutorProperties</span><span class="o">(</span><span class="n">threadPoolId</span><span class="o">,</span> <span class="n">newDynamicPoolExecutor</span><span class="o">));</span>
+
+        <span class="k">return</span> <span class="n">newDynamicPoolExecutor</span><span class="o">;</span>
+    <span class="o">}</span>
+		<span class="cm">/**
+		 * ExecutorProperties就是一些参数字段，代码省略
+		 */</span>
+    <span class="kd">private</span> <span class="nc">ExecutorProperties</span> <span class="nf">buildExecutorProperties</span><span class="o">(</span><span class="nc">String</span> <span class="n">threadPoolId</span><span class="o">,</span> <span class="nc">ThreadPoolExecutor</span> <span class="n">executor</span><span class="o">)</span> <span class="o">{</span>
+        
+        <span class="nc">ExecutorProperties</span> <span class="n">executorProperties</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ExecutorProperties</span><span class="o">();</span>
+        <span class="nc">BlockingQueue</span><span class="o">&lt;</span><span class="nc">Runnable</span><span class="o">&gt;</span> <span class="n">queue</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="na">getQueue</span><span class="o">();</span>
+        <span class="kt">int</span> <span class="n">queueSize</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="na">size</span><span class="o">();</span>
+        <span class="nc">String</span> <span class="n">queueType</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="na">getClass</span><span class="o">().</span><span class="na">getSimpleName</span><span class="o">();</span>
+        <span class="kt">int</span> <span class="n">remainingCapacity</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="na">remainingCapacity</span><span class="o">();</span>
+        <span class="kt">int</span> <span class="n">queueCapacity</span> <span class="o">=</span> <span class="n">queueSize</span> <span class="o">+</span> <span class="n">remainingCapacity</span><span class="o">;</span>
+        <span class="n">executorProperties</span><span class="o">.</span><span class="na">setCorePoolSize</span><span class="o">(</span><span class="n">executor</span><span class="o">.</span><span class="na">getCorePoolSize</span><span class="o">())</span>
+                <span class="o">.</span><span class="na">setMaximumPoolSize</span><span class="o">(</span><span class="n">executor</span><span class="o">.</span><span class="na">getMaximumPoolSize</span><span class="o">())</span>
+                <span class="o">.</span><span class="na">setAllowCoreThreadTimeOut</span><span class="o">(</span><span class="n">executor</span><span class="o">.</span><span class="na">allowsCoreThreadTimeOut</span><span class="o">())</span>
+                <span class="o">.</span><span class="na">setKeepAliveTime</span><span class="o">(</span><span class="n">executor</span><span class="o">.</span><span class="na">getKeepAliveTime</span><span class="o">(</span><span class="nc">TimeUnit</span><span class="o">.</span><span class="na">SECONDS</span><span class="o">))</span>
+                <span class="o">.</span><span class="na">setQueueType</span><span class="o">(</span><span class="n">queueType</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">setQueueCapacity</span><span class="o">(</span><span class="n">queueCapacity</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">setThreadPoolId</span><span class="o">(</span><span class="n">threadPoolId</span><span class="o">);</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">executor</span> <span class="k">instanceof</span> <span class="nc">DynamicThreadPoolExecutor</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">executorProperties</span><span class="o">.</span><span class="na">setRejectedHandler</span><span class="o">(((</span><span class="nc">DynamicThreadPoolExecutor</span><span class="o">)</span> <span class="n">executor</span><span class="o">).</span><span class="na">getRedundancyHandler</span><span class="o">().</span><span class="na">getClass</span><span class="o">().</span><span class="na">getSimpleName</span><span class="o">());</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="n">executorProperties</span><span class="o">.</span><span class="na">setRejectedHandler</span><span class="o">(</span><span class="n">executor</span><span class="o">.</span><span class="na">getRejectedExecutionHandler</span><span class="o">().</span><span class="na">getClass</span><span class="o">().</span><span class="na">getSimpleName</span><span class="o">());</span>
+        <span class="o">}</span>
+        <span class="k">return</span> <span class="n">executorProperties</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<h3 id="线程池应用服务发现">线程池应用服务发现</h3>
+
+<p>到这里core包的任务已经完成使命了，接下来要将本地的线程池上报到服务端，那么需要在server中实现上报接口，并且在服务端实现实时修改线程池参数方法，还需要提供应用端启动时拉取线程池的方法。</p>
+
+<p>我推荐服务端主动去推送线程池参数，每隔几分钟推送一次这个应用的线程池配置，应用端判断如果没有变化就不更新到线程池即可，这样做的一个好处是服务端UI修改线程池参数，可能整体下发到应用端时某个节点暂时失联了无法更新到。还有应用重启时会主动拉取一次配置去初始化启动线程池，已经很严谨了。<strong>另外一个原因是如果应用端的代码在解析上有bug或者版本上兼容json问题，在服务端改比较好，发版相对容易一点，不用召回应用客户端升级也能平滑慢慢过度。</strong></p>
+
+<p>应用先上报心跳信息，上报后服务端才会知道推送的应用端所有的节点和端口，discover包开发一个http服务调用和接收即可。上报心跳一分钟一次即可，服务端也做好长时间没有上报就下线或自动剔除动作。再上报自身GlobalThreadPoolManage.registerPool的线程池运行状态，每隔20秒就上报一次，服务端做好记录，我是用Apache的CircularFifoQueue固定队列只存储60个Metric就可以简单的绘制图表实时观看了，如需要长时间的就要实现存储到数据库。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/**
+ * 动态更新线程池方法
+ * 把能原生能开放设置的参数使用上
+ */</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">HttpRefresherHandler</span> <span class="o">{</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">dynamicRefreshPool</span><span class="o">(</span><span class="nc">String</span> <span class="n">threadPoolId</span><span class="o">,</span> <span class="nc">ExecutorProperties</span> <span class="n">properties</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">ExecutorProperties</span> <span class="n">beforeProperties</span> <span class="o">=</span> <span class="nc">GlobalThreadPoolManage</span><span class="o">.</span><span class="na">getPoolParameter</span><span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getThreadPoolId</span><span class="o">());</span>
+        <span class="nc">ThreadPoolExecutor</span> <span class="n">executor</span> <span class="o">=</span> <span class="nc">GlobalThreadPoolManage</span><span class="o">.</span><span class="na">getExecutorService</span><span class="o">(</span><span class="n">threadPoolId</span><span class="o">).</span><span class="na">getExecutor</span><span class="o">();</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getCorePoolSize</span><span class="o">()</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nc">Objects</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getCorePoolSize</span><span class="o">(),</span><span class="n">beforeProperties</span><span class="o">.</span><span class="na">getCorePoolSize</span><span class="o">()))</span> <span class="o">{</span>
+            <span class="n">executor</span><span class="o">.</span><span class="na">setCorePoolSize</span><span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getCorePoolSize</span><span class="o">());</span>
+        <span class="o">}</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getMaximumPoolSize</span><span class="o">()</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nc">Objects</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getMaximumPoolSize</span><span class="o">(),</span><span class="n">beforeProperties</span><span class="o">.</span><span class="na">getMaximumPoolSize</span><span class="o">()))</span> <span class="o">{</span>
+            <span class="n">executor</span><span class="o">.</span><span class="na">setMaximumPoolSize</span><span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getMaximumPoolSize</span><span class="o">());</span>
+        <span class="o">}</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getAllowCoreThreadTimeOut</span><span class="o">()</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">executor</span><span class="o">.</span><span class="na">allowCoreThreadTimeOut</span><span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getAllowCoreThreadTimeOut</span><span class="o">());</span>
+        <span class="o">}</span>
+      
+      	<span class="c1">// 线程超时水位值，非原生线程池的参数，就是咱们说的耗时告警用</span>
+        <span class="k">if</span> <span class="o">(!</span><span class="nc">Objects</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">beforeProperties</span><span class="o">.</span><span class="na">getExecuteTimeOut</span><span class="o">(),</span> <span class="n">properties</span><span class="o">.</span><span class="na">getExecuteTimeOut</span><span class="o">()))</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">executor</span> <span class="k">instanceof</span> <span class="nc">AbstractDynamicExecutorSupport</span><span class="o">)</span> <span class="o">{</span>
+                <span class="o">((</span><span class="nc">DynamicThreadPoolExecutor</span><span class="o">)</span> <span class="n">executor</span><span class="o">).</span><span class="na">setExecuteTimeOut</span><span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getExecuteTimeOut</span><span class="o">());</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+				<span class="c1">// 如果拒绝策略有变化，也要用代理模式增强后设置进来，才有拒绝数的功能</span>
+        <span class="k">if</span> <span class="o">(!</span><span class="nc">Objects</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">beforeProperties</span><span class="o">.</span><span class="na">getRejectedHandler</span><span class="o">(),</span> <span class="n">properties</span><span class="o">.</span><span class="na">getRejectedHandler</span><span class="o">()))</span> <span class="o">{</span>
+            <span class="nc">RejectedExecutionHandler</span> <span class="n">rejectedExecutionHandler</span> <span class="o">=</span> <span class="nc">RejectedTypeEnum</span><span class="o">.</span><span class="na">createPolicy</span><span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getRejectedHandler</span><span class="o">());</span>
+            <span class="n">executor</span><span class="o">.</span><span class="na">setRejectedExecutionHandler</span><span class="o">(</span><span class="n">rejectedExecutionHandler</span><span class="o">);</span>
+        <span class="o">}</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getKeepAliveTime</span><span class="o">()</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">executor</span><span class="o">.</span><span class="na">setKeepAliveTime</span><span class="o">(</span><span class="n">properties</span><span class="o">.</span><span class="na">getKeepAliveTime</span><span class="o">(),</span> <span class="nc">TimeUnit</span><span class="o">.</span><span class="na">SECONDS</span><span class="o">);</span>
+        <span class="o">}</span>
+
+    <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div></div>
+
+<h3 id="线程池告警">线程池告警</h3>
+
+<p>alam包实现告警功能，对接应用和员工系统，下面这个类已经实现了执行耗时，超过了多少阈值可以记录到某个存储介质中，上报到server端即可，server包引用alam包，方便发送告警信息到制定的应用开发者，每个公司都有自己的告警im接口，有这个包去规划实现。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/**
+ * 回顾一下这个类，我们封装的这个线程池类就能获取到告警要用的信息
+ */</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">DynamicThreadPoolExecutor</span><span class="o">{</span>
+    <span class="o">......</span>
+		<span class="c1">// 计算单个线程执行耗时，可以做监控告警</span>
+    <span class="nd">@Override</span>
+    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">afterExecute</span><span class="o">(</span><span class="nc">Runnable</span> <span class="n">r</span><span class="o">,</span> <span class="nc">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">executeTimeOut</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">executeTimeOut</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="kt">long</span> <span class="n">startTime</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">startTime</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
+            <span class="kt">long</span> <span class="n">endTime</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">();</span>
+            <span class="kt">long</span> <span class="n">executeTime</span> <span class="o">=</span> <span class="n">endTime</span> <span class="o">-</span> <span class="n">startTime</span><span class="o">;</span>
+            <span class="k">if</span><span class="o">(</span><span class="n">executeTimeOut</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">executeTime</span> <span class="o">&gt;</span> <span class="n">executeTimeOut</span><span class="o">){</span>
+              	<span class="c1">// 记录到该应用的事件中，异步上报到控制台</span>
+            		<span class="c1">// 内容省略</span>
+            <span class="o">}</span>
+              
+        <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+            <span class="k">this</span><span class="o">.</span><span class="na">startTime</span><span class="o">.</span><span class="na">remove</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="o">......</span>
+  	<span class="c1">// 获取拒绝任务个数</span>
+    <span class="kd">public</span> <span class="nc">Long</span> <span class="nf">getRejectCountNum</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">rejectCount</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="使用示例">使用示例</h3>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@Configuration</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">TestConfig</span> <span class="o">{</span>
+  	<span class="cm">/**
+  	单独写一个模板给下面使用即可
+    public static DynamicThreadPoolExecutor buildDynamicPool(ThreadPoolInitParam initParam) {
+        DynamicThreadPoolExecutor dynamicThreadPoolExecutor;
+        try {
+            dynamicThreadPoolExecutor = new DynamicThreadPoolExecutor(
+                    initParam.getCorePoolNum(),
+                    initParam.getMaxPoolNum(),
+                    initParam.getKeepAliveTime(),
+                    initParam.getTimeUnit(),
+                    initParam.getExecuteTimeOut(),
+                    initParam.getWaitForTasksToCompleteOnShutdown(),
+                    initParam.getAwaitTerminationMillis(),
+                    initParam.getWorkQueue(),
+                    initParam.getThreadPoolId(),
+                    initParam.getThreadFactory(),
+                    initParam.getRejectedExecutionHandler());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException(String.format("Error creating thread pool parameter. threadPool id :: %s", initParam.getThreadPoolId()), ex);threadPoolId
+        }
+        dynamicThreadPoolExecutor.setTaskDecorator(initParam.getTaskDecorator());
+        dynamicThreadPoolExecutor.allowCoreThreadTimeOut(initParam.allowCoreThreadTimeOut);
+        return dynamicThreadPoolExecutor;
+    }
+    **/</span>
+    <span class="c1">//@Bean</span>
+    <span class="nd">@DynamicThreadPool</span>
+    <span class="kd">public</span> <span class="nc">ThreadPoolExecutor</span> <span class="nf">messageConsumeDynamicThreadPool</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">String</span> <span class="n">threadPoolId</span> <span class="o">=</span> <span class="s">"MESSAGE_CONSUME"</span><span class="o">;</span>
+        <span class="nc">ThreadPoolExecutor</span> <span class="n">customExecutor</span> <span class="o">=</span> <span class="nc">ThreadPoolBuilder</span><span class="o">.</span><span class="na">builder</span><span class="o">()</span>
+                <span class="o">.</span><span class="na">threadFactory</span><span class="o">(</span><span class="n">threadPoolId</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">threadPoolId</span><span class="o">(</span><span class="n">threadPoolId</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">executeTimeOut</span><span class="o">(</span><span class="mi">800L</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">waitForTasksToCompleteOnShutdown</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">awaitTerminationMillis</span><span class="o">(</span><span class="mi">5000L</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+        <span class="k">return</span> <span class="n">customExecutor</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Bean</span>
+    <span class="kd">public</span> <span class="nc">DynamicThreadPoolWrapper</span> <span class="nf">cdgDynamicThreadPool</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">ThreadPoolExecutor</span> <span class="n">customExecutor</span> <span class="o">=</span> <span class="nc">ThreadPoolBuilder</span><span class="o">.</span><span class="na">builder</span><span class="o">()</span>
+                <span class="o">.</span><span class="na">threadFactory</span><span class="o">(</span><span class="s">"CUSTOM_POOL"</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">DynamicThreadPoolWrapper</span><span class="o">(</span><span class="s">"CUSTOM_POOL"</span><span class="o">,</span> <span class="n">customExecutor</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Bean</span>
+    <span class="nd">@DynamicThreadPool</span><span class="o">(</span><span class="n">threadPoolId</span> <span class="o">=</span> <span class="s">"tempDynamicThreadPool"</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="nc">ThreadPoolExecutor</span> <span class="nf">tempDynamicThreadPool</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">ThreadPoolExecutor</span> <span class="n">executor</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ThreadPoolExecutor</span><span class="o">(</span>
+                <span class="mi">10</span><span class="o">,</span><span class="c1">//核心线程数</span>
+                <span class="mi">20</span><span class="o">,</span><span class="c1">//最大线程数</span>
+                <span class="mi">5</span><span class="o">,</span><span class="c1">//非核心回收超时时间</span>
+                <span class="nc">TimeUnit</span><span class="o">.</span><span class="na">SECONDS</span><span class="o">,</span><span class="c1">//超时时间单位</span>
+                <span class="k">new</span> <span class="nc">ArrayBlockingQueue</span><span class="o">&lt;&gt;(</span><span class="mi">30</span><span class="o">)</span><span class="c1">//任务队列</span>
+        <span class="o">);</span>
+
+        <span class="k">return</span> <span class="n">executor</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p><img src="/images/2022-07-30-dynamic-thread-pool/image-20220801185753713.png" alt="image-20220801185753713" /></p>
+
+<p><img src="/images/2022-07-30-dynamic-thread-pool/image-20220801185818537.png" alt="image-20220801185818537" /></p>
+
+<p><img src="/images/2022-07-30-dynamic-thread-pool/image-20220801185911784.png" alt="image-20220801185911784" /></p>
+
+<h3 id="最后">最后</h3>
+
+<p>最后就是UI了，自己实现一套UI去管理和展示即可，还有一些告警配置什么的，基本上动态线程池的功能设计就已经结束了，存储配置的选择由自身去做，用什么都可以，初步可以先用Map放内存，真正申请成项目后就可以申请资源去做更可靠的存储和完善更多的功能。</p>
+
+<p>github上有很多动态线程池项目做的都很不错，我这个也是重复的轮子，上手后才知道很多东西的细节要思考很久才有较好的解决方式，并且参考别人的实现后，你有了对比，再总结融合成你自己的东西，这也是一种成长。经验都是经历过才能验证，动手才知深浅，我年纪轻轻就达到三千二一个月工资，早上都是吃两个牛肉包的，你敢想？所以说有钱真好，年轻人、加油！</p>
+:ET

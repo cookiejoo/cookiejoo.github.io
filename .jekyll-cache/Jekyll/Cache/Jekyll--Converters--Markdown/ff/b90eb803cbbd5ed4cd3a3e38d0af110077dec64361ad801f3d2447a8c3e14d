@@ -1,0 +1,213 @@
+I"�b<h3 id="前言">前言</h3>
+
+<p>我们在常规性系统观测领域会做一些系统层面的服务指标暂时仪表盘，但基本上对系统的指标或许、进程的指标获取用java其实也有点难度的，今天我们学一下OSHI这个类库，它提供了很多方法用于获取系统和进程数据，咱们来做个漂亮的仪表盘。</p>
+
+<h3 id="oshi">OSHI</h3>
+
+<p>OSHI是Java的免费的基于JNA的（本机）操作系统和硬件信息库。它不需要安装任何其他本机库，并且旨在提供一种跨平台的实现来检索系统信息，例如OS版本，进程，内存和CPU使用率，磁盘和分区，设备，传感器等。</p>
+
+<p>支持平台:
+Windows • Linux • macOS • Unix (AIX, FreeBSD, Solaris)</p>
+
+<p>– 计算机系统和固件，底板</p>
+
+<p>– 操作系统和版本/内部版本</p>
+
+<p>– 物理（核心）和逻辑（超线程）CPU，处理器组，NUMA节点</p>
+
+<p>– 系统和每个处理器的负载，使用情况滴答计数器，中断，正常运行时间</p>
+
+<p>– 进程正常运行时间，CPU，内存使用情况，用户/组，命令行参数，线程详细信息</p>
+
+<p>– 已使用/可用的物理和虚拟内存</p>
+
+<p>– 挂载的文件系统（类型，可用空间和总空间，选项，读取和写入）</p>
+
+<p>– 磁盘驱动器（型号，序列号，大小，读取和写入）和分区</p>
+
+<p>– 网络接口（IP，带宽输入/输出），网络参数，TCP / UDP统计信息</p>
+
+<p>– 电池状态（电量百分比，剩余时间，电量使用情况统计信息）</p>
+
+<p>– USB设备</p>
+
+<p>– 连接的显示器（带有EDID信息），图形和声卡</p>
+
+<p>– 某些硬件上的传感器（温度，风扇速度，电压）</p>
+
+<p>所以绝大部分平台都满足需求了，我们来看看他的一些获取系统指标的方法，有很多我也没整明白，但是大部分看懂的已经够用了。</p>
+
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;dependency&gt;</span>
+    <span class="nt">&lt;groupId&gt;</span>com.github.oshi<span class="nt">&lt;/groupId&gt;</span>
+    <span class="nt">&lt;artifactId&gt;</span>oshi-core<span class="nt">&lt;/artifactId&gt;</span>
+    <span class="nt">&lt;version&gt;</span>6.2.2<span class="nt">&lt;/version&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</code></pre></div></div>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">oshi.SystemInfo</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.hardware.CentralProcessor</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.hardware.CentralProcessor.TickType</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.hardware.GlobalMemory</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.hardware.HardwareAbstractionLayer</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.software.os.FileSystem</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.software.os.OSFileStore</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.software.os.OperatingSystem</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">oshi.util.Util</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.net.UnknownHostException</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.List</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.Properties</span><span class="o">;</span>
+
+<span class="cm">/**
+ * @author cookie.joo
+ * @date 2022-08-25
+ */</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">OshiTest</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+        <span class="nc">SystemInfo</span> <span class="n">si</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SystemInfo</span><span class="o">();</span>
+        <span class="nc">HardwareAbstractionLayer</span> <span class="n">hal</span> <span class="o">=</span> <span class="n">si</span><span class="o">.</span><span class="na">getHardware</span><span class="o">();</span>
+        <span class="n">setCpuInfo</span><span class="o">(</span><span class="n">hal</span><span class="o">.</span><span class="na">getProcessor</span><span class="o">());</span>
+        <span class="n">setMemInfo</span><span class="o">(</span><span class="n">hal</span><span class="o">.</span><span class="na">getMemory</span><span class="o">());</span>
+        <span class="n">setSysInfo</span><span class="o">();</span>
+        <span class="n">setJvmInfo</span><span class="o">();</span>
+        <span class="n">setSysFiles</span><span class="o">(</span><span class="n">si</span><span class="o">.</span><span class="na">getOperatingSystem</span><span class="o">());</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 设置CPU信息
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">setCpuInfo</span><span class="o">(</span><span class="nc">CentralProcessor</span> <span class="n">processor</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// CPU信息</span>
+        <span class="kt">long</span><span class="o">[]</span> <span class="n">prevTicks</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="na">getSystemCpuLoadTicks</span><span class="o">();</span>
+        <span class="nc">Util</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">1000</span><span class="o">);</span>
+        <span class="kt">long</span><span class="o">[]</span> <span class="n">ticks</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="na">getSystemCpuLoadTicks</span><span class="o">();</span>
+        <span class="kt">long</span> <span class="n">nice</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">NICE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">NICE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">irq</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IRQ</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IRQ</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">softirq</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">SOFTIRQ</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">SOFTIRQ</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">steal</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">STEAL</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">STEAL</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">cSys</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">SYSTEM</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">SYSTEM</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">user</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">USER</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">USER</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">iowait</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IOWAIT</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IOWAIT</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">idle</span> <span class="o">=</span> <span class="n">ticks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IDLE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()]</span> <span class="o">-</span> <span class="n">prevTicks</span><span class="o">[</span><span class="nc">TickType</span><span class="o">.</span><span class="na">IDLE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+        <span class="kt">long</span> <span class="n">totalCpu</span> <span class="o">=</span> <span class="n">user</span> <span class="o">+</span> <span class="n">nice</span> <span class="o">+</span> <span class="n">cSys</span> <span class="o">+</span> <span class="n">idle</span> <span class="o">+</span> <span class="n">iowait</span> <span class="o">+</span> <span class="n">irq</span> <span class="o">+</span> <span class="n">softirq</span> <span class="o">+</span> <span class="n">steal</span><span class="o">;</span>
+        <span class="c1">// 核心数 processor.getLogicalProcessorCount()</span>
+        <span class="c1">// CPU总的使用率 totalCpu</span>
+        <span class="c1">// CPU系统使用率 cSys</span>
+        <span class="c1">// CPU用户使用率 user</span>
+        <span class="c1">// CPU当前等待率 iowait</span>
+        <span class="c1">// CPU当前空闲率 idle</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 设置内存信息
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">setMemInfo</span><span class="o">(</span><span class="nc">GlobalMemory</span> <span class="n">memory</span><span class="o">)</span> <span class="o">{</span>
+         <span class="c1">// 内存总量 memory.getTotal()</span>
+         <span class="c1">// 已用内存 memory.getTotal() - memory.getAvailable()</span>
+         <span class="c1">// 剩余内存 memory.getAvailable()</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 设置服务器信息
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">setSysInfo</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">Properties</span> <span class="n">props</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">getProperties</span><span class="o">();</span>
+        <span class="c1">// 操作系统 sys.setOsName(props.getProperty("os.name"));</span>
+        <span class="c1">// 系统架构 sys.setOsArch(props.getProperty("os.arch"));</span>
+        <span class="c1">// 项目路径 sys.setUserDir(props.getProperty("user.dir"));</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 设置Java虚拟机
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">setJvmInfo</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">UnknownHostException</span> <span class="o">{</span>
+        <span class="nc">Properties</span> <span class="n">props</span> <span class="o">=</span> <span class="nc">System</span><span class="o">.</span><span class="na">getProperties</span><span class="o">();</span>
+        <span class="c1">// 内存总量 Runtime.getRuntime().totalMemory()</span>
+        <span class="c1">// 当前内存使用率 Runtime.getRuntime().maxMemory()</span>
+        <span class="c1">// 内存空闲率 Runtime.getRuntime().freeMemory()</span>
+        <span class="c1">// JDK版本 props.getProperty("java.version")</span>
+        <span class="c1">// JDK安装路径 props.getProperty("java.home")</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 设置磁盘信息
+     */</span>
+    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">setSysFiles</span><span class="o">(</span><span class="nc">OperatingSystem</span> <span class="n">os</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">FileSystem</span> <span class="n">fileSystem</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="na">getFileSystem</span><span class="o">();</span>
+        <span class="nc">List</span><span class="o">&lt;</span><span class="nc">OSFileStore</span><span class="o">&gt;</span> <span class="n">fsArray</span> <span class="o">=</span> <span class="n">fileSystem</span><span class="o">.</span><span class="na">getFileStores</span><span class="o">();</span>
+        <span class="k">for</span> <span class="o">(</span><span class="nc">OSFileStore</span> <span class="n">fs</span> <span class="o">:</span> <span class="n">fsArray</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kt">long</span> <span class="n">free</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="na">getUsableSpace</span><span class="o">();</span>
+            <span class="kt">long</span> <span class="n">total</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="na">getTotalSpace</span><span class="o">();</span>
+            <span class="kt">long</span> <span class="n">used</span> <span class="o">=</span> <span class="n">total</span> <span class="o">-</span> <span class="n">free</span><span class="o">;</span>
+            <span class="c1">// 盘符路径 fs.getMount()</span>
+            <span class="c1">// 盘符类型 fs.getType()</span>
+            <span class="c1">// 文件类型 fs.getName());</span>
+            <span class="c1">// 总大小 convertFileSize(total)</span>
+            <span class="c1">// 剩余大小 convertFileSize(free)</span>
+            <span class="c1">// 已经使用量 sysFile.setUsed(convertFileSize(used)</span>
+            <span class="c1">// 资源的使用率 Arith.mul(Arith.div(used, total, 4), 100)</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="cm">/**
+     * 字节转换
+     *
+     * @param size 字节大小
+     * @return 转换后值
+     */</span>
+    <span class="kd">public</span> <span class="nc">String</span> <span class="nf">convertFileSize</span><span class="o">(</span><span class="kt">long</span> <span class="n">size</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kt">long</span> <span class="n">kb</span> <span class="o">=</span> <span class="mi">1024</span><span class="o">;</span>
+        <span class="kt">long</span> <span class="n">mb</span> <span class="o">=</span> <span class="n">kb</span> <span class="o">*</span> <span class="mi">1024</span><span class="o">;</span>
+        <span class="kt">long</span> <span class="n">gb</span> <span class="o">=</span> <span class="n">mb</span> <span class="o">*</span> <span class="mi">1024</span><span class="o">;</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">gb</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="s">"%.1f GB"</span><span class="o">,</span> <span class="o">(</span><span class="kt">float</span><span class="o">)</span> <span class="n">size</span> <span class="o">/</span> <span class="n">gb</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">mb</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kt">float</span> <span class="n">f</span> <span class="o">=</span> <span class="o">(</span><span class="kt">float</span><span class="o">)</span> <span class="n">size</span> <span class="o">/</span> <span class="n">mb</span><span class="o">;</span>
+            <span class="k">return</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="n">f</span> <span class="o">&gt;</span> <span class="mi">100</span> <span class="o">?</span> <span class="s">"%.0f MB"</span> <span class="o">:</span> <span class="s">"%.1f MB"</span><span class="o">,</span> <span class="n">f</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">kb</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kt">float</span> <span class="n">f</span> <span class="o">=</span> <span class="o">(</span><span class="kt">float</span><span class="o">)</span> <span class="n">size</span> <span class="o">/</span> <span class="n">kb</span><span class="o">;</span>
+            <span class="k">return</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="n">f</span> <span class="o">&gt;</span> <span class="mi">100</span> <span class="o">?</span> <span class="s">"%.0f KB"</span> <span class="o">:</span> <span class="s">"%.1f KB"</span><span class="o">,</span> <span class="n">f</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="s">"%d B"</span><span class="o">,</span> <span class="n">size</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="仪表盘">仪表盘</h3>
+
+<p><img src="/images/2022-08-25-oshi/image-20220825182025514.png" alt="image-20220825182025514" /></p>
+
+<p>我们借用开源的一个界面来做参考，叫WARD的一个GitHub项目，有兴趣可以去看看，其实就是用的OSHI，前端用的js和css生成的动态背景图很酷炫漂亮，我把他集成到我的个人web项目里面偶尔可以打开看看机器负载情况。</p>
+
+<p>建立一个Controller类前端每个一秒钟来获取一下系统指标数据即可。重点要说一下这个Util.sleep(1000)为什么要休眠一会，然后用当前时间值减去上一个时间值，我CentralProcessor.getSystemCpuLoadTicks方法注释上看到了说明，意思是<strong>通过测量跨时间间隔的节拍之间的差异，可以计算该时间间隔上的CPU负载</strong>。它目的是计算当前直接的使用率，这个值是不停的递增的，所以必须用这个方式来得到这个值。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">private</span> <span class="kt">int</span> <span class="nf">getProcessor</span><span class="o">(){</span>
+  <span class="nc">CentralProcessor</span> <span class="n">centralProcessor</span> <span class="o">=</span> <span class="n">systemInfo</span><span class="o">.</span><span class="na">getHardware</span><span class="o">().</span><span class="na">getProcessor</span><span class="o">();</span>
+  <span class="c1">// 第一次获取：获取系统范围的 CPU 负载滴答计数器：</span>
+  <span class="kt">long</span><span class="o">[]</span> <span class="n">prevTicksArray</span> <span class="o">=</span> <span class="n">centralProcessor</span><span class="o">.</span><span class="na">getSystemCpuLoadTicks</span><span class="o">();</span>
+  <span class="kt">long</span> <span class="n">prevTotalTicks</span> <span class="o">=</span> <span class="nc">Arrays</span><span class="o">.</span><span class="na">stream</span><span class="o">(</span><span class="n">prevTicksArray</span><span class="o">).</span><span class="na">sum</span><span class="o">();</span>
+  <span class="kt">long</span> <span class="n">prevIdleTicks</span> <span class="o">=</span> <span class="n">prevTicksArray</span><span class="o">[</span><span class="nc">CentralProcessor</span><span class="o">.</span><span class="na">TickType</span><span class="o">.</span><span class="na">IDLE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+  <span class="c1">//等待一段时间</span>
+  <span class="nc">Util</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">1000</span><span class="o">);</span>
+
+  <span class="c1">//第二次获取：获取系统范围的 CPU 负载滴答计数器：</span>
+  <span class="kt">long</span><span class="o">[]</span> <span class="n">currTicksArray</span> <span class="o">=</span> <span class="n">centralProcessor</span><span class="o">.</span><span class="na">getSystemCpuLoadTicks</span><span class="o">();</span>
+  <span class="kt">long</span> <span class="n">currTotalTicks</span> <span class="o">=</span> <span class="nc">Arrays</span><span class="o">.</span><span class="na">stream</span><span class="o">(</span><span class="n">currTicksArray</span><span class="o">).</span><span class="na">sum</span><span class="o">();</span>
+  <span class="kt">long</span> <span class="n">currIdleTicks</span> <span class="o">=</span> <span class="n">currTicksArray</span><span class="o">[</span><span class="nc">CentralProcessor</span><span class="o">.</span><span class="na">TickType</span><span class="o">.</span><span class="na">IDLE</span><span class="o">.</span><span class="na">getIndex</span><span class="o">()];</span>
+
+  <span class="k">return</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="nc">Math</span><span class="o">.</span><span class="na">round</span><span class="o">((</span><span class="mi">1</span> <span class="o">-</span> <span class="o">((</span><span class="kt">double</span><span class="o">)</span> <span class="o">(</span><span class="n">currIdleTicks</span> <span class="o">-</span> <span class="n">prevIdleTicks</span><span class="o">))</span> <span class="o">/</span> <span class="o">((</span><span class="kt">double</span><span class="o">)</span> <span class="o">(</span><span class="n">currTotalTicks</span> <span class="o">-</span> <span class="n">prevTotalTicks</span><span class="o">)))</span> <span class="o">*</span> <span class="mi">100</span><span class="o">);</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="最后">最后</h3>
+
+<p>OSHI的工具类让我们在Java中获取系统参数指标提供了遍历，WARD项目让我们在开发web应用的时候多了一个赏心悦目的仪表盘，让我们非前端开发人员也能做出一个漂亮的前端展示来，这个前端在手机端浏览也是适配的。</p>
+
+<p>可以点击我的<a href="http://caodegao.com:8080/">服务链接</a>看这个前端显示效果。</p>
+
+<p>OSHI更多参数请到官网中探索吧！</p>
+
+:ET

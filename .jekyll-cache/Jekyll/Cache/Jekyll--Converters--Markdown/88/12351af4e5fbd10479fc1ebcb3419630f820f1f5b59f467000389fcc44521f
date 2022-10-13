@@ -1,0 +1,202 @@
+I"El<h3 id="前言">前言</h3>
+
+<p>1：我们在java-8中使用AES加解密用PKCS5Padding填充(默认支持)，但是换成PKCS7Padding填充就会报错，原因是jdk-8中没有支持PKCS7Padding的填充。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>com.utils.MsfAESUtilTest
+============PKCS5Padding===========
+java.security.NoSuchAlgorithmException: Cannot find any provider supporting AES/CBC/PKCS7Padding
+	at javax.crypto.Cipher.getInstance(Cipher.java:543)
+
+Process finished with exit code 0
+</code></pre></div></div>
+
+<p>2：现在一般的应用都会使用256位加密key，但是这个在java中有些版本是不支持的，执行加解密会报错。</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">java</span><span class="o">.</span><span class="na">security</span><span class="o">.</span><span class="na">InvalidKeyException</span><span class="o">:</span> <span class="nc">Illegal</span> <span class="n">key</span> <span class="n">size</span> <span class="n">or</span> <span class="k">default</span> <span class="n">parameters</span>
+</code></pre></div></div>
+
+<h3 id="解决方式">解决方式</h3>
+
+<p><strong>一、AES PKCS7Padding填充加解密支持的二种方式</strong></p>
+
+<p>1：在jdk安装目录下添加bouncycastle包支持</p>
+
+<p>到该网站下载jar支持包添加到jdk目录<code class="language-plaintext highlighter-rouge">jdk_path/jre/lib/ext</code>（<a href="https://www.bouncycastle.org/download/bcprov-jdk18on-171.jar"> bcprov-jdk18on-171.jar</a>）https://www.bouncycastle.org/latest_releases.html#google_vignette</p>
+
+<p>修改/%JAVA_HOME%/jdk/jre/lib/security/java.security这个文件</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>security.provider.1<span class="o">=</span>sun.security.provider.Sun
+security.provider.2<span class="o">=</span>sun.security.rsa.SunRsaSign
+security.provider.3<span class="o">=</span>sun.security.ec.SunEC
+security.provider.4<span class="o">=</span>com.sun.net.ssl.internal.ssl.Provider
+security.provider.5<span class="o">=</span>com.sun.crypto.provider.SunJCE
+security.provider.6<span class="o">=</span>sun.security.jgss.SunProvider
+<span class="c">#security.provider.7=com.sun.security.sasl.Provider   #注释这一行</span>
+security.provider.7<span class="o">=</span>org.bouncycastle.jce.provider.BouncyCastleProvider <span class="c">#添加这一行</span>
+security.provider.8<span class="o">=</span>org.jcp.xml.dsig.internal.dom.XMLDSigRI
+security.provider.9<span class="o">=</span>sun.security.smartcardio.SunPCSC
+</code></pre></div></div>
+
+<p>2：在AES代码中使用bouncycastle包支持</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cm">/**
+pom.xml添加依赖
+&lt;dependency&gt;
+  &lt;groupId&gt;org.bouncycastle&lt;/groupId&gt;
+  &lt;artifactId&gt;bcprov-jdk18on&lt;/artifactId&gt;
+  &lt;version&gt;1.71&lt;/version&gt;
+&lt;/dependency&gt;
+ */</span>
+<span class="kn">import</span> <span class="nn">org.bouncycastle.jce.provider.BouncyCastleProvider</span><span class="o">;</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="nc">String</span> <span class="nf">encryptByCBC256</span><span class="o">(</span><span class="nc">String</span> <span class="n">data</span><span class="o">,</span> <span class="nc">String</span> <span class="n">secretKey</span><span class="o">,</span> <span class="nc">String</span> <span class="n">iv</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+  <span class="o">...</span>
+  <span class="c1">// 在加密方法中添加这一句</span>
+  <span class="nc">Security</span><span class="o">.</span><span class="na">addProvider</span><span class="o">(</span><span class="k">new</span> <span class="nc">BouncyCastleProvider</span><span class="o">());</span>
+  <span class="o">...</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>示例</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">package</span> <span class="nn">com.utils</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.apache.commons.codec.binary.Base64</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.apache.commons.lang3.StringUtils</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.bouncycastle.jce.provider.BouncyCastleProvider</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">javax.crypto.Cipher</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">javax.crypto.spec.IvParameterSpec</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">javax.crypto.spec.SecretKeySpec</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.security.Security</span><span class="o">;</span>
+
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">MsfAESUtilTest</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">String</span> <span class="no">KEY_ALGORITHM</span> <span class="o">=</span> <span class="s">"AES"</span><span class="o">;</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">String</span> <span class="no">SECRET_KEY</span> <span class="o">=</span> <span class="s">"88888888888888888888888888888888"</span><span class="o">;</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">String</span> <span class="no">IV</span> <span class="o">=</span> <span class="s">"xxxxxxxxxxxxxx"</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">String</span> <span class="no">CBC_CIPHER_ALGORITHM</span> <span class="o">=</span> <span class="s">"AES/CBC/PKCS5Padding"</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">String</span> <span class="no">CBC_CIPHER_ALGORITHM_256</span> <span class="o">=</span> <span class="s">"AES/CBC/PKCS7Padding"</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="nc">String</span> <span class="no">CHARSET_NAME</span> <span class="o">=</span> <span class="s">"utf-8"</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="nc">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+
+            <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"============PKCS5Padding==========="</span><span class="o">);</span>
+            <span class="nc">String</span> <span class="n">encrypted</span> <span class="o">=</span> <span class="n">encryptByP5</span><span class="o">(</span><span class="s">"caodegao"</span><span class="o">,</span> <span class="no">SECRET_KEY</span><span class="o">,</span> <span class="no">IV</span><span class="o">);</span>
+            <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"encrypted ： "</span> <span class="o">+</span> <span class="n">encrypted</span><span class="o">);</span>
+            <span class="nc">String</span> <span class="n">result</span> <span class="o">=</span> <span class="n">decryptByP5</span><span class="o">(</span><span class="n">encrypted</span><span class="o">,</span> <span class="no">SECRET_KEY</span><span class="o">,</span> <span class="no">IV</span><span class="o">);</span>
+            <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"result ： "</span> <span class="o">+</span> <span class="n">result</span><span class="o">);</span>
+
+            <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"============PKCS7Padding==========="</span><span class="o">);</span>
+
+            <span class="n">encrypted</span> <span class="o">=</span> <span class="n">encryptByP7</span><span class="o">(</span><span class="s">"caodegao"</span><span class="o">,</span> <span class="no">SECRET_KEY</span><span class="o">,</span> <span class="no">IV</span><span class="o">);</span>
+            <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"encrypted ： "</span> <span class="o">+</span> <span class="n">encrypted</span><span class="o">);</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">decryptByP7</span><span class="o">(</span><span class="n">encrypted</span><span class="o">,</span> <span class="no">SECRET_KEY</span><span class="o">,</span> <span class="no">IV</span><span class="o">);</span>
+            <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"result ： "</span> <span class="o">+</span> <span class="n">result</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+        <span class="o">}</span>
+
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">String</span> <span class="nf">encryptByP5</span><span class="o">(</span><span class="nc">String</span> <span class="n">data</span><span class="o">,</span> <span class="nc">String</span> <span class="n">secretKey</span><span class="o">,</span> <span class="nc">String</span> <span class="n">iv</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">commons</span><span class="o">.</span><span class="na">lang3</span><span class="o">.</span><span class="na">StringUtils</span><span class="o">.</span><span class="na">isBlank</span><span class="o">(</span><span class="n">data</span><span class="o">))</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="n">data</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">commons</span><span class="o">.</span><span class="na">lang3</span><span class="o">.</span><span class="na">StringUtils</span><span class="o">.</span><span class="na">isBlank</span><span class="o">(</span><span class="n">iv</span><span class="o">))</span> <span class="o">{</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalArgumentException</span><span class="o">(</span><span class="s">"decrypt iv isBlank"</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="kt">byte</span><span class="o">[]</span> <span class="n">raw</span> <span class="o">=</span> <span class="n">secretKey</span><span class="o">.</span><span class="na">getBytes</span><span class="o">(</span><span class="no">CHARSET_NAME</span><span class="o">);</span>
+        <span class="nc">SecretKeySpec</span> <span class="n">sKeySpec</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SecretKeySpec</span><span class="o">(</span><span class="n">raw</span><span class="o">,</span> <span class="no">KEY_ALGORITHM</span><span class="o">);</span>
+        <span class="c1">//算法/模式/补码方式</span>
+        <span class="nc">Cipher</span> <span class="n">cipher</span> <span class="o">=</span> <span class="nc">Cipher</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="no">CBC_CIPHER_ALGORITHM</span><span class="o">);</span>
+        <span class="c1">//使用CBC模式，需要一个向量iv，可增加加密算法的强度</span>
+        <span class="nc">IvParameterSpec</span> <span class="n">ivParameterSpec</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">IvParameterSpec</span><span class="o">(</span><span class="n">iv</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
+        <span class="n">cipher</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="nc">Cipher</span><span class="o">.</span><span class="na">ENCRYPT_MODE</span><span class="o">,</span> <span class="n">sKeySpec</span><span class="o">,</span> <span class="n">ivParameterSpec</span><span class="o">);</span>
+        <span class="kt">byte</span><span class="o">[]</span> <span class="n">encrypted</span> <span class="o">=</span> <span class="n">cipher</span><span class="o">.</span><span class="na">doFinal</span><span class="o">(</span><span class="n">data</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
+
+        <span class="k">return</span> <span class="nc">Base64</span><span class="o">.</span><span class="na">encodeBase64String</span><span class="o">(</span><span class="n">encrypted</span><span class="o">);</span>
+
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">String</span> <span class="nf">encryptByP7</span><span class="o">(</span><span class="nc">String</span> <span class="n">data</span><span class="o">,</span> <span class="nc">String</span> <span class="n">secretKey</span><span class="o">,</span> <span class="nc">String</span> <span class="n">iv</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">commons</span><span class="o">.</span><span class="na">lang3</span><span class="o">.</span><span class="na">StringUtils</span><span class="o">.</span><span class="na">isBlank</span><span class="o">(</span><span class="n">data</span><span class="o">))</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="n">data</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">commons</span><span class="o">.</span><span class="na">lang3</span><span class="o">.</span><span class="na">StringUtils</span><span class="o">.</span><span class="na">isBlank</span><span class="o">(</span><span class="n">iv</span><span class="o">))</span> <span class="o">{</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalArgumentException</span><span class="o">(</span><span class="s">"decrypt iv isBlank"</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="kt">byte</span><span class="o">[]</span> <span class="n">raw</span> <span class="o">=</span> <span class="n">secretKey</span><span class="o">.</span><span class="na">getBytes</span><span class="o">(</span><span class="no">CHARSET_NAME</span><span class="o">);</span>
+        <span class="nc">SecretKeySpec</span> <span class="n">keySpec</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SecretKeySpec</span><span class="o">(</span><span class="n">raw</span><span class="o">,</span> <span class="s">"AES"</span><span class="o">);</span>
+        <span class="nc">Security</span><span class="o">.</span><span class="na">addProvider</span><span class="o">(</span><span class="k">new</span> <span class="nc">BouncyCastleProvider</span><span class="o">());</span>
+
+        <span class="nc">Cipher</span> <span class="n">cipher</span> <span class="o">=</span> <span class="nc">Cipher</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="no">CBC_CIPHER_ALGORITHM_256</span><span class="o">,</span> <span class="s">"BC"</span><span class="o">);</span>
+        <span class="n">cipher</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="nc">Cipher</span><span class="o">.</span><span class="na">ENCRYPT_MODE</span><span class="o">,</span> <span class="n">keySpec</span><span class="o">,</span> <span class="k">new</span> <span class="nc">IvParameterSpec</span><span class="o">(</span><span class="n">iv</span><span class="o">.</span><span class="na">getBytes</span><span class="o">()));</span>
+        <span class="kt">byte</span><span class="o">[]</span> <span class="n">encrypted</span> <span class="o">=</span> <span class="n">cipher</span><span class="o">.</span><span class="na">doFinal</span><span class="o">(</span><span class="n">data</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
+        <span class="k">return</span> <span class="nc">Base64</span><span class="o">.</span><span class="na">encodeBase64String</span><span class="o">(</span><span class="n">encrypted</span><span class="o">);</span>
+
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">String</span> <span class="nf">decryptByP5</span><span class="o">(</span><span class="nc">String</span> <span class="n">data</span><span class="o">,</span> <span class="nc">String</span> <span class="n">secretKey</span><span class="o">,</span> <span class="nc">String</span> <span class="n">iv</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">commons</span><span class="o">.</span><span class="na">lang3</span><span class="o">.</span><span class="na">StringUtils</span><span class="o">.</span><span class="na">isBlank</span><span class="o">(</span><span class="n">data</span><span class="o">))</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="n">data</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="k">if</span> <span class="o">(</span><span class="nc">StringUtils</span><span class="o">.</span><span class="na">isBlank</span><span class="o">(</span><span class="n">iv</span><span class="o">))</span> <span class="o">{</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalArgumentException</span><span class="o">(</span><span class="s">"decrypt iv isBlank"</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="kt">byte</span><span class="o">[]</span> <span class="n">raw</span> <span class="o">=</span> <span class="n">secretKey</span><span class="o">.</span><span class="na">getBytes</span><span class="o">(</span><span class="no">CHARSET_NAME</span><span class="o">);</span>
+        <span class="nc">SecretKeySpec</span> <span class="n">sKeySpec</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SecretKeySpec</span><span class="o">(</span><span class="n">raw</span><span class="o">,</span> <span class="no">KEY_ALGORITHM</span><span class="o">);</span>
+        <span class="nc">Cipher</span> <span class="n">cipher</span> <span class="o">=</span> <span class="nc">Cipher</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="no">CBC_CIPHER_ALGORITHM</span><span class="o">);</span>
+        <span class="c1">//使用CBC模式，需要一个向量iv，可增加加密算法的强度</span>
+        <span class="nc">IvParameterSpec</span> <span class="n">ivParameterSpec</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">IvParameterSpec</span><span class="o">(</span><span class="n">iv</span><span class="o">.</span><span class="na">getBytes</span><span class="o">());</span>
+        <span class="n">cipher</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="nc">Cipher</span><span class="o">.</span><span class="na">DECRYPT_MODE</span><span class="o">,</span> <span class="n">sKeySpec</span><span class="o">,</span> <span class="n">ivParameterSpec</span><span class="o">);</span>
+        <span class="kt">byte</span><span class="o">[]</span> <span class="n">original</span> <span class="o">=</span> <span class="n">cipher</span><span class="o">.</span><span class="na">doFinal</span><span class="o">(</span><span class="nc">Base64</span><span class="o">.</span><span class="na">decodeBase64</span><span class="o">(</span><span class="n">data</span><span class="o">));</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">String</span><span class="o">(</span><span class="n">original</span><span class="o">,</span> <span class="no">CHARSET_NAME</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kd">static</span> <span class="nc">String</span> <span class="nf">decryptByP7</span><span class="o">(</span><span class="nc">String</span> <span class="n">data</span><span class="o">,</span> <span class="nc">String</span> <span class="n">secretKey</span><span class="o">,</span> <span class="nc">String</span> <span class="n">iv</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">commons</span><span class="o">.</span><span class="na">lang3</span><span class="o">.</span><span class="na">StringUtils</span><span class="o">.</span><span class="na">isBlank</span><span class="o">(</span><span class="n">data</span><span class="o">))</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="n">data</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="k">if</span> <span class="o">(</span><span class="nc">StringUtils</span><span class="o">.</span><span class="na">isBlank</span><span class="o">(</span><span class="n">iv</span><span class="o">))</span> <span class="o">{</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalArgumentException</span><span class="o">(</span><span class="s">"decrypt iv isBlank"</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="kt">byte</span><span class="o">[]</span> <span class="n">raw</span> <span class="o">=</span> <span class="n">secretKey</span><span class="o">.</span><span class="na">getBytes</span><span class="o">(</span><span class="no">CHARSET_NAME</span><span class="o">);</span>
+        <span class="nc">SecretKeySpec</span> <span class="n">keySpec</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SecretKeySpec</span><span class="o">(</span><span class="n">raw</span><span class="o">,</span> <span class="no">KEY_ALGORITHM</span><span class="o">);</span>
+        <span class="nc">Security</span><span class="o">.</span><span class="na">addProvider</span><span class="o">(</span><span class="k">new</span> <span class="nc">BouncyCastleProvider</span><span class="o">());</span>
+        <span class="nc">Cipher</span> <span class="n">cipher</span> <span class="o">=</span> <span class="nc">Cipher</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="no">CBC_CIPHER_ALGORITHM_256</span><span class="o">,</span> <span class="s">"BC"</span><span class="o">);</span>
+        <span class="n">cipher</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="nc">Cipher</span><span class="o">.</span><span class="na">DECRYPT_MODE</span><span class="o">,</span> <span class="n">keySpec</span><span class="o">,</span> <span class="k">new</span> <span class="nc">IvParameterSpec</span><span class="o">(</span><span class="n">iv</span><span class="o">.</span><span class="na">getBytes</span><span class="o">()));</span>
+        <span class="kt">byte</span><span class="o">[]</span> <span class="n">original</span> <span class="o">=</span> <span class="n">cipher</span><span class="o">.</span><span class="na">doFinal</span><span class="o">(</span><span class="nc">Base64</span><span class="o">.</span><span class="na">decodeBase64</span><span class="o">(</span><span class="n">data</span><span class="o">));</span>
+
+        <span class="k">return</span> <span class="k">new</span> <span class="nf">String</span><span class="o">(</span><span class="n">original</span><span class="o">,</span> <span class="no">CHARSET_NAME</span><span class="o">);</span>
+    <span class="o">}</span>
+
+<span class="o">}</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>运行结果，发现没啥两样
+
+============PKCS5Padding===========
+encrypted ： 5yy52rtdRArbCRdA7R0CwQ==
+result ： caodegao
+============PKCS7Padding===========
+encrypted ： 5yy52rtdRArbCRdA7R0CwQ==
+result ： caodegao
+
+Process finished with exit code 0
+</code></pre></div></div>
+
+<p><strong>二、解决jdk支持256长度key的两种方式</strong></p>
+
+<p>1：在jdk安装目录下替换加解密jdk支持</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>到Oracle下载https://www.oracle.com/java/technologies/javase-jce8-downloads.html 加密支持包
+解压之后得到local_policy.jar &amp; US_export_policy.jar两个jar包，把这两个jar包放到 /%JAVA_HOME%/jdk/lib/security 目录下
+jdk
+
+注意：jre<span class="se">\l</span>ib<span class="se">\s</span>ecurity<span class="se">\p</span>olicy，在某些版本这个文件夹下能看见两个文件夹，分别是“limited”和“unlimited”，两个文件夹下面的内容都是“local_policy.jar和US_export_policy.jar”这两个东西，我们要用的是“unlimited”下的jar
+</code></pre></div></div>
+
+<p>2：升级高版本的jdk（以1.8.x版本为例），但具体的版本我也没有安装过那么多，目前是1.8.151版本不行，换到1.8.202版本后可以。</p>
+:ET
